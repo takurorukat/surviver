@@ -74,6 +74,7 @@ export class SettingsMenuSystem {
   private panelContainer: Phaser.GameObjects.Container | null = null
   private overlay: Phaser.GameObjects.Rectangle | null = null
   private bgmButtonLabel: Phaser.GameObjects.Text | null = null
+  private fullscreenButtonLabel: Phaser.GameObjects.Text | null = null
   private menuButtons: MenuButtonView[] = []
   private selectedIndex = 0
   private closedPanelX = 0
@@ -154,6 +155,7 @@ export class SettingsMenuSystem {
     this.buildMenu()
     this.applyBackgroundBlur()
     this.refreshBgmButtonLabel()
+    this.refreshFullscreenButtonLabel()
     this.refreshSelectionVisual()
     this.setupKeyboard()
 
@@ -295,6 +297,23 @@ export class SettingsMenuSystem {
     this.bgmButtonLabel = bgmButton.label
     this.menuButtons.push(bgmButton)
     buttonViews.push(bgmButton.border, bgmButton.background, bgmButton.label)
+    nextButtonY = nextButtonY + SETTINGS_MENU_BUTTON_HEIGHT + SETTINGS_MENU_BUTTON_GAP
+
+    const fullscreenButton = this.createMenuButton(
+      0,
+      nextButtonY,
+      this.getFullscreenButtonText(),
+      () => {
+        this.handleFullscreenToggle()
+      },
+    )
+    this.fullscreenButtonLabel = fullscreenButton.label
+    this.menuButtons.push(fullscreenButton)
+    buttonViews.push(
+      fullscreenButton.border,
+      fullscreenButton.background,
+      fullscreenButton.label,
+    )
     nextButtonY = nextButtonY + SETTINGS_MENU_BUTTON_HEIGHT + SETTINGS_MENU_BUTTON_GAP
 
     if (this.callbacks.mode === 'title') {
@@ -783,6 +802,36 @@ export class SettingsMenuSystem {
     this.bgmButtonLabel.setText(this.getBgmButtonText())
   }
 
+  private getFullscreenButtonText(): string {
+    if (!this.scene.scale.fullscreen.available) {
+      return 'Fullscreen: N/A'
+    }
+    if (this.scene.scale.isFullscreen) {
+      return 'Fullscreen: ON'
+    }
+    return 'Fullscreen: OFF'
+  }
+
+  private refreshFullscreenButtonLabel(): void {
+    if (this.fullscreenButtonLabel === null) {
+      return
+    }
+    this.fullscreenButtonLabel.setText(this.getFullscreenButtonText())
+  }
+
+  private handleFullscreenToggle(): void {
+    if (!this.scene.scale.fullscreen.available) {
+      this.refreshFullscreenButtonLabel()
+      return
+    }
+    if (this.scene.scale.isFullscreen) {
+      this.scene.scale.stopFullscreen()
+    } else {
+      this.scene.scale.startFullscreen()
+    }
+    this.refreshFullscreenButtonLabel()
+  }
+
   private handleBgmToggle(): void {
     const nextEnabled = !this.callbacks.audioSystem.getBgmEnabled()
     this.callbacks.audioSystem.setBgmEnabled(nextEnabled)
@@ -854,6 +903,7 @@ export class SettingsMenuSystem {
       this.panelContainer = null
     }
     this.bgmButtonLabel = null
+    this.fullscreenButtonLabel = null
     this.menuButtons = []
   }
 }

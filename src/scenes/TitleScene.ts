@@ -57,6 +57,10 @@ import {
   createBgmToggleButton,
   type BgmToggleButtonView,
 } from '../systems/BgmToggleButtonSystem'
+import {
+  createFullscreenToggleButton,
+  type FullscreenToggleButtonView,
+} from '../systems/FullscreenToggleButtonSystem'
 import { SettingsMenuSystem } from '../systems/SettingsMenuSystem'
 import { ConfirmDialogSystem } from '../systems/ConfirmDialogSystem'
 import { ShopSystem } from '../systems/ShopSystem'
@@ -124,6 +128,7 @@ export class TitleScene extends Phaser.Scene {
   private shopUnlockTipObjects: Phaser.GameObjects.GameObject[] = []
   private topBarView: TopBarView | null = null
   private bgmToggleButton: BgmToggleButtonView | null = null
+  private fullscreenToggleButton: FullscreenToggleButtonView | null = null
 
   constructor() {
     super({ key: 'TitleScene' })
@@ -299,6 +304,17 @@ export class TitleScene extends Phaser.Scene {
       this.selectMenuItem(this.getBgmSelectionIndex())
     })
 
+    this.fullscreenToggleButton = createFullscreenToggleButton(this, () => {
+      if (
+        this.confirmDialogSystem.isOpen() ||
+        this.shopSystem.isOpen() ||
+        this.sealSkillSystem.isOpen()
+      ) {
+        return
+      }
+      this.selectMenuItem(this.getFullscreenSelectionIndex())
+    })
+
     this.setupKeyboard()
     this.refreshSelectionVisual()
 
@@ -323,9 +339,10 @@ export class TitleScene extends Phaser.Scene {
   update(): void {
     // 設定メニュー側でBGMを切り替えた場合も、右下アイコンへすぐ反映する
     this.bgmToggleButton?.refresh()
+    this.fullscreenToggleButton?.refresh()
   }
 
-  // 選択番号: エリア → Shop → Seal Skills → 実績 → Settings → BGM
+  // 選択番号: エリア → Shop → Seal Skills → 実績 → Settings → BGM → Fullscreen
   // 縦移動では実績を飛ばし、実績は Settings から左右キーだけ
   private getShopSelectionIndex(): number {
     return this.panelViews.length
@@ -345,6 +362,10 @@ export class TitleScene extends Phaser.Scene {
 
   private getBgmSelectionIndex(): number {
     return this.panelViews.length + 5
+  }
+
+  private getFullscreenSelectionIndex(): number {
+    return this.panelViews.length + 6
   }
 
   private getGoldSelectionIndex(): number {
@@ -425,6 +446,10 @@ export class TitleScene extends Phaser.Scene {
 
   private isBgmSelected(): boolean {
     return this.selectedIndex === this.getBgmSelectionIndex()
+  }
+
+  private isFullscreenSelected(): boolean {
+    return this.selectedIndex === this.getFullscreenSelectionIndex()
   }
 
   private createAreaPanels(): void {
@@ -855,6 +880,21 @@ export class TitleScene extends Phaser.Scene {
       if (direction > 0) {
         this.selectMenuItem(this.getAchievementSelectionIndex())
       }
+      return
+    }
+
+    // 右下ボタン: Fullscreen ←→ BGM
+    if (this.isBgmSelected()) {
+      if (direction < 0) {
+        this.selectMenuItem(this.getFullscreenSelectionIndex())
+      }
+      return
+    }
+    if (this.isFullscreenSelected()) {
+      if (direction > 0) {
+        this.selectMenuItem(this.getBgmSelectionIndex())
+      }
+      return
     }
   }
 
@@ -888,7 +928,7 @@ export class TitleScene extends Phaser.Scene {
       return
     }
 
-    if (this.isBgmSelected()) {
+    if (this.isBgmSelected() || this.isFullscreenSelected()) {
       if (direction > 0) {
         this.selectMenuItem(this.getSettingsSelectionIndex())
       } else {
@@ -1015,6 +1055,7 @@ export class TitleScene extends Phaser.Scene {
       this.topBarView.setGoldSelected(this.isGoldSelected())
     }
     this.bgmToggleButton?.setSelected(this.isBgmSelected())
+    this.fullscreenToggleButton?.setSelected(this.isFullscreenSelected())
 
     if (this.shopPreviewView !== null) {
       const shopUnlocked = this.isShopMenuUnlocked()
@@ -1459,6 +1500,11 @@ export class TitleScene extends Phaser.Scene {
 
     if (this.isBgmSelected()) {
       this.bgmToggleButton?.toggle()
+      return
+    }
+
+    if (this.isFullscreenSelected()) {
+      this.fullscreenToggleButton?.toggle()
       return
     }
 
