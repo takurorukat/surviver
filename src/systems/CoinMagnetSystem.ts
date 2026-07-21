@@ -14,7 +14,6 @@ import {
   COIN_MAGNET_MAX_SPEED,
   COIN_MAGNET_ACCELERATION,
   COIN_CLEAR_VACUUM_SPEED,
-  PHYSICS_FIXED_STEP_SECONDS,
 } from '../GameConstants'
 import type { CoinView } from '../objects/Coin'
 
@@ -33,8 +32,8 @@ function readCoinMagnetSpeed(coin: CoinView): number {
 }
 
 // 次フレームの吸引速度を計算する（初速 → 加速 → 上限でキャップ）
-// 加速量は fixedStep 秒数を掛けるので、フレームレートに依存しにくい
-function calculateNextMagnetSpeed(currentSpeed: number): number {
+// deltaSeconds は実際のフレーム時間（秒）。120Hz でも速度がぶれないようにする
+function calculateNextMagnetSpeed(currentSpeed: number, deltaSeconds: number): number {
   let nextSpeed = currentSpeed
 
   if (nextSpeed <= 0) {
@@ -42,7 +41,7 @@ function calculateNextMagnetSpeed(currentSpeed: number): number {
     nextSpeed = COIN_MAGNET_INITIAL_SPEED
   } else {
     // Python: next = current + accel * dt に相当
-    nextSpeed = nextSpeed + COIN_MAGNET_ACCELERATION * PHYSICS_FIXED_STEP_SECONDS
+    nextSpeed = nextSpeed + COIN_MAGNET_ACCELERATION * deltaSeconds
   }
 
   if (nextSpeed > COIN_MAGNET_MAX_SPEED) {
@@ -59,6 +58,7 @@ export function updateCoinMagnetMovement(
   playerX: number,
   playerY: number,
   magnetRadius: number,
+  deltaSeconds: number,
 ): void {
   const children = coinGroup.getChildren()
 
@@ -81,7 +81,7 @@ export function updateCoinMagnetMovement(
     }
 
     const currentSpeed = readCoinMagnetSpeed(coin)
-    const nextSpeed = calculateNextMagnetSpeed(currentSpeed)
+    const nextSpeed = calculateNextMagnetSpeed(currentSpeed, deltaSeconds)
     coin.setData('magnetSpeed', nextSpeed)
 
     // ほぼ重なっているときは止める（振動・通り過ぎ防止）

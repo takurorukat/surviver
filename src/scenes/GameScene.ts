@@ -144,6 +144,10 @@ import { playXpGainVisualEffect } from '../systems/XpGainEffectSystem'
 import { playGoldGainVisualEffect, playGoldCoinFlyToHud } from '../systems/GoldGainEffectSystem'
 import { playStartCountdown } from '../systems/StartCountdownSystem'
 import {
+  createOrientationGuide,
+  type OrientationGuideView,
+} from '../systems/OrientationGuideSystem'
+import {
   updateAllCoinsVacuumMovement,
   updateCoinMagnetMovement,
 } from '../systems/CoinMagnetSystem'
@@ -275,6 +279,8 @@ export class GameScene extends Phaser.Scene {
   private movementKeys!: MovementKeys
   private movementState: MovementState = { isKeyboardMode: true, allowMouseFollow: false }
   private virtualJoystick!: VirtualJoystick
+  private orientationGuide: OrientationGuideView | null = null
+  private scaleResizeHandler: ((gameSize: Phaser.Structs.Size) => void) | null = null
   // scene.restart 前に渡されたキーボードモード（resetStageState で復元）
   // 新規開始のデフォルトはキーボードモード（止まっている）。クリックでマウス追従へ
   private pendingKeyboardMode = true
@@ -494,6 +500,8 @@ export class GameScene extends Phaser.Scene {
     this.setupCoinPickupOverlap()
     this.setupGoldCoinPickupOverlap()
     this.setupFixedCamera()
+    this.setupScaleResize()
+    this.orientationGuide = createOrientationGuide(this)
     this.setupRangeDisplay()
     this.setupAudio()
     // タイトルと同じ右下の BGM ON/OFF スイッチ
@@ -716,6 +724,7 @@ export class GameScene extends Phaser.Scene {
         this.playAreaBounds,
         this.currentMoveSpeed,
         this.virtualJoystick,
+        this.game.loop.delta / 1000,
       )
     }
 
@@ -733,6 +742,14 @@ export class GameScene extends Phaser.Scene {
   // 補足: ステージ遷移では BGM を止めない（共有1本を継続）。止めたいときは明示的に stopBgm
   shutdown(): void {
     this.physics.enableUpdate()
+    if (this.orientationGuide !== null) {
+      this.orientationGuide.destroy()
+      this.orientationGuide = null
+    }
+    if (this.scaleResizeHandler !== null) {
+      this.scale.off('resize', this.scaleResizeHandler)
+      this.scaleResizeHandler = null
+    }
     if (this.virtualJoystick !== undefined) {
       this.virtualJoystick.destroy()
     }
@@ -1250,6 +1267,17 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setScroll(0, 0)
   }
 
+  // 役割: 画面サイズ変更（向き変更・フルスクリーン）時にカメラ表示領域を合わせる
+  // 呼び出し元: create
+  private setupScaleResize(): void {
+    const onResize = (gameSize: Phaser.Structs.Size): void => {
+      this.cameras.main.setViewport(0, 0, gameSize.width, gameSize.height)
+    }
+    this.scaleResizeHandler = onResize
+    this.scale.on('resize', onResize)
+    onResize(this.scale.gameSize)
+  }
+
   // 役割: 射程円・ヒットボックス表示システムを生成する
   // 呼び出し元: create
   // 呼び出し先: RangeDisplaySystem / HitboxDisplaySystem のコンストラクタ
@@ -1404,6 +1432,7 @@ export class GameScene extends Phaser.Scene {
       this.player.x,
       this.player.y,
       this.currentMagnetRadius,
+      this.game.loop.delta / 1000,
     )
   }
 

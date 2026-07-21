@@ -21,6 +21,9 @@ const FONT_FACES_TO_LOAD = [
   '16px "Silkscreen"',
   'bold 16px "Silkscreen"',
   '700 16px "Silkscreen"',
+  // 開始カウントダウン用（初回表示のカクつき防止）
+  'bold 72px "Silkscreen"',
+  'bold 56px "Silkscreen"',
 ]
 
 function waitMilliseconds(milliseconds: number): Promise<void> {

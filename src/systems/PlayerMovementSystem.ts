@@ -13,7 +13,7 @@
 // ============================================================
 
 import Phaser from 'phaser'
-import { PLAYER_RADIUS, PHYSICS_FIXED_STEP_SECONDS } from '../GameConstants'
+import { PLAYER_RADIUS } from '../GameConstants'
 import { configureArcadeBodyForConstantSpeed } from '../utils/arcadePhysicsHelpers'
 import type { VirtualJoystick } from './VirtualJoystick'
 
@@ -157,12 +157,13 @@ function setVelocityTowardTarget(
   targetX: number,
   targetY: number,
   moveSpeed: number,
+  deltaSeconds: number,
 ): void {
   const dx = targetX - player.x
   const dy = targetY - player.y
   const distance = Math.sqrt(dx * dx + dy * dy)
-  // この描画フレーム（1/60秒）で進める最大距離
-  const stopDistance = moveSpeed * PHYSICS_FIXED_STEP_SECONDS
+  // この描画フレームで進める最大距離
+  const stopDistance = moveSpeed * deltaSeconds
 
   // 1フレームで届くなら止める（通り過ぎて戻るのを防ぐ）
   if (distance <= stopDistance) {
@@ -184,6 +185,7 @@ export function applyPlayerMovement(
   playArea: PlayAreaBounds,
   moveSpeed: number,
   virtualJoystick: VirtualJoystick,
+  deltaSeconds: number,
 ): void {
   // maxVelocity が低すぎて希望速度がクリップされないようにする
   configureArcadeBodyForConstantSpeed(playerBody, moveSpeed)
@@ -217,7 +219,7 @@ export function applyPlayerMovement(
   // マウス追従モードのときだけポインタへ追従
   if (movementState.allowMouseFollow) {
     const target = getPointerTargetPosition(scene, playArea)
-    setVelocityTowardTarget(player, playerBody, target.x, target.y, moveSpeed)
+    setVelocityTowardTarget(player, playerBody, target.x, target.y, moveSpeed, deltaSeconds)
     return
   }
 

@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { GAME_WIDTH, GAME_HEIGHT, ARCADE_PHYSICS_FPS } from './GameConstants'
+import { GAME_WIDTH, GAME_HEIGHT, ARCADE_PHYSICS_FPS, PHYSICS_FPS } from './GameConstants'
 import { BootScene } from './scenes/BootScene'
 import { PreloadScene } from './scenes/PreloadScene'
 import { TitleScene } from './scenes/TitleScene'
@@ -28,6 +28,14 @@ const gameConfig: Phaser.Types.Core.GameConfig = {
   // index.html 内の親要素 ID。ここに canvas が追加される
   parent: 'game-container',
   backgroundColor: '#000000',
+  // 120Hz ディスプレイ（スマホ等）でも 60fps に固定する。
+  // 指定しないと requestAnimationFrame の速度で update が回り、体感が約2倍速になる。
+  fps: {
+    target: PHYSICS_FPS,
+    limit: PHYSICS_FPS,
+    // smoothStep を true にすると 120Hz 端末でトゥイーンがカクつくことがある
+    smoothStep: false,
+  },
   physics: {
     // このゲームは Arcade Physics（シンプルな速度ベースの物理）だけ使う
     default: 'arcade',
@@ -44,9 +52,11 @@ const gameConfig: Phaser.Types.Core.GameConfig = {
     },
   },
   scale: {
-    // ウィンドウに合わせて縦横比を保ったまま拡大縮小
+    // ウィンドウに合わせて縦横比を保ったまま最大サイズで表示（スマホ縦画面でも拡大）
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: GAME_WIDTH,
+    height: GAME_HEIGHT,
   },
   // Web Audio を明示（HTML5 Audio だと BGM ループが不安定になりやすい）
   audio: {

@@ -61,6 +61,10 @@ import {
   createFullscreenToggleButton,
   type FullscreenToggleButtonView,
 } from '../systems/FullscreenToggleButtonSystem'
+import {
+  createOrientationGuide,
+  type OrientationGuideView,
+} from '../systems/OrientationGuideSystem'
 import { SettingsMenuSystem } from '../systems/SettingsMenuSystem'
 import { ConfirmDialogSystem } from '../systems/ConfirmDialogSystem'
 import { ShopSystem } from '../systems/ShopSystem'
@@ -129,6 +133,7 @@ export class TitleScene extends Phaser.Scene {
   private topBarView: TopBarView | null = null
   private bgmToggleButton: BgmToggleButtonView | null = null
   private fullscreenToggleButton: FullscreenToggleButtonView | null = null
+  private orientationGuide: OrientationGuideView | null = null
 
   constructor() {
     super({ key: 'TitleScene' })
@@ -333,6 +338,15 @@ export class TitleScene extends Phaser.Scene {
         this.sound.unlock()
         this.titleAudioSystem.unlock()
       })
+    }
+
+    this.orientationGuide = createOrientationGuide(this)
+  }
+
+  shutdown(): void {
+    if (this.orientationGuide !== null) {
+      this.orientationGuide.destroy()
+      this.orientationGuide = null
     }
   }
 
