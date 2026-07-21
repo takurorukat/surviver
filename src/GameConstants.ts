@@ -484,9 +484,13 @@ export const PHYSICS_SUBSTEPS_PER_FRAME = 4
 export const ARCADE_PHYSICS_FPS = PHYSICS_FPS * PHYSICS_SUBSTEPS_PER_FRAME
 // 後方互換の別名（コイン加速計算などで使用）
 export const PLAYER_MOVEMENT_FIXED_STEP_SECONDS = PHYSICS_FIXED_STEP_SECONDS
-export const PLAYER_WIDTH = 24
-export const PLAYER_HEIGHT = 24
-export const PLAYER_RADIUS = 12
+
+// プレイ画面のキャラ・コイン・当たり判定の拡大率（スマホでも見やすく）
+export const WORLD_ENTITY_SCALE = 1.7
+
+export const PLAYER_WIDTH = 24 * WORLD_ENTITY_SCALE
+export const PLAYER_HEIGHT = 24 * WORLD_ENTITY_SCALE
+export const PLAYER_RADIUS = 12 * WORLD_ENTITY_SCALE
 export const PLAYER_COLOR = 0x4fc3f7
 // --- プレイヤー歩行スプライト（4×4 = 16コマ。列 = 向き、行 = アニメコマ）---
 // 列0 = 下向き、列1 = 上向き、列2 = 左向き、列3 = 右向き
@@ -496,30 +500,31 @@ export const PLAYER_WALK_FRAME_SIZE = 16
 export const PLAYER_WALK_FRAME_RATE = 8
 // コマ内に透明の余白があるため、当たり判定(24px)より大きめに表示して
 // 旧テスト時の四角と同じくらいの見た目にする
-export const PLAYER_WALK_DISPLAY_SIZE = 30
+export const PLAYER_WALK_DISPLAY_SIZE = 30 * WORLD_ENTITY_SCALE
 export const PLAYER_INVINCIBLE_SECONDS = 0.8
 // 被ダメ時に敵から離す（連続接触ダメージを防ぐ）
 export const PLAYER_KNOCKBACK_SPEED = 600
 export const PLAYER_KNOCKBACK_DURATION_MS = 200
 export const PLAYER_ATTACK_DAMAGE = 1
 export const PLAYER_ATTACK_INTERVAL_MS = 800
-export const PLAYER_ATTACK_RANGE = 150
+export const PLAYER_ATTACK_RANGE = 150 * WORLD_ENTITY_SCALE
 
 // --- プレイヤー弾（見た目・速度・上限は objects/PlayerBullet）---
-export const PLAYER_BULLET_WIDTH = 8
-export const PLAYER_BULLET_HEIGHT = 8
+export const PLAYER_BULLET_WIDTH = 8 * WORLD_ENTITY_SCALE
+export const PLAYER_BULLET_HEIGHT = 8 * WORLD_ENTITY_SCALE
 export const PLAYER_BULLET_COLOR = 0xfde68a
 // 遠い敵の移動にも届きやすいよう、やや速め
 export const PLAYER_BULLET_SPEED = 800
 // すり抜け防止は判定拡大ではなく物理サブステップで行う（PHYSICS_SUBSTEPS_PER_FRAME 参照）
-export const PLAYER_BULLET_RADIUS = 4
+export const PLAYER_BULLET_RADIUS = 4 * WORLD_ENTITY_SCALE
 
 // --- コイン見た目・吸引（Coin / CoinMagnetSystem）---
 // 吸引半径・初速・上限速・加速度は吸引ルールの定数。生成時 magnetSpeed=0 必須。
 // 見た目は四角・円・ダイヤ・星・三角のランダム。大きさも少しばらつく。
 // 中身はどれも COIN_XP_VALUE（1 XP）。
-export const COIN_SIZE_MIN = 4
-export const COIN_SIZE_MAX = 6
+export const COIN_SIZE_SCALE = 1.5
+export const COIN_SIZE_MIN = 4 * WORLD_ENTITY_SCALE * COIN_SIZE_SCALE
+export const COIN_SIZE_MAX = 6 * WORLD_ENTITY_SCALE * COIN_SIZE_SCALE
 export const COIN_COLOR = 0xfbbf24
 // コインが小さくて見つけにくいので、時々キラッと光らせて場所を知らせる
 // 1回の光り = 拡大しながら明るくなり、すぐ元に戻る（yoyo）
@@ -530,9 +535,9 @@ export const COIN_SPARKLE_DELAY_MIN_MS = 600
 export const COIN_SPARKLE_DELAY_MAX_MS = 1800
 // コイン・弾がタイル床に溶け込まないよう、細い黒枠で囲む
 export const ENTITY_OUTLINE_COLOR = 0x000000
-export const ENTITY_OUTLINE_WIDTH = 1
+export const ENTITY_OUTLINE_WIDTH = 1 * WORLD_ENTITY_SCALE
 export const COIN_XP_VALUE = 1
-export const COIN_MAGNET_RADIUS = 80
+export const COIN_MAGNET_RADIUS = 80 * WORLD_ENTITY_SCALE
 export const COIN_MAGNET_INITIAL_SPEED = 120
 export const COIN_MAGNET_MAX_SPEED = 520
 export const COIN_MAGNET_ACCELERATION = 2200
@@ -607,7 +612,7 @@ export const ALL_ENEMIES_CLEAR_BANNER_HOLD_MS = 250
 export const ALL_ENEMIES_CLEAR_BANNER_FADE_MS = 160
 // 全敵撃破の時間ボーナスコイン: 中央付近にばらまき、約2タイル上から落とす
 export const CLEAR_TIME_BONUS_COIN_FALL_TILES = 2
-export const CLEAR_TIME_BONUS_COIN_SPREAD_RADIUS = 52
+export const CLEAR_TIME_BONUS_COIN_SPREAD_RADIUS = 52 * WORLD_ENTITY_SCALE
 export const CLEAR_TIME_BONUS_COIN_FALL_MS = 480
 // ALL ENEMIES CLEAR の直後に、実際の追加報酬を大きく見せる
 export const CLEAR_REWARD_TEXT_XP_COLOR = '#86efac'
@@ -651,20 +656,20 @@ export const GOLD_COIN_FRAME_SIZE = 10
 export const GOLD_COIN_FRAME_COUNT = 4
 export const GOLD_COIN_ANIM_KEY = 'gold-coin-spin'
 export const GOLD_COIN_ANIM_FRAME_RATE = 10
-export const GOLD_COIN_DISPLAY_SIZE = 20
-export const GOLD_COIN_HITBOX_SIZE = 14
+export const GOLD_COIN_DISPLAY_SIZE = 20 * WORLD_ENTITY_SCALE
+export const GOLD_COIN_HITBOX_SIZE = 14 * WORLD_ENTITY_SCALE
 // クリア時ゴールドも経験値と同じく上から落とす
 export const CLEAR_GOLD_COIN_FALL_TILES = CLEAR_TIME_BONUS_COIN_FALL_TILES
 export const CLEAR_GOLD_COIN_SPREAD_RADIUS = CLEAR_TIME_BONUS_COIN_SPREAD_RADIUS
 export const CLEAR_GOLD_COIN_FALL_MS = CLEAR_TIME_BONUS_COIN_FALL_MS
-export const CLEAR_GOLD_COIN_PICKUP_DISTANCE = 18
+export const CLEAR_GOLD_COIN_PICKUP_DISTANCE = 18 * WORLD_ENTITY_SCALE
 
 // --- 敵の基準見た目・近接／射撃の振る舞い ---
 // objects/Enemy と EnemyMovement / EnemyAttack が参照。
 // 射撃型は好み距離帯（MIN〜MAX）で接近／後退／停止する。
-export const ENEMY_WIDTH = 20
-export const ENEMY_HEIGHT = 20
-export const ENEMY_RADIUS = 10
+export const ENEMY_WIDTH = 20 * WORLD_ENTITY_SCALE
+export const ENEMY_HEIGHT = 20 * WORLD_ENTITY_SCALE
+export const ENEMY_RADIUS = 10 * WORLD_ENTITY_SCALE
 export const ENEMY_MELEE_COLOR = 0xf87171
 // Plains Stage2 の少し硬い泥スライム（見た目OFF時の四角形色）
 export const ENEMY_TOUGH_MELEE_COLOR = 0xb45309
@@ -775,7 +780,7 @@ export const ENEMY_STUMP_SPEED_FACTOR = 0.5
 // 切り株がキノコを出す間隔
 export const ENEMY_STUMP_MUSHROOM_SPAWN_INTERVAL_MS = 3000
 // 切り株の隣にキノコを出す距離
-export const ENEMY_STUMP_MUSHROOM_SPAWN_OFFSET = 28
+export const ENEMY_STUMP_MUSHROOM_SPAWN_OFFSET = 28 * WORLD_ENTITY_SCALE
 // カブトムシの固定 HP（従来5の1.5倍）と経験値倍率
 export const ENEMY_BEETLE_HP = 8
 export const ENEMY_BEETLE_XP_DROP_MULTIPLIER = 2
@@ -804,11 +809,11 @@ export const ENEMY_BRANCH_COLOR = 0xa16207
 // 枝がカブトムシを出す間隔（少し余裕を持たせる）
 export const ENEMY_BRANCH_BEETLE_SPAWN_INTERVAL_MS = 1500
 // 枝の隣にカブトムシを出す距離
-export const ENEMY_BRANCH_BEETLE_SPAWN_OFFSET = 28
+export const ENEMY_BRANCH_BEETLE_SPAWN_OFFSET = 28 * WORLD_ENTITY_SCALE
 // Forest Stage5 の墓石（HP60・動かない・5秒ごとにカブトムシを出す）
 export const ENEMY_GRAVESTONE_BREATH_SPRITE_KEY = 'enemy-gravestone-breath'
 export const ENEMY_GRAVESTONE_BREATH_SPRITE_PATH = 'assets/sprites/enemy_gravestone_breath.png'
-export const ENEMY_GRAVESTONE_BREATH_DISPLAY_HEIGHT = 32
+export const ENEMY_GRAVESTONE_BREATH_DISPLAY_HEIGHT = 32 * WORLD_ENTITY_SCALE
 export const ENEMY_GRAVESTONE_BREATH_OUTLINE_SCALE = ENEMY_SLIME_BREATH_OUTLINE_SCALE
 export const ENEMY_GRAVESTONE_BREATH_SCALE_Y_MAX = ENEMY_SLIME_BREATH_SCALE_Y_MAX
 export const ENEMY_GRAVESTONE_BREATH_SCALE_Y_MIN = ENEMY_SLIME_BREATH_SCALE_Y_MIN
@@ -817,15 +822,15 @@ export const ENEMY_GRAVESTONE_HP = 120
 export const ENEMY_GRAVESTONE_XP_DROP_MULTIPLIER = 10
 export const ENEMY_GRAVESTONE_COLOR = 0x6b7280
 export const ENEMY_GRAVESTONE_SPAWN_INTERVAL_MS = 3000
-export const ENEMY_GRAVESTONE_SPAWN_OFFSET = 28
+export const ENEMY_GRAVESTONE_SPAWN_OFFSET = 28 * WORLD_ENTITY_SCALE
 // プレイヤー開始位置（中央）と重ならないよう、やや上に出す
-export const ENEMY_GRAVESTONE_SPAWN_OFFSET_Y = -96
+export const ENEMY_GRAVESTONE_SPAWN_OFFSET_Y = -96 * WORLD_ENTITY_SCALE
 export const ENEMY_SLIME_WALK_SPRITE_KEY = 'enemy-slime-walk'
 export const ENEMY_SLIME_WALK_SPRITE_PATH = 'assets/sprites/enemy_slime_walk.png'
 export const ENEMY_SLIME_WALK_FRAME_SIZE = 16
 export const ENEMY_SLIME_WALK_FRAME_RATE = 8
 // コマ内に透明の余白があるため、当たり判定(20px)より大きめに表示する
-export const ENEMY_SLIME_DISPLAY_SIZE = 28
+export const ENEMY_SLIME_DISPLAY_SIZE = 28 * WORLD_ENTITY_SCALE
 // 射撃型（Stage 3+）。紫系で近接と区別
 export const ENEMY_RANGED_COLOR = 0xc084fc
 // 射撃敵に使う4×4歩行スプライト（列 = 向き、行 = アニメコマ）
@@ -833,7 +838,7 @@ export const ENEMY_SNAKE_WALK_SPRITE_KEY = 'enemy-snake-walk'
 export const ENEMY_SNAKE_WALK_SPRITE_PATH = 'assets/sprites/enemy_snake_walk.png'
 export const ENEMY_SNAKE_WALK_FRAME_SIZE = 16
 export const ENEMY_SNAKE_WALK_FRAME_RATE = 8
-export const ENEMY_SNAKE_DISPLAY_SIZE = 28
+export const ENEMY_SNAKE_DISPLAY_SIZE = 28 * WORLD_ENTITY_SCALE
 // Volcano 特殊敵
 export const ENEMY_RUNNER_COLOR = 0xef4444
 export const ENEMY_CHARGER_COLOR = 0xf97316
@@ -842,17 +847,17 @@ export const ENEMY_CHARGER_WALK_SPRITE_KEY = 'enemy-charger-walk'
 export const ENEMY_CHARGER_WALK_SPRITE_PATH = 'assets/sprites/enemy_charger_walk.png'
 export const ENEMY_CHARGER_WALK_FRAME_SIZE = 16
 export const ENEMY_CHARGER_WALK_FRAME_RATE = 8
-export const ENEMY_CHARGER_DISPLAY_SIZE = 28
+export const ENEMY_CHARGER_DISPLAY_SIZE = 28 * WORLD_ENTITY_SCALE
 export const ENEMY_ARMORED_COLOR = 0x64748b
 // 防御力がある装甲敵に使う4×4歩行スプライト
 export const ENEMY_ARMORED_WALK_SPRITE_KEY = 'enemy-armored-walk'
 export const ENEMY_ARMORED_WALK_SPRITE_PATH = 'assets/sprites/enemy_armored_walk.png'
 export const ENEMY_ARMORED_WALK_FRAME_SIZE = 16
 export const ENEMY_ARMORED_WALK_FRAME_RATE = 8
-export const ENEMY_ARMORED_DISPLAY_SIZE = 28
+export const ENEMY_ARMORED_DISPLAY_SIZE = 28 * WORLD_ENTITY_SCALE
 export const ENEMY_SHIELDED_COLOR = 0x22d3ee
 export const ENEMY_SPECIAL_STROKE_COLOR = 0xf8fafc
-export const ENEMY_SPECIAL_STROKE_WIDTH = 2
+export const ENEMY_SPECIAL_STROKE_WIDTH = 2 * WORLD_ENTITY_SCALE
 // 装甲敵はこの1発ダメージ以上でないとHPが減らない
 export const ENEMY_ARMORED_MIN_DAMAGE = 3
 // 高速敵は通常弾（初期1ダメージ）2発で倒せる。速度は初期プレイヤーより少しだけ速い
@@ -861,7 +866,7 @@ export const ENEMY_RUNNER_HP = 2
 export const ENEMY_RUNNER_MIN_SPEED = PLAYER_SPEED + 10
 export const ENEMY_RUNNER_SPEED_MULTIPLIER = 1.05
 // 突進敵: 近づくまでは通常追尾し、範囲内で一定時間だけ直線加速する
-export const ENEMY_CHARGE_TRIGGER_DISTANCE = 150
+export const ENEMY_CHARGE_TRIGGER_DISTANCE = PLAYER_ATTACK_RANGE
 export const ENEMY_CHARGE_SPEED_MULTIPLIER = 2.4
 export const ENEMY_CHARGE_DURATION_MS = 650
 export const ENEMY_CHARGE_COOLDOWN_MS = 900
@@ -871,8 +876,8 @@ export const ENEMY_SHIELD_FRONT_DOT_THRESHOLD = -0.35
 export const ENEMY_RANGED_SPEED_FACTOR = 0.55
 // 射撃型はプレイヤー攻撃レンジの外側に立つ（レンジ強化後も追従して外へ出る）
 // 好み距離 = attackRange + MARGIN 〜 その + HOLD_BAND
-export const ENEMY_RANGED_OUTSIDE_RANGE_MARGIN = 24
-export const ENEMY_RANGED_HOLD_BAND = 56
+export const ENEMY_RANGED_OUTSIDE_RANGE_MARGIN = 24 * WORLD_ENTITY_SCALE
+export const ENEMY_RANGED_HOLD_BAND = 56 * WORLD_ENTITY_SCALE
 export const ENEMY_RANGED_ATTACK_INTERVAL_MS = 1400
 // Stage 3 から射撃型を混ぜる
 export const ENEMY_RANGED_FIRST_STAGE = 3
@@ -889,21 +894,21 @@ export const PLAINS_STAGE3_BEE_GROUPS_ON_FINAL_WAVE = 1
 
 // --- 敵弾（objects/EnemyBullet）---
 // 見た目は蜂の針（黄色い三角＋黒枠）。当たり判定は円のまま
-export const ENEMY_BULLET_WIDTH = 10
-export const ENEMY_BULLET_HEIGHT = 6
+export const ENEMY_BULLET_WIDTH = 10 * WORLD_ENTITY_SCALE
+export const ENEMY_BULLET_HEIGHT = 6 * WORLD_ENTITY_SCALE
 export const ENEMY_BULLET_COLOR = 0xfacc15
 export const ENEMY_BULLET_OUTLINE_COLOR = 0x000000
 // 針の黒枠。1だと床に溶けやすいので少し太めに
-export const ENEMY_BULLET_OUTLINE_WIDTH = 2
+export const ENEMY_BULLET_OUTLINE_WIDTH = 2 * WORLD_ENTITY_SCALE
 export const ENEMY_BULLET_SPEED = 280
-export const ENEMY_BULLET_RADIUS = 4
+export const ENEMY_BULLET_RADIUS = 4 * WORLD_ENTITY_SCALE
 export const ENEMY_BULLET_DAMAGE = 1
 
 // --- 敵の HP バー・スポーン警告・パック編成 ---
 // HP バーは Enemy.ts。警告点滅〜パック人数は WaveSystem / startEnemyPackSpawnWithWarning。
-export const ENEMY_HP_BAR_WIDTH = 16
-export const ENEMY_HP_BAR_HEIGHT = 4
-export const ENEMY_HP_BAR_OFFSET_Y = 3
+export const ENEMY_HP_BAR_WIDTH = 16 * WORLD_ENTITY_SCALE
+export const ENEMY_HP_BAR_HEIGHT = 4 * WORLD_ENTITY_SCALE
+export const ENEMY_HP_BAR_OFFSET_Y = 3 * WORLD_ENTITY_SCALE
 export const ENEMY_HP_BAR_BORDER_COLOR = 0xffffff
 export const ENEMY_HP_BAR_EMPTY_COLOR = 0x111827
 export const ENEMY_HP_BAR_FILL_COLOR = 0x22c55e
@@ -911,7 +916,7 @@ export const ENEMY_HP_BAR_DEPTH = 9
 export const ENEMY_SPAWN_AREA_MARGIN = 16
 // プレイヤーの真下など至近距離に沸くと回避不能になるため、
 // この距離より近い位置には敵を出さない（避けられる最小限の範囲）。
-export const ENEMY_SPAWN_MIN_DISTANCE_FROM_PLAYER = 120
+export const ENEMY_SPAWN_MIN_DISTANCE_FROM_PLAYER = 120 * WORLD_ENTITY_SCALE
 export const ENEMY_SPAWN_WARNING_SECONDS = 1.0
 export const ENEMY_SPAWN_WARNING_BLINK_INTERVAL_MS = 120
 export const ENEMY_SPAWN_WARNING_COLOR = 0xfca5a5
@@ -925,7 +930,7 @@ export const ENEMY_PACK_SIZE_STAGE_5_7_MAX = 7
 export const ENEMY_PACK_SIZE_STAGE_8_10_MIN = 7
 export const ENEMY_PACK_SIZE_STAGE_8_10_MAX = 8
 export const ENEMY_PACK_LARGE_FIRST_STAGE = 3
-export const ENEMY_PACK_SPACING = 28
+export const ENEMY_PACK_SPACING = 28 * WORLD_ENTITY_SCALE
 // 同じバースト内でパックが複数あるときの隙間（秒）
 export const ENEMY_PACK_GAP_SECONDS = 0.25
 export const ENEMY_BASE_HP = 2
@@ -994,7 +999,7 @@ export const RANGE_LEVEL_START = 1
 export const MOVE_LEVEL_START = 1
 export const MOVE_SPEED_BONUS_PER_LEVEL = 24
 export const MAGNET_LEVEL_START = 1
-export const COIN_MAGNET_RADIUS_BONUS_PER_LEVEL = 28
+export const COIN_MAGNET_RADIUS_BONUS_PER_LEVEL = 28 * WORLD_ENTITY_SCALE
 export const HP_BONUS_PER_LEVEL_UP = 1
 // 貫通レベル（0=1体で消滅、1=2体目で消滅、2=3体目で消滅…）
 export const PIERCE_LEVEL_START = 0
@@ -1005,7 +1010,7 @@ export const RICOCHET_LEVEL_START = 0
 // Lv3=50%で3枚（それ以外2枚）、Lv4=常に3枚。
 export const XP_BONUS_LEVEL_START = 0
 export const XP_BONUS_HIGHER_MULTIPLIER_CHANCE = 0.5
-export const RICOCHET_SEARCH_RADIUS = 260
+export const RICOCHET_SEARCH_RADIUS = 260 * WORLD_ENTITY_SCALE
 // ヒット爆破（0=なし。初回は周囲1ダメージ・狭い円。以降ダメージ+1、半径も拡大）
 export const BLAST_LEVEL_START = 0
 // ショップ未購入時のラン中レベル上限。Power/Speed/Range はショップで拡張できる。
@@ -1050,12 +1055,12 @@ export function calculateAllEnemiesClearTimeBonusXp(
   return safeBase * wholeSeconds
 }
 export const BLAST_DAMAGE_START = 1
-export const BLAST_RADIUS_BASE = 28
-export const BLAST_RADIUS_GROWTH_PER_LEVEL = 12
+export const BLAST_RADIUS_BASE = 28 * WORLD_ENTITY_SCALE
+export const BLAST_RADIUS_GROWTH_PER_LEVEL = 12 * WORLD_ENTITY_SCALE
 export const BLAST_RING_COLOR = 0xfbbf24
 export const BLAST_RING_STROKE_COLOR = 0xfde68a
 export const BLAST_RING_DURATION_MS = 220
-export const BLAST_RING_START_RADIUS = 8
+export const BLAST_RING_START_RADIUS = 8 * WORLD_ENTITY_SCALE
 export const BLAST_RING_DEPTH = 18
 
 // レベルアップ UI に出す候補数（プールからランダムで選ぶ）
@@ -1362,21 +1367,21 @@ export const PLAYER_HURT_FLASH_ALPHA = 0.35
 // --- 盾・装甲で通常弾を防いだときのアイコン演出 ---
 export const ENEMY_BLOCKED_ICON_KEY = 'enemy-blocked-shield'
 export const ENEMY_BLOCKED_ICON_PATH = 'assets/sprites/enemy_blocked_shield.png'
-export const ENEMY_BLOCKED_ICON_SIZE = 26
+export const ENEMY_BLOCKED_ICON_SIZE = 26 * WORLD_ENTITY_SCALE
 export const ENEMY_BLOCKED_ICON_POP_MS = 80
 export const ENEMY_BLOCKED_ICON_FADE_MS = 180
-export const ENEMY_BLOCKED_ICON_FLOAT_UP = 10
+export const ENEMY_BLOCKED_ICON_FLOAT_UP = 10 * WORLD_ENTITY_SCALE
 export const ENEMY_BLOCKED_ICON_DEPTH = 65
 
 // --- ダメージ数字（ヒット時のポップアップ）---
-export const DAMAGE_NUMBER_FONT_SIZE = '13px'
+export const DAMAGE_NUMBER_FONT_SIZE = `${13 * WORLD_ENTITY_SCALE}px`
 export const DAMAGE_NUMBER_COLOR = '#ffffff'
 export const DAMAGE_NUMBER_STROKE_COLOR = '#000000'
-export const DAMAGE_NUMBER_STROKE_THICKNESS = 3
+export const DAMAGE_NUMBER_STROKE_THICKNESS = 3 * WORLD_ENTITY_SCALE
 export const DAMAGE_NUMBER_DURATION_MS = 650
-export const DAMAGE_NUMBER_PEAK_HEIGHT = 28
-export const DAMAGE_NUMBER_SIDE_SPREAD = 18
-export const DAMAGE_NUMBER_FALL_EXTRA = 12
+export const DAMAGE_NUMBER_PEAK_HEIGHT = 28 * WORLD_ENTITY_SCALE
+export const DAMAGE_NUMBER_SIDE_SPREAD = 18 * WORLD_ENTITY_SCALE
+export const DAMAGE_NUMBER_FALL_EXTRA = 12 * WORLD_ENTITY_SCALE
 export const DAMAGE_NUMBER_DEPTH = 60
 
 // --- レベルアップ時の HP FULL! 表示 ---
