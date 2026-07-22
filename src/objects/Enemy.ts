@@ -25,6 +25,37 @@ import {
   ENEMY_SPIRIT_FIRE_WIDTH,
   ENEMY_SPIRIT_FIRE_HEIGHT,
   ENEMY_SPIRIT_FIRE_RADIUS,
+  ENEMY_SPIRIT_THUNDER_COLOR,
+  ENEMY_SPIRIT_THUNDER_HP,
+  ENEMY_SPIRIT_THUNDER_SPEED,
+  ENEMY_SPIRIT_THUNDER_WIDTH,
+  ENEMY_SPIRIT_THUNDER_HEIGHT,
+  ENEMY_SPIRIT_THUNDER_RADIUS,
+  ENEMY_BURNING_TREE_COLOR,
+  ENEMY_BURNING_TREE_HP,
+  ENEMY_BURNING_TREE_WIDTH,
+  ENEMY_BURNING_TREE_HEIGHT,
+  ENEMY_BURNING_TREE_RADIUS,
+  ENEMY_BURNING_TREE_SPAWN_INTERVAL_MIN_MS,
+  ENEMY_BURNING_TREE_SPAWN_INTERVAL_MAX_MS,
+  ENEMY_BURNING_TREE_SPAWN_OFFSET,
+  ENEMY_BURNING_TREE_XP_DROP_MULTIPLIER,
+  ENEMY_ASH_KNIGHT_COLOR,
+  ENEMY_ASH_KNIGHT_HP,
+  ENEMY_ASH_KNIGHT_WIDTH,
+  ENEMY_ASH_KNIGHT_HEIGHT,
+  ENEMY_ASH_KNIGHT_RADIUS,
+  ENEMY_ASH_KNIGHT_BLOCK_HIT_COUNT,
+  ENEMY_ASH_KNIGHT_XP_DROP_MULTIPLIER,
+  ENEMY_CHAOS_ELEMENTAL_COLOR,
+  ENEMY_CHAOS_ELEMENTAL_HP,
+  ENEMY_CHAOS_ELEMENTAL_WIDTH,
+  ENEMY_CHAOS_ELEMENTAL_HEIGHT,
+  ENEMY_CHAOS_ELEMENTAL_RADIUS,
+  ENEMY_CHAOS_ELEMENTAL_SPAWN_INTERVAL_MS,
+  ENEMY_CHAOS_ELEMENTAL_SPAWN_OFFSET,
+  ENEMY_CHAOS_ELEMENTAL_SPAWN_OFFSET_Y,
+  ENEMY_CHAOS_ELEMENTAL_XP_DROP_MULTIPLIER,
   ENEMY_STUMP_COLOR,
   ENEMY_STUMP_HP,
   ENEMY_STUMP_WIDTH,
@@ -89,6 +120,30 @@ import {
   ENEMY_SPIRIT_FIRE_BREATH_SCALE_Y_MAX,
   ENEMY_SPIRIT_FIRE_BREATH_SCALE_Y_MIN,
   ENEMY_SPIRIT_FIRE_BREATH_DURATION_MS,
+  ENEMY_SPIRIT_THUNDER_BREATH_SPRITE_KEY,
+  ENEMY_SPIRIT_THUNDER_BREATH_DISPLAY_HEIGHT,
+  ENEMY_SPIRIT_THUNDER_BREATH_OUTLINE_SCALE,
+  ENEMY_SPIRIT_THUNDER_BREATH_SCALE_Y_MAX,
+  ENEMY_SPIRIT_THUNDER_BREATH_SCALE_Y_MIN,
+  ENEMY_SPIRIT_THUNDER_BREATH_DURATION_MS,
+  ENEMY_BURNING_TREE_BREATH_SPRITE_KEY,
+  ENEMY_BURNING_TREE_BREATH_DISPLAY_HEIGHT,
+  ENEMY_BURNING_TREE_BREATH_OUTLINE_SCALE,
+  ENEMY_BURNING_TREE_BREATH_SCALE_Y_MAX,
+  ENEMY_BURNING_TREE_BREATH_SCALE_Y_MIN,
+  ENEMY_BURNING_TREE_BREATH_DURATION_MS,
+  ENEMY_ASH_KNIGHT_BREATH_SPRITE_KEY,
+  ENEMY_ASH_KNIGHT_BREATH_DISPLAY_HEIGHT,
+  ENEMY_ASH_KNIGHT_BREATH_OUTLINE_SCALE,
+  ENEMY_ASH_KNIGHT_BREATH_SCALE_Y_MAX,
+  ENEMY_ASH_KNIGHT_BREATH_SCALE_Y_MIN,
+  ENEMY_ASH_KNIGHT_BREATH_DURATION_MS,
+  ENEMY_CHAOS_ELEMENTAL_BREATH_SPRITE_KEY,
+  ENEMY_CHAOS_ELEMENTAL_BREATH_DISPLAY_HEIGHT,
+  ENEMY_CHAOS_ELEMENTAL_BREATH_OUTLINE_SCALE,
+  ENEMY_CHAOS_ELEMENTAL_BREATH_SCALE_Y_MAX,
+  ENEMY_CHAOS_ELEMENTAL_BREATH_SCALE_Y_MIN,
+  ENEMY_CHAOS_ELEMENTAL_BREATH_DURATION_MS,
   ENEMY_STUMP_BREATH_SPRITE_KEY,
   ENEMY_STUMP_BREATH_DISPLAY_HEIGHT,
   ENEMY_STUMP_BREATH_OUTLINE_SCALE,
@@ -162,11 +217,13 @@ import {
   calculateEnemySpeedForStage,
   calculateToughMeleeSpeed,
   calculateStumpSpeed,
+  calculateBurningTreeSpeed,
   calculateBranchSpeed,
   calculateRangedEnemySpeedForStage,
   getMaxEnemiesForStage,
   shouldSpawnRangedEnemy,
   isForestFinalStage,
+  isVolcanoFinalStage,
   type StageAreaId,
 } from '../GameConstants'
 import { setupCircleHitbox } from '../utils/setupCircleHitbox'
@@ -185,6 +242,10 @@ export type EnemyKind =
   | 'toughMelee'
   | 'mushroom'
   | 'spiritFire'
+  | 'spiritThunder'
+  | 'burningTree'
+  | 'ashKnight'
+  | 'chaosElemental'
   | 'stump'
   | 'beetle'
   | 'branch'
@@ -205,8 +266,13 @@ export type SpawnWarningTimers = {
 }
 
 // setData に頼らず、敵オブジェクト直結で HP バーを覚える
-// Python: weak_dict[enemy] = graphics に相当（敵が GC されるとバー参照も消える）
-const enemyHpBarMap = new WeakMap<Phaser.GameObjects.Rectangle, Phaser.GameObjects.Graphics>()
+// Rectangle 3枚の Container（毎フレーム Graphics.clear しない＝敵が多いほど効く）
+type EnemyHpBarView = {
+  container: Phaser.GameObjects.Container
+  fill: Phaser.GameObjects.Rectangle
+  innerWidth: number
+}
+const enemyHpBarMap = new WeakMap<Phaser.GameObjects.Rectangle, EnemyHpBarView>()
 // 近接敵の物理用 Rectangle と、見た目用 Sprite の対応
 const enemyWalkSpriteMap = new WeakMap<
   Phaser.GameObjects.Rectangle,
@@ -466,6 +532,82 @@ function attachSpiritFireBreathingSprite(
   )
 }
 
+/** Volcano Stage2 の雷の精霊（左向き・進行方向を向く）。 */
+function attachSpiritThunderBreathingSprite(
+  scene: Phaser.Scene,
+  enemy: Phaser.GameObjects.Rectangle,
+): void {
+  attachBreathingEnemySprite(
+    scene,
+    enemy,
+    ENEMY_SPIRIT_THUNDER_BREATH_SPRITE_KEY,
+    ENEMY_SPIRIT_THUNDER_BREATH_DISPLAY_HEIGHT,
+    ENEMY_SPIRIT_THUNDER_BREATH_OUTLINE_SCALE,
+    ENEMY_SPIRIT_THUNDER_BREATH_SCALE_Y_MAX,
+    ENEMY_SPIRIT_THUNDER_BREATH_SCALE_Y_MIN,
+    ENEMY_SPIRIT_THUNDER_BREATH_DURATION_MS,
+    true, // flipWithHorizontalMove: 進行方向を向く
+    true, // facesLeftByDefault: 元画像は左向き
+  )
+}
+
+/** Volcano Stage3 の燃え木（左向き・進行方向を向く）。 */
+function attachBurningTreeBreathingSprite(
+  scene: Phaser.Scene,
+  enemy: Phaser.GameObjects.Rectangle,
+): void {
+  attachBreathingEnemySprite(
+    scene,
+    enemy,
+    ENEMY_BURNING_TREE_BREATH_SPRITE_KEY,
+    ENEMY_BURNING_TREE_BREATH_DISPLAY_HEIGHT,
+    ENEMY_BURNING_TREE_BREATH_OUTLINE_SCALE,
+    ENEMY_BURNING_TREE_BREATH_SCALE_Y_MAX,
+    ENEMY_BURNING_TREE_BREATH_SCALE_Y_MIN,
+    ENEMY_BURNING_TREE_BREATH_DURATION_MS,
+    true,
+    true,
+  )
+}
+
+/** Volcano Stage4 の灰騎士（左向き・進行方向を向く）。 */
+function attachAshKnightBreathingSprite(
+  scene: Phaser.Scene,
+  enemy: Phaser.GameObjects.Rectangle,
+): void {
+  attachBreathingEnemySprite(
+    scene,
+    enemy,
+    ENEMY_ASH_KNIGHT_BREATH_SPRITE_KEY,
+    ENEMY_ASH_KNIGHT_BREATH_DISPLAY_HEIGHT,
+    ENEMY_ASH_KNIGHT_BREATH_OUTLINE_SCALE,
+    ENEMY_ASH_KNIGHT_BREATH_SCALE_Y_MAX,
+    ENEMY_ASH_KNIGHT_BREATH_SCALE_Y_MIN,
+    ENEMY_ASH_KNIGHT_BREATH_DURATION_MS,
+    true,
+    true,
+  )
+}
+
+/** Volcano Stage5 の混沌エレメンタル（正面固定・動かない）。 */
+function attachChaosElementalBreathingSprite(
+  scene: Phaser.Scene,
+  enemy: Phaser.GameObjects.Rectangle,
+): void {
+  attachBreathingEnemySprite(
+    scene,
+    enemy,
+    ENEMY_CHAOS_ELEMENTAL_BREATH_SPRITE_KEY,
+    ENEMY_CHAOS_ELEMENTAL_BREATH_DISPLAY_HEIGHT,
+    ENEMY_CHAOS_ELEMENTAL_BREATH_OUTLINE_SCALE,
+    ENEMY_CHAOS_ELEMENTAL_BREATH_SCALE_Y_MAX,
+    ENEMY_CHAOS_ELEMENTAL_BREATH_SCALE_Y_MIN,
+    ENEMY_CHAOS_ELEMENTAL_BREATH_DURATION_MS,
+    false,
+    true,
+  )
+}
+
 /** Forest Stage2 の切り株（左向き・進行方向を向く）。 */
 function attachStumpBreathingSprite(
   scene: Phaser.Scene,
@@ -652,10 +794,26 @@ function spawnEnemyCommon(
     hitboxWidth = ENEMY_SPIRIT_FIRE_WIDTH
     hitboxHeight = ENEMY_SPIRIT_FIRE_HEIGHT
     hitboxRadius = ENEMY_SPIRIT_FIRE_RADIUS
+  } else if (enemyKind === 'spiritThunder') {
+    hitboxWidth = ENEMY_SPIRIT_THUNDER_WIDTH
+    hitboxHeight = ENEMY_SPIRIT_THUNDER_HEIGHT
+    hitboxRadius = ENEMY_SPIRIT_THUNDER_RADIUS
   } else if (enemyKind === 'stump') {
     hitboxWidth = ENEMY_STUMP_WIDTH
     hitboxHeight = ENEMY_STUMP_HEIGHT
     hitboxRadius = ENEMY_STUMP_RADIUS
+  } else if (enemyKind === 'burningTree') {
+    hitboxWidth = ENEMY_BURNING_TREE_WIDTH
+    hitboxHeight = ENEMY_BURNING_TREE_HEIGHT
+    hitboxRadius = ENEMY_BURNING_TREE_RADIUS
+  } else if (enemyKind === 'ashKnight') {
+    hitboxWidth = ENEMY_ASH_KNIGHT_WIDTH
+    hitboxHeight = ENEMY_ASH_KNIGHT_HEIGHT
+    hitboxRadius = ENEMY_ASH_KNIGHT_RADIUS
+  } else if (enemyKind === 'chaosElemental') {
+    hitboxWidth = ENEMY_CHAOS_ELEMENTAL_WIDTH
+    hitboxHeight = ENEMY_CHAOS_ELEMENTAL_HEIGHT
+    hitboxRadius = ENEMY_CHAOS_ELEMENTAL_RADIUS
   } else if (enemyKind === 'branch') {
     hitboxWidth = ENEMY_BRANCH_WIDTH
     hitboxHeight = ENEMY_BRANCH_HEIGHT
@@ -672,6 +830,10 @@ function spawnEnemyCommon(
     enemyKind !== 'toughMelee' &&
     enemyKind !== 'mushroom' &&
     enemyKind !== 'spiritFire' &&
+    enemyKind !== 'spiritThunder' &&
+    enemyKind !== 'burningTree' &&
+    enemyKind !== 'ashKnight' &&
+    enemyKind !== 'chaosElemental' &&
     enemyKind !== 'stump' &&
     enemyKind !== 'beetle' &&
     enemyKind !== 'branch' &&
@@ -713,6 +875,12 @@ function spawnEnemyCommon(
     enemy.setData('xpDropMultiplier', ENEMY_BRANCH_XP_DROP_MULTIPLIER)
   } else if (enemyKind === 'gravestone') {
     enemy.setData('xpDropMultiplier', ENEMY_GRAVESTONE_XP_DROP_MULTIPLIER)
+  } else if (enemyKind === 'burningTree') {
+    enemy.setData('xpDropMultiplier', ENEMY_BURNING_TREE_XP_DROP_MULTIPLIER)
+  } else if (enemyKind === 'ashKnight') {
+    enemy.setData('xpDropMultiplier', ENEMY_ASH_KNIGHT_XP_DROP_MULTIPLIER)
+  } else if (enemyKind === 'chaosElemental') {
+    enemy.setData('xpDropMultiplier', ENEMY_CHAOS_ELEMENTAL_XP_DROP_MULTIPLIER)
   } else {
     enemy.setData('xpDropMultiplier', 1)
   }
@@ -729,7 +897,8 @@ function spawnEnemyCommon(
     enemy.setData('chargeDirectionX', 0)
     enemy.setData('chargeDirectionY', 0)
   }
-  if (enemyKind === 'beetle') {
+  if (enemyKind === 'beetle' || enemyKind === 'spiritThunder') {
+    // カブトムシと同じ: 溜め → 一直線突進（雷の精霊も同じ動き）
     enemy.setData('beetleWindupEndsAtMs', 0)
     enemy.setData('beetleChargeEndsAtMs', 0)
     enemy.setData('beetleNextChargeAtMs', 0)
@@ -748,6 +917,25 @@ function spawnEnemyCommon(
     enemy.setData(
       'nextMushroomSpawnAtMs',
       scene.time.now + ENEMY_STUMP_MUSHROOM_SPAWN_INTERVAL_MS,
+    )
+  }
+  if (enemyKind === 'burningTree') {
+    // 出現直後はすぐ出さず、3〜5秒後から火の精霊を出す
+    enemy.setData(
+      'nextSpiritFireSpawnAtMs',
+      scene.time.now + pickBurningTreeSpawnIntervalMs(),
+    )
+  }
+  if (enemyKind === 'ashKnight') {
+    // 最初の2発はシールドで無効
+    enemy.setData('remainingBlockHits', ENEMY_ASH_KNIGHT_BLOCK_HIT_COUNT)
+  }
+  if (enemyKind === 'chaosElemental') {
+    enemy.setData('isStationary', true)
+    // 出現直後はすぐ出さず、2秒後から下位ステージの敵を出す
+    enemy.setData(
+      'nextChaosElementalSpawnAtMs',
+      scene.time.now + ENEMY_CHAOS_ELEMENTAL_SPAWN_INTERVAL_MS,
     )
   }
   if (enemyKind === 'branch') {
@@ -779,6 +967,14 @@ function spawnEnemyCommon(
     attachMushroomBreathingSprite(scene, enemy)
   } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'spiritFire') {
     attachSpiritFireBreathingSprite(scene, enemy)
+  } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'spiritThunder') {
+    attachSpiritThunderBreathingSprite(scene, enemy)
+  } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'burningTree') {
+    attachBurningTreeBreathingSprite(scene, enemy)
+  } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'ashKnight') {
+    attachAshKnightBreathingSprite(scene, enemy)
+  } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'chaosElemental') {
+    attachChaosElementalBreathingSprite(scene, enemy)
   } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'stump') {
     attachStumpBreathingSprite(scene, enemy)
   } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'beetle') {
@@ -795,6 +991,10 @@ function spawnEnemyCommon(
       enemyKind === 'toughMelee' ||
       enemyKind === 'mushroom' ||
       enemyKind === 'spiritFire' ||
+      enemyKind === 'spiritThunder' ||
+      enemyKind === 'burningTree' ||
+      enemyKind === 'ashKnight' ||
+      enemyKind === 'chaosElemental' ||
       enemyKind === 'stump' ||
       enemyKind === 'beetle' ||
       enemyKind === 'branch'
@@ -910,6 +1110,112 @@ export function spawnSpiritFireEnemy(
     false,
     'spiritFire',
   )
+}
+
+/**
+ * Volcano Stage2 の雷の精霊を1体スポーンする。
+ * HP は固定3。速度はプレイヤー初期速度。
+ */
+export function spawnSpiritThunderEnemy(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  spawnX: number,
+  spawnY: number,
+): Phaser.GameObjects.Rectangle {
+  return spawnEnemyCommon(
+    scene,
+    enemyGroup,
+    spawnX,
+    spawnY,
+    ENEMY_SPIRIT_THUNDER_HP,
+    ENEMY_SPIRIT_THUNDER_SPEED,
+    ENEMY_SPIRIT_THUNDER_COLOR,
+    false,
+    'spiritThunder',
+  )
+}
+
+/**
+ * Volcano Stage3 の燃え木を1体スポーンする。
+ * HP は固定8。速度は切り株と同じ。3〜5秒ごとに火の精霊を出す。
+ */
+export function spawnBurningTreeEnemy(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  spawnX: number,
+  spawnY: number,
+): Phaser.GameObjects.Rectangle {
+  return spawnEnemyCommon(
+    scene,
+    enemyGroup,
+    spawnX,
+    spawnY,
+    ENEMY_BURNING_TREE_HP,
+    calculateBurningTreeSpeed(),
+    ENEMY_BURNING_TREE_COLOR,
+    false,
+    'burningTree',
+  )
+}
+
+/**
+ * Volcano Stage4 の灰騎士を1体スポーンする。
+ * HP は固定6。速度は緑スライムと同じ。最初の2発はシールドで無効。
+ */
+export function spawnAshKnightEnemy(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  spawnX: number,
+  spawnY: number,
+  speed: number,
+): Phaser.GameObjects.Rectangle {
+  return spawnEnemyCommon(
+    scene,
+    enemyGroup,
+    spawnX,
+    spawnY,
+    ENEMY_ASH_KNIGHT_HP,
+    speed,
+    ENEMY_ASH_KNIGHT_COLOR,
+    false,
+    'ashKnight',
+  )
+}
+
+/**
+ * Volcano Stage5 の混沌エレメンタルを1体スポーンする。
+ * HP は固定50。速度0で動かない。2秒ごとに下位ステージの敵を出す。
+ */
+export function spawnChaosElementalEnemy(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  spawnX: number,
+  spawnY: number,
+): Phaser.GameObjects.Rectangle {
+  return spawnEnemyCommon(
+    scene,
+    enemyGroup,
+    spawnX,
+    spawnY,
+    ENEMY_CHAOS_ELEMENTAL_HP,
+    0,
+    ENEMY_CHAOS_ELEMENTAL_COLOR,
+    false,
+    'chaosElemental',
+  )
+}
+
+/**
+ * Volcano Stage5 開始時に混沌エレメンタルを1体だけ出す（プレイエリア中央やや上）。
+ */
+export function spawnVolcanoStage5ChaosElemental(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+): Phaser.GameObjects.Rectangle {
+  const spawnX = PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH / 2
+  const spawnY =
+    PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT / 2 + ENEMY_CHAOS_ELEMENTAL_SPAWN_OFFSET_Y
+  return spawnChaosElementalEnemy(scene, enemyGroup, spawnX, spawnY)
 }
 
 /**
@@ -1047,10 +1353,22 @@ export function spawnRangedEnemy(
 
 /** Volcano のステージ役割に合わせて特殊敵の種類を決める。 */
 const FOREST_STAGE5_ENEMY_KINDS: EnemyKind[] = ['mushroom', 'stump', 'beetle', 'branch']
+// Volcano Stage1〜4 で登場した敵（混沌エレメンタルが出すのも同じ）
+const VOLCANO_STAGE5_ENEMY_KINDS: EnemyKind[] = [
+  'spiritFire',
+  'spiritThunder',
+  'burningTree',
+  'ashKnight',
+]
 
 function pickForestStage5EnemyKind(): EnemyKind {
   const index = Phaser.Math.Between(0, FOREST_STAGE5_ENEMY_KINDS.length - 1)
   return FOREST_STAGE5_ENEMY_KINDS[index]
+}
+
+function pickVolcanoStage5EnemyKind(): EnemyKind {
+  const index = Phaser.Math.Between(0, VOLCANO_STAGE5_ENEMY_KINDS.length - 1)
+  return VOLCANO_STAGE5_ENEMY_KINDS[index]
 }
 
 function buildPackEnemyKinds(
@@ -1064,6 +1382,12 @@ function buildPackEnemyKinds(
   if (isForestFinalStage(areaId, stageNumber, totalStages)) {
     for (let index = 0; index < packSize; index++) {
       kinds.push(pickForestStage5EnemyKind())
+    }
+    return kinds
+  }
+  if (isVolcanoFinalStage(areaId, stageNumber, totalStages)) {
+    for (let index = 0; index < packSize; index++) {
+      kinds.push(pickVolcanoStage5EnemyKind())
     }
     return kinds
   }
@@ -1125,18 +1449,29 @@ function pickEnemyKindForArea(
     return 'spiritFire'
   }
 
+  // Volcano Stage 2 は雷の精霊だけ（HP3・プレイヤー初期速度）
+  if (stageNumber === 2) {
+    return 'spiritThunder'
+  }
+
+  // Volcano Stage 3 は燃え木だけ（HP8・火の精霊をスポーン）
+  if (stageNumber === 3) {
+    return 'burningTree'
+  }
+
+  // Volcano Stage 4 は灰騎士だけ（HP6・最初の2発はシールド）
+  if (stageNumber === 4) {
+    return 'ashKnight'
+  }
+
+  // Volcano Stage 5（最終）は Stage1〜4 で登場した敵をランダムに混ぜる
+  if (stageNumber === 5) {
+    return pickVolcanoStage5EnemyKind()
+  }
+
   // 半分は通常敵を残し、必要スキルを取った後も攻撃の手応えを保つ
   if (stageNumber < 5 && Math.random() < 0.4) {
     return 'melee'
-  }
-  if (stageNumber === 2) {
-    return 'armored'
-  }
-  if (stageNumber === 3) {
-    return 'shielded'
-  }
-  if (stageNumber === 4) {
-    return 'shielded'
   }
 
   const mixedKinds: EnemyKind[] = [
@@ -1307,6 +1642,36 @@ function spawnOneEnemyAtPosition(
     return
   }
 
+  // 雷の精霊は HP 固定3・速度はプレイヤー初期速度
+  if (enemyKind === 'spiritThunder') {
+    spawnSpiritThunderEnemy(scene, enemyGroup, spawnX, spawnY)
+    return
+  }
+
+  // 燃え木は HP 固定8・速度は切り株と同じ
+  if (enemyKind === 'burningTree') {
+    spawnBurningTreeEnemy(scene, enemyGroup, spawnX, spawnY)
+    return
+  }
+
+  // 灰騎士は HP 固定6・速度は緑スライムと同じ
+  if (enemyKind === 'ashKnight') {
+    spawnAshKnightEnemy(
+      scene,
+      enemyGroup,
+      spawnX,
+      spawnY,
+      calculateEnemySpeedForStage(stageNumber, totalStages),
+    )
+    return
+  }
+
+  // 混沌エレメンタルは開始時専用（ウェーブからは出さない）
+  if (enemyKind === 'chaosElemental') {
+    spawnChaosElementalEnemy(scene, enemyGroup, spawnX, spawnY)
+    return
+  }
+
   // 切り株は HP 固定7・速度は泥スライムの半分
   if (enemyKind === 'stump') {
     spawnStumpEnemy(
@@ -1415,7 +1780,7 @@ export function startEnemyPackSpawnWithWarning(
   const center = getRandomInsideSpawnPosition(playerPosition)
   let positions = buildPackPositionsAroundCenter(center.x, center.y, packSize)
   // Volcano 最終ステージは固まりではなく、画面内のランダム位置へ散らして出す
-  if (areaId === 'volcano' && stageNumber === 5) {
+  if (isVolcanoFinalStage(areaId, stageNumber, totalStages)) {
     positions = []
     for (let index = 0; index < packSize; index++) {
       positions.push(getRandomInsideSpawnPosition(playerPosition))
@@ -1449,6 +1814,18 @@ export function startEnemyPackSpawnWithWarning(
     if (enemyKind === 'spiritFire') {
       return ENEMY_SPIRIT_FIRE_COLOR
     }
+    if (enemyKind === 'spiritThunder') {
+      return ENEMY_SPIRIT_THUNDER_COLOR
+    }
+    if (enemyKind === 'burningTree') {
+      return ENEMY_BURNING_TREE_COLOR
+    }
+    if (enemyKind === 'ashKnight') {
+      return ENEMY_ASH_KNIGHT_COLOR
+    }
+    if (enemyKind === 'chaosElemental') {
+      return ENEMY_CHAOS_ELEMENTAL_COLOR
+    }
     if (enemyKind === 'stump') {
       return ENEMY_STUMP_COLOR
     }
@@ -1480,6 +1857,10 @@ export function startEnemyPackSpawnWithWarning(
         enemyKind === 'toughMelee' ||
         enemyKind === 'mushroom' ||
         enemyKind === 'spiritFire' ||
+        enemyKind === 'spiritThunder' ||
+        enemyKind === 'burningTree' ||
+        enemyKind === 'ashKnight' ||
+        enemyKind === 'chaosElemental' ||
         enemyKind === 'stump' ||
         enemyKind === 'beetle' ||
         enemyKind === 'branch' ||
@@ -1492,6 +1873,10 @@ export function startEnemyPackSpawnWithWarning(
         enemyKind === 'toughMelee' ||
         enemyKind === 'mushroom' ||
         enemyKind === 'spiritFire' ||
+        enemyKind === 'spiritThunder' ||
+        enemyKind === 'burningTree' ||
+        enemyKind === 'ashKnight' ||
+        enemyKind === 'chaosElemental' ||
         enemyKind === 'stump' ||
         enemyKind === 'beetle' ||
         enemyKind === 'branch' ||
@@ -1534,6 +1919,22 @@ export function startEnemyPackSpawnWithWarning(
       } else if (enemyKind === 'spiritFire' && ENEMY_BREATHING_SPRITES_ENABLED) {
         spriteKey = ENEMY_SPIRIT_FIRE_BREATH_SPRITE_KEY
         displayHeight = ENEMY_SPIRIT_FIRE_BREATH_DISPLAY_HEIGHT
+        useBreathImage = true
+      } else if (enemyKind === 'spiritThunder' && ENEMY_BREATHING_SPRITES_ENABLED) {
+        spriteKey = ENEMY_SPIRIT_THUNDER_BREATH_SPRITE_KEY
+        displayHeight = ENEMY_SPIRIT_THUNDER_BREATH_DISPLAY_HEIGHT
+        useBreathImage = true
+      } else if (enemyKind === 'burningTree' && ENEMY_BREATHING_SPRITES_ENABLED) {
+        spriteKey = ENEMY_BURNING_TREE_BREATH_SPRITE_KEY
+        displayHeight = ENEMY_BURNING_TREE_BREATH_DISPLAY_HEIGHT
+        useBreathImage = true
+      } else if (enemyKind === 'ashKnight' && ENEMY_BREATHING_SPRITES_ENABLED) {
+        spriteKey = ENEMY_ASH_KNIGHT_BREATH_SPRITE_KEY
+        displayHeight = ENEMY_ASH_KNIGHT_BREATH_DISPLAY_HEIGHT
+        useBreathImage = true
+      } else if (enemyKind === 'chaosElemental' && ENEMY_BREATHING_SPRITES_ENABLED) {
+        spriteKey = ENEMY_CHAOS_ELEMENTAL_BREATH_SPRITE_KEY
+        displayHeight = ENEMY_CHAOS_ELEMENTAL_BREATH_DISPLAY_HEIGHT
         useBreathImage = true
       } else if (enemyKind === 'stump' && ENEMY_BREATHING_SPRITES_ENABLED) {
         spriteKey = ENEMY_STUMP_BREATH_SPRITE_KEY
@@ -1679,7 +2080,7 @@ export function startMeleeEnemySpawnWithWarning(
 }
 
 /**
- * 敵撃破時の経験値コイン倍率（通常は1。カブトムシは2）。
+ * 敵撃破時の経験値コイン倍率（通常は1。カブトムシ／枝／火山ステージ3以上は2）。
  */
 export function getEnemyXpDropMultiplier(enemy: Phaser.GameObjects.Rectangle): number {
   const value = enemy.getData('xpDropMultiplier') as number
@@ -1757,6 +2158,80 @@ export function updateStumpMushroomSpawns(
     stump.setData(
       'nextMushroomSpawnAtMs',
       nowMs + ENEMY_STUMP_MUSHROOM_SPAWN_INTERVAL_MS,
+    )
+  }
+}
+
+/** 燃え木が次に火の精霊を出すまでの待ち時間（3〜5秒のランダム）。 */
+function pickBurningTreeSpawnIntervalMs(): number {
+  return Phaser.Math.Between(
+    ENEMY_BURNING_TREE_SPAWN_INTERVAL_MIN_MS,
+    ENEMY_BURNING_TREE_SPAWN_INTERVAL_MAX_MS,
+  )
+}
+
+/**
+ * 燃え木が 3〜5 秒ごとに火の精霊（Volcano Stage1 の敵）を1体出す。
+ * 敵数上限いっぱいのときはスキップし、次の間隔まで待つ。
+ */
+export function updateBurningTreeSpiritFireSpawns(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  stageNumber: number,
+  totalStages: number,
+  nowMs: number,
+): void {
+  const maxEnemies = getMaxEnemiesForStage(stageNumber, totalStages)
+  const children = enemyGroup.getChildren()
+  // Stage1 相当のステータスで火の精霊を出す
+  const spiritHp = calculateEnemyHpForStage(1, totalStages)
+  const spiritSpeed = calculateEnemySpeedForStage(1, totalStages)
+
+  for (let index = 0; index < children.length; index++) {
+    const burningTree = children[index] as Phaser.GameObjects.Rectangle
+    if (!burningTree.active) {
+      continue
+    }
+    if (burningTree.getData('isDefeated') === true) {
+      continue
+    }
+    if (burningTree.getData('enemyKind') !== 'burningTree') {
+      continue
+    }
+
+    let nextSpawnAtMs = burningTree.getData('nextSpiritFireSpawnAtMs') as number
+    if (typeof nextSpawnAtMs !== 'number') {
+      nextSpawnAtMs = nowMs + pickBurningTreeSpawnIntervalMs()
+      burningTree.setData('nextSpiritFireSpawnAtMs', nextSpawnAtMs)
+    }
+
+    if (nowMs < nextSpawnAtMs) {
+      continue
+    }
+
+    if (countActiveEnemies(enemyGroup) >= maxEnemies) {
+      burningTree.setData(
+        'nextSpiritFireSpawnAtMs',
+        nowMs + pickBurningTreeSpawnIntervalMs(),
+      )
+      continue
+    }
+
+    const spawnPosition = getBurningTreeSpiritFireSpawnPosition(
+      burningTree.x,
+      burningTree.y,
+    )
+    spawnSpiritFireEnemy(
+      scene,
+      enemyGroup,
+      spawnPosition.x,
+      spawnPosition.y,
+      spiritHp,
+      spiritSpeed,
+    )
+    burningTree.setData(
+      'nextSpiritFireSpawnAtMs',
+      nowMs + pickBurningTreeSpawnIntervalMs(),
     )
   }
 }
@@ -1891,6 +2366,139 @@ export function updateGravestoneBeetleSpawns(
   }
 }
 
+/**
+ * 混沌エレメンタルが 2 秒ごとに Stage1〜4 の敵をランダムで1体出す。
+ * 敵数上限いっぱいのときはスキップし、次の間隔まで待つ。
+ */
+export function updateChaosElementalSpawns(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  stageNumber: number,
+  totalStages: number,
+  nowMs: number,
+): void {
+  const maxEnemies = getMaxEnemiesForStage(stageNumber, totalStages)
+  const children = enemyGroup.getChildren()
+
+  for (let index = 0; index < children.length; index++) {
+    const chaosElemental = children[index] as Phaser.GameObjects.Rectangle
+    if (!chaosElemental.active) {
+      continue
+    }
+    if (chaosElemental.getData('isDefeated') === true) {
+      continue
+    }
+    if (chaosElemental.getData('enemyKind') !== 'chaosElemental') {
+      continue
+    }
+
+    let nextSpawnAtMs = chaosElemental.getData('nextChaosElementalSpawnAtMs') as number
+    if (typeof nextSpawnAtMs !== 'number') {
+      nextSpawnAtMs = nowMs + ENEMY_CHAOS_ELEMENTAL_SPAWN_INTERVAL_MS
+      chaosElemental.setData('nextChaosElementalSpawnAtMs', nextSpawnAtMs)
+    }
+
+    if (nowMs < nextSpawnAtMs) {
+      continue
+    }
+
+    if (countActiveEnemies(enemyGroup) >= maxEnemies) {
+      chaosElemental.setData(
+        'nextChaosElementalSpawnAtMs',
+        nowMs + ENEMY_CHAOS_ELEMENTAL_SPAWN_INTERVAL_MS,
+      )
+      continue
+    }
+
+    const spawnPosition = getChaosElementalSpawnPosition(
+      chaosElemental.x,
+      chaosElemental.y,
+    )
+    spawnVolcanoPreviousStageEnemy(
+      scene,
+      enemyGroup,
+      spawnPosition.x,
+      spawnPosition.y,
+      totalStages,
+    )
+    chaosElemental.setData(
+      'nextChaosElementalSpawnAtMs',
+      nowMs + ENEMY_CHAOS_ELEMENTAL_SPAWN_INTERVAL_MS,
+    )
+  }
+}
+
+/** Stage1〜4 の火山敵をランダムで1体出す（各ステージ本来のステータス）。 */
+function spawnVolcanoPreviousStageEnemy(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  spawnX: number,
+  spawnY: number,
+  totalStages: number,
+): void {
+  const enemyKind = pickVolcanoStage5EnemyKind()
+
+  if (enemyKind === 'spiritFire') {
+    spawnSpiritFireEnemy(
+      scene,
+      enemyGroup,
+      spawnX,
+      spawnY,
+      calculateEnemyHpForStage(1, totalStages),
+      calculateEnemySpeedForStage(1, totalStages),
+    )
+    return
+  }
+
+  if (enemyKind === 'spiritThunder') {
+    spawnSpiritThunderEnemy(scene, enemyGroup, spawnX, spawnY)
+    return
+  }
+
+  if (enemyKind === 'burningTree') {
+    spawnBurningTreeEnemy(scene, enemyGroup, spawnX, spawnY)
+    return
+  }
+
+  spawnAshKnightEnemy(
+    scene,
+    enemyGroup,
+    spawnX,
+    spawnY,
+    calculateEnemySpeedForStage(1, totalStages),
+  )
+}
+
+/** 燃え木の周囲に火の精霊を出す座標（プレイエリア内に収める）。 */
+function getBurningTreeSpiritFireSpawnPosition(
+  treeX: number,
+  treeY: number,
+): SpawnPosition {
+  const angle = Math.random() * Math.PI * 2
+  let spawnX = treeX + Math.cos(angle) * ENEMY_BURNING_TREE_SPAWN_OFFSET
+  let spawnY = treeY + Math.sin(angle) * ENEMY_BURNING_TREE_SPAWN_OFFSET
+
+  const left = PLAY_AREA_ORIGIN_X + ENEMY_SPAWN_AREA_MARGIN
+  const right = PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH - ENEMY_SPAWN_AREA_MARGIN
+  const top = PLAY_AREA_ORIGIN_Y + ENEMY_SPAWN_AREA_MARGIN
+  const bottom = PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT - ENEMY_SPAWN_AREA_MARGIN
+
+  if (spawnX < left) {
+    spawnX = left
+  }
+  if (spawnX > right) {
+    spawnX = right
+  }
+  if (spawnY < top) {
+    spawnY = top
+  }
+  if (spawnY > bottom) {
+    spawnY = bottom
+  }
+
+  return { x: spawnX, y: spawnY }
+}
+
 /** 枝の周囲にカブトムシを出す座標（プレイエリア内に収める）。 */
 function getBranchBeetleSpawnPosition(
   branchX: number,
@@ -1929,6 +2537,36 @@ function getGravestoneSpawnPosition(
   const angle = Math.random() * Math.PI * 2
   let spawnX = gravestoneX + Math.cos(angle) * ENEMY_GRAVESTONE_SPAWN_OFFSET
   let spawnY = gravestoneY + Math.sin(angle) * ENEMY_GRAVESTONE_SPAWN_OFFSET
+
+  const left = PLAY_AREA_ORIGIN_X + ENEMY_SPAWN_AREA_MARGIN
+  const right = PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH - ENEMY_SPAWN_AREA_MARGIN
+  const top = PLAY_AREA_ORIGIN_Y + ENEMY_SPAWN_AREA_MARGIN
+  const bottom = PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT - ENEMY_SPAWN_AREA_MARGIN
+
+  if (spawnX < left) {
+    spawnX = left
+  }
+  if (spawnX > right) {
+    spawnX = right
+  }
+  if (spawnY < top) {
+    spawnY = top
+  }
+  if (spawnY > bottom) {
+    spawnY = bottom
+  }
+
+  return { x: spawnX, y: spawnY }
+}
+
+/** 混沌エレメンタルの周囲に敵を出す座標（プレイエリア内に収める）。 */
+function getChaosElementalSpawnPosition(
+  elementalX: number,
+  elementalY: number,
+): SpawnPosition {
+  const angle = Math.random() * Math.PI * 2
+  let spawnX = elementalX + Math.cos(angle) * ENEMY_CHAOS_ELEMENTAL_SPAWN_OFFSET
+  let spawnY = elementalY + Math.sin(angle) * ENEMY_CHAOS_ELEMENTAL_SPAWN_OFFSET
 
   const left = PLAY_AREA_ORIGIN_X + ENEMY_SPAWN_AREA_MARGIN
   const right = PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH - ENEMY_SPAWN_AREA_MARGIN
@@ -2058,7 +2696,8 @@ export function applyDamageToEnemy(
 }
 
 /**
- * 撃破演出: 拡大しながらフェードアウトしてから destroy。
+ * 撃破演出: Phaser tween で素早くフェードアウトしてから destroy。
+ * 白い四角フラッシュは出さない（スプライト／矩形そのものを消す）。
  * onComplete でコイン生成など後処理を渡す想定。
  */
 export function playEnemyDefeatFadeOut(
@@ -2069,49 +2708,57 @@ export function playEnemyDefeatFadeOut(
   const walkSprite = enemyWalkSpriteMap.get(enemy)
   const breathingSprite = enemyBreathingSpriteMap.get(enemy)
 
-  let tweenTargets: Phaser.GameObjects.GameObject[] = [enemy]
-  let defeatScaleX = ENEMY_DEFEAT_SCALE_TO
-  let defeatScaleY = ENEMY_DEFEAT_SCALE_TO
+  function finishDefeat(): void {
+    if (enemy.active) {
+      enemy.destroy()
+    }
+    onComplete()
+  }
 
+  // 呼吸スプライト: 伸び縮みを止めてから、本体と枠を同時に透明へ
   if (breathingSprite !== undefined) {
-    // 呼吸スプライトは伸び縮み中なので、拡大はせず白く光って消す
-    tweenTargets = breathingSprite.getTweenTargets()
-    breathingSprite.body.setTintFill(0xffffff)
+    breathingSprite.stopBreathing()
+    const tweenTargets = breathingSprite.getTweenTargets()
+    // 白い塗りつぶしは使わず、絵のまま消す
+    breathingSprite.body.clearTint()
+    breathingSprite.outline.clearTint()
+    scene.tweens.killTweensOf(tweenTargets)
     scene.tweens.add({
       targets: tweenTargets,
       alpha: 0,
       duration: ENEMY_DEFEAT_FADE_DURATION_MS,
-      ease: 'Quad.Out',
-      onComplete: () => {
-        if (enemy.active) {
-          enemy.destroy()
-        }
-        onComplete()
-      },
+      ease: 'Cubic.Out',
+      onComplete: finishDefeat,
     })
     return
-  } else if (walkSprite !== undefined) {
-    tweenTargets = [walkSprite]
-    walkSprite.setTintFill(0xffffff)
-    defeatScaleX = walkSprite.scaleX * ENEMY_DEFEAT_SCALE_TO
-    defeatScaleY = walkSprite.scaleY * ENEMY_DEFEAT_SCALE_TO
-  } else {
-    enemy.setFillStyle(0xffffff)
   }
 
+  // 歩行シート: 少し拡大しながら透明へ
+  if (walkSprite !== undefined) {
+    walkSprite.clearTint()
+    scene.tweens.killTweensOf(walkSprite)
+    scene.tweens.add({
+      targets: walkSprite,
+      alpha: 0,
+      scaleX: walkSprite.scaleX * ENEMY_DEFEAT_SCALE_TO,
+      scaleY: walkSprite.scaleY * ENEMY_DEFEAT_SCALE_TO,
+      duration: ENEMY_DEFEAT_FADE_DURATION_MS,
+      ease: 'Cubic.Out',
+      onComplete: finishDefeat,
+    })
+    return
+  }
+
+  // 見た目が矩形だけの敵（フォールバック）
+  scene.tweens.killTweensOf(enemy)
   scene.tweens.add({
-    targets: tweenTargets,
+    targets: enemy,
     alpha: 0,
-    scaleX: defeatScaleX,
-    scaleY: defeatScaleY,
+    scaleX: ENEMY_DEFEAT_SCALE_TO,
+    scaleY: ENEMY_DEFEAT_SCALE_TO,
     duration: ENEMY_DEFEAT_FADE_DURATION_MS,
-    ease: 'Quad.Out',
-    onComplete: () => {
-      if (enemy.active) {
-        enemy.destroy()
-      }
-      onComplete()
-    },
+    ease: 'Cubic.Out',
+    onComplete: finishDefeat,
   })
 }
 
@@ -2177,15 +2824,48 @@ export function updateAllEnemyWalkSprites(
 }
 
 /**
- * 敵の下に細い HP バー（Graphics）を付け、WeakMap に登録する。
- * 敵 destroy 時にバーも消えるよう once('destroy') を張る。
+ * 敵の下に細い HP バーを付ける。
+ * Graphics ではなく Rectangle 3枚の Container（Phaser 標準）。
+ * 毎フレームは位置だけ動かし、幅の再計算はダメージ時だけ。
  */
 function attachEnemyHpBar(
   scene: Phaser.Scene,
   enemy: Phaser.GameObjects.Rectangle,
 ): void {
-  const hpBar = scene.add.graphics()
-  hpBar.setDepth(ENEMY_HP_BAR_DEPTH)
+  const innerWidth = ENEMY_HP_BAR_WIDTH - 2
+  const innerHeight = Math.max(1, ENEMY_HP_BAR_HEIGHT - 2)
+
+  const border = scene.add.rectangle(
+    0,
+    0,
+    ENEMY_HP_BAR_WIDTH,
+    ENEMY_HP_BAR_HEIGHT,
+    ENEMY_HP_BAR_BORDER_COLOR,
+  )
+  border.setOrigin(0.5, 0)
+
+  const empty = scene.add.rectangle(0, 1, innerWidth, innerHeight, ENEMY_HP_BAR_EMPTY_COLOR)
+  empty.setOrigin(0.5, 0)
+
+  // 左端基準。幅を変えても左がずれない
+  const fill = scene.add.rectangle(
+    -innerWidth / 2,
+    1,
+    innerWidth,
+    innerHeight,
+    ENEMY_HP_BAR_FILL_COLOR,
+  )
+  fill.setOrigin(0, 0)
+
+  const container = scene.add.container(enemy.x, enemy.y)
+  container.setDepth(ENEMY_HP_BAR_DEPTH)
+  container.add([border, empty, fill])
+
+  const hpBar: EnemyHpBarView = {
+    container,
+    fill,
+    innerWidth,
+  }
   enemyHpBarMap.set(enemy, hpBar)
 
   enemy.once('destroy', () => {
@@ -2193,11 +2873,12 @@ function attachEnemyHpBar(
   })
 
   redrawEnemyHpBar(enemy)
+  syncEnemyHpBarPosition(enemy, hpBar)
 }
 
 /**
- * 敵グループ全体の HP バー位置を更新する（毎フレーム）。
- * 敵が動いてもバーが本体の下に追従するようにする。
+ * 敵グループ全体の HP バー位置だけ更新する（毎フレーム）。
+ * 描き直し（clear）はしない。
  */
 export function updateAllEnemyHpBars(enemyGroup: Phaser.Physics.Arcade.Group): void {
   const children = enemyGroup.getChildren()
@@ -2210,17 +2891,30 @@ export function updateAllEnemyHpBars(enemyGroup: Phaser.Physics.Arcade.Group): v
     if (enemy.getData('isDefeated') === true) {
       continue
     }
-    redrawEnemyHpBar(enemy)
+    const hpBar = enemyHpBarMap.get(enemy)
+    if (hpBar === undefined) {
+      continue
+    }
+    syncEnemyHpBarPosition(enemy, hpBar)
   }
 }
 
+/** HP バー Container を敵の足元へ合わせる。 */
+function syncEnemyHpBarPosition(
+  enemy: Phaser.GameObjects.Rectangle,
+  hpBar: EnemyHpBarView,
+): void {
+  const barTop = enemy.y + enemy.height / 2 + ENEMY_HP_BAR_OFFSET_Y
+  hpBar.container.setPosition(enemy.x, barTop)
+}
+
 /**
- * 現在の HP / maxHp に合わせてバーを描き直す。
- * 白ふち → 空ゲージ → 残り HP（緑）の3層。
+ * 現在の HP / maxHp に合わせて緑ゲージの幅だけ更新する。
+ * ダメージ時・出現時に呼ぶ（毎フレームは呼ばない）。
  */
 function redrawEnemyHpBar(enemy: Phaser.GameObjects.Rectangle): void {
   const hpBar = enemyHpBarMap.get(enemy)
-  if (hpBar === undefined || !hpBar.active) {
+  if (hpBar === undefined || !hpBar.container.active) {
     return
   }
 
@@ -2231,29 +2925,11 @@ function redrawEnemyHpBar(enemy: Phaser.GameObjects.Rectangle): void {
   }
 
   const ratio = Phaser.Math.Clamp(currentHp / maxHp, 0, 1)
-  const barLeft = enemy.x - ENEMY_HP_BAR_WIDTH / 2
-  const barTop = enemy.y + enemy.height / 2 + ENEMY_HP_BAR_OFFSET_Y
-  const innerWidth = ENEMY_HP_BAR_WIDTH - 2
-  const innerHeight = Math.max(1, ENEMY_HP_BAR_HEIGHT - 2)
-
-  hpBar.clear()
-
-  // 白ふち
-  hpBar.fillStyle(ENEMY_HP_BAR_BORDER_COLOR, 1)
-  hpBar.fillRect(barLeft, barTop, ENEMY_HP_BAR_WIDTH, ENEMY_HP_BAR_HEIGHT)
-
-  // 空ゲージ（暗い緑）
-  hpBar.fillStyle(ENEMY_HP_BAR_EMPTY_COLOR, 1)
-  hpBar.fillRect(barLeft + 1, barTop + 1, innerWidth, innerHeight)
-
-  // 残り HP（明るい緑）
-  if (ratio > 0) {
-    hpBar.fillStyle(ENEMY_HP_BAR_FILL_COLOR, 1)
-    hpBar.fillRect(barLeft + 1, barTop + 1, innerWidth * ratio, innerHeight)
-  }
+  hpBar.fill.width = hpBar.innerWidth * ratio
+  hpBar.fill.setVisible(ratio > 0)
 }
 
-/** WeakMap から外し、Graphics を destroy する */
+/** WeakMap から外し、Container（中の Rectangle 含む）を destroy する */
 function destroyEnemyHpBar(enemy: Phaser.GameObjects.Rectangle): void {
   const hpBar = enemyHpBarMap.get(enemy)
   if (hpBar === undefined) {
@@ -2261,7 +2937,8 @@ function destroyEnemyHpBar(enemy: Phaser.GameObjects.Rectangle): void {
   }
 
   enemyHpBarMap.delete(enemy)
-  if (hpBar.active) {
-    hpBar.destroy()
+  if (hpBar.container.active) {
+    // true = 子の Rectangle も一緒に破棄
+    hpBar.container.destroy(true)
   }
 }

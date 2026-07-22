@@ -27,6 +27,7 @@ import {
   getLastSpawnAtSeconds,
   getMaxEnemiesForStage,
   getRecurringEnemyCountForStage,
+  applyForestStage5SpawnCountFactor,
   getEnemyPackSizeRange,
   getEnemyPackGapSeconds,
   ENEMY_RANGED_PACK_SIZE,
@@ -136,9 +137,14 @@ export class WaveSystem {
     }
     this.hasStartedFinalWave = true
 
-    const extraEnemyCount = getRecurringEnemyCountForStage(
+    let extraEnemyCount = getRecurringEnemyCountForStage(
       this.stageNumber,
       this.totalStages,
+    )
+    extraEnemyCount = applyForestStage5SpawnCountFactor(
+      this.areaId,
+      this.stageNumber,
+      extraEnemyCount,
     )
     // ignoreLastSpawnLimit=true: 終盤制限を超えても追加してよい
     let packGapSeconds = FINAL_WAVE_EXTRA_PACK_GAP_SECONDS

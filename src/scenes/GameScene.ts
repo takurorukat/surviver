@@ -26,7 +26,6 @@ import {
   getXpProgressForLevel,
   getLevelFromTotalXp,
   XP_GAIN_EFFECT_DURATION_MS,
-  ENEMY_WIDTH,
   COIN_MAGNET_RADIUS,
   calculateCoinMagnetRadius,
   DEFAULT_UNLOCKED_SKILL_LEVEL_CAP,
@@ -124,6 +123,7 @@ import {
   advancePlayerBulletCollisionAge,
   maintainPlayerBulletVelocities,
   redirectPlayerBulletToward,
+  recyclePlayerBullet,
 } from '../objects/PlayerBullet'
 import {
   createEnemyBulletGroup,
@@ -131,6 +131,7 @@ import {
   maintainEnemyBulletVelocities,
   updateEnemyBullets,
   destroyAllEnemyBullets,
+  recycleEnemyBullet,
 } from '../objects/EnemyBullet'
 import {
   applyDamageToEnemy,
@@ -140,9 +141,12 @@ import {
   updateAllEnemyHpBars,
   updateAllEnemyWalkSprites,
   updateStumpMushroomSpawns,
+  updateBurningTreeSpiritFireSpawns,
   updateBranchBeetleSpawns,
   updateGravestoneBeetleSpawns,
+  updateChaosElementalSpawns,
   spawnForestStage5Gravestone,
+  spawnVolcanoStage5ChaosElemental,
 } from '../objects/Enemy'
 import { createCoinGroup, countActiveCoins, trySpawnCoinAt, spawnClearTimeBonusCoinRain, type CoinView } from '../objects/Coin'
 import {
@@ -215,7 +219,6 @@ import {
 import {
   playDamageNumber,
   playEnemyBlockedShield,
-  playEnemyDefeatFlash,
   playHpFullText,
   playAutoGoldLevelUpText,
   playPlayerHurtFlash,
@@ -633,6 +636,7 @@ export class GameScene extends Phaser.Scene {
       this.isStageActive = true
       this.stageElapsedMs = 0
       this.spawnForestStage5GravestoneIfNeeded()
+      this.spawnVolcanoStage5ChaosElementalIfNeeded()
       this.waveSystem.startWaves()
     })
   }
@@ -643,6 +647,14 @@ export class GameScene extends Phaser.Scene {
       return
     }
     spawnForestStage5Gravestone(this, this.enemyGroup)
+  }
+
+  // 役割: Volcano Stage5 開始直後に混沌エレメンタルを1体だけ出す（他の敵より先）
+  private spawnVolcanoStage5ChaosElementalIfNeeded(): void {
+    if (this.areaId !== 'volcano' || this.stageNumber !== 5) {
+      return
+    }
+    spawnVolcanoStage5ChaosElemental(this, this.enemyGroup)
   }
 
   // 役割: 毎フレームの司令塔。進行状態に応じて戦闘／移動／物理／HUD を回す
@@ -729,8 +741,10 @@ export class GameScene extends Phaser.Scene {
       this.updatePlayerAttack()
       this.updateEnemyRangedAttack()
       this.updateStumpMushroomSpawn()
+      this.updateBurningTreeSpiritFireSpawn()
       this.updateBranchBeetleSpawn()
       this.updateGravestoneBeetleSpawn()
+      this.updateChaosElementalSpawn()
       updatePlayerBullets(this.playerBulletGroup)
       updateEnemyBullets(this.enemyBulletGroup)
       this.updateCoinMagnet()
@@ -1551,6 +1565,17 @@ export class GameScene extends Phaser.Scene {
     )
   }
 
+  // 役割: 燃え木が 3〜5 秒ごとに火の精霊を出す
+  private updateBurningTreeSpiritFireSpawn(): void {
+    updateBurningTreeSpiritFireSpawns(
+      this,
+      this.enemyGroup,
+      this.stageNumber,
+      this.areaStageCount,
+      this.time.now,
+    )
+  }
+
   // 役割: 枝が一定間隔でカブトムシを出す
   private updateBranchBeetleSpawn(): void {
     updateBranchBeetleSpawns(
@@ -1565,6 +1590,17 @@ export class GameScene extends Phaser.Scene {
   // 役割: 墓石が一定間隔で切り株と枝を出す
   private updateGravestoneBeetleSpawn(): void {
     updateGravestoneBeetleSpawns(
+      this,
+      this.enemyGroup,
+      this.stageNumber,
+      this.areaStageCount,
+      this.time.now,
+    )
+  }
+
+  // 役割: 混沌エレメンタルが 2 秒ごとに下位ステージの敵を出す
+  private updateChaosElementalSpawn(): void {
+    updateChaosElementalSpawns(
       this,
       this.enemyGroup,
       this.stageNumber,
@@ -1713,12 +1749,23 @@ export class GameScene extends Phaser.Scene {
       hitEnemyUids.length,
     )
 
+    // 灰騎士など: 残りブロック回数があればダメージなし（シールドマーク）
+    const remainingBlockHits = enemy.getData('remainingBlockHits') as number
+    if (typeof remainingBlockHits === 'number' && remainingBlockHits > 0) {
+      enemy.setData('remainingBlockHits', remainingBlockHits - 1)
+      playDamageNumber(this, enemy.x, enemy.y - 8, 0)
+      playEnemyBlockedShield(this, enemy)
+      this.gameAudioSystem.playEnemyBlocked()
+      recyclePlayerBullet(bullet)
+      return
+    }
+
     // 装甲不足または盾の正面からの攻撃は、0ダメージで弾を消す
     if (!this.canBulletDamageSpecialEnemy(bullet, enemy, effectiveDamage)) {
       playDamageNumber(this, enemy.x, enemy.y - 8, 0)
       playEnemyBlockedShield(this, enemy)
       this.gameAudioSystem.playEnemyBlocked()
-      bullet.destroy()
+      recyclePlayerBullet(bullet)
       return
     }
 
@@ -1748,7 +1795,6 @@ export class GameScene extends Phaser.Scene {
       recordEnemyDefeated()
       clearLockedTargetIfEnemyDestroyed(this.attackState, enemy)
       const xpDropMultiplier = getEnemyXpDropMultiplier(enemy)
-      playEnemyDefeatFlash(this, enemyX, enemyY, ENEMY_WIDTH)
       this.gameAudioSystem.playEnemyDefeat()
       playEnemyDefeatFadeOut(this, enemy, () => {
         this.spawnExperienceCoinsAt(enemyX, enemyY, xpDropMultiplier)
@@ -1768,7 +1814,7 @@ export class GameScene extends Phaser.Scene {
 
     // 命中上限に達したら弾を消す（1回目の貫通取得なら2体目で消滅）
     if (hitsLeft <= 0) {
-      bullet.destroy()
+      recyclePlayerBullet(bullet)
       return
     }
 
@@ -1854,7 +1900,6 @@ export class GameScene extends Phaser.Scene {
       clearLockedTargetIfEnemyDestroyed(this.attackState, killed.enemy)
       const xpDropMultiplier = getEnemyXpDropMultiplier(killed.enemy)
       playDamageNumber(this, killed.x, killed.y - 8, killed.damage)
-      playEnemyDefeatFlash(this, killed.x, killed.y, ENEMY_WIDTH)
       this.gameAudioSystem.playEnemyDefeat()
       playEnemyDefeatFadeOut(this, killed.enemy, () => {
         this.spawnExperienceCoinsAt(killed.x, killed.y, xpDropMultiplier)
@@ -2438,7 +2483,7 @@ export class GameScene extends Phaser.Scene {
     const nowMs = this.time.now
     if (!canPlayerTakeDamageNow(this.damageState, nowMs)) {
       // 無敵中でも弾は消す（弾幕が残らないように）
-      bullet.destroy()
+      recycleEnemyBullet(bullet)
       return
     }
 
@@ -2462,7 +2507,7 @@ export class GameScene extends Phaser.Scene {
       this.playerBody,
       this.damageState,
     )
-    bullet.destroy()
+    recycleEnemyBullet(bullet)
     this.gameAudioSystem.playPlayerHurt()
     playPlayerHurtFlash(this)
 
@@ -2775,7 +2820,7 @@ export class GameScene extends Phaser.Scene {
       recordGameClear()
       clearRunProgress()
       // 実績解放を先に行う（後で markAreaCleared すると、旧セーブ移行が
-      // 「plains クリア済み＝すでに Pierce 解放済み」と誤判定して通知が出ない）
+      // 「エリアクリア済み＝すでに実績解放済み」と誤判定して通知が出ない）
       const newlyUnlocked = evaluateAndUnlockGameClearAchievements({
         areaId: this.areaId,
         tookDamageThisRun: this.tookDamageThisRun,

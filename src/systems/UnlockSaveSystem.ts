@@ -182,14 +182,14 @@ function parseGameSaveData(parsed: unknown): GameSaveData {
   // unlockAchievement が既解放扱いになり結果画面の UNLOCKED が出ない。
   // 付与してよいのは「もう使われない旧 ID」のリネームだけ。
 
-  // 以前の版ですでに Plains をクリア済みなら Pierce / XP Bonus 実績を付ける
+  // 以前の版ですでに Plains をクリア済みなら XP Bonus 実績を付ける
   if (
     clearedAreaIds.includes('plains') &&
     !unlockedAchievementIds.includes(ACHIEVEMENT_ID_PLAINS_CLEAR)
   ) {
     unlockedAchievementIds.push(ACHIEVEMENT_ID_PLAINS_CLEAR)
   }
-  // 旧 ID untouched → plains_clear（Pierce）
+  // 旧 ID untouched → plains_clear（当時 Pierce／現行は XP Bonus）
   if (
     unlockedAchievementIds.includes(ACHIEVEMENT_ID_UNTOUCHED) &&
     !unlockedAchievementIds.includes(ACHIEVEMENT_ID_PLAINS_CLEAR)

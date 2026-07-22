@@ -117,11 +117,16 @@ export class BreathingSprite {
     return [this.outline, this.body]
   }
 
-  destroy(): void {
+  /** 撃破前に呼吸アニメを止める（フェード中に伸び縮みしないようにする）。 */
+  stopBreathing(): void {
     if (this.breathTween !== null) {
       this.breathTween.stop()
       this.breathTween = null
     }
+  }
+
+  destroy(): void {
+    this.stopBreathing()
     if (this.outline.active) {
       this.outline.destroy()
     }

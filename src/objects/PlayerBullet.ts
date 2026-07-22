@@ -8,6 +8,7 @@
  * - collisionAge: 発射フレームでは overlap を無視（同フレーム撃破事故防止）
  *
  * 弾も座標直書きせず、body.setVelocity で飛ばす。
+ * 消すときは destroy せず inactive にして Group 内で再利用する（Phaser のプール）。
  */
 import Phaser from 'phaser'
 import {
@@ -37,6 +38,8 @@ export function createPlayerBulletGroup(scene: Phaser.Scene): Phaser.Physics.Arc
     allowGravity: false,
     velocityX: 0,
     velocityY: 0,
+    // プール用: 非 active の弾も Group に残す
+    maxSize: MAX_PLAYER_BULLETS,
   })
 }
 
@@ -51,6 +54,7 @@ function applyBulletBodySettings(
 ): { flightVx: number; flightVy: number } {
   body.setAllowGravity(false)
   body.setCollideWorldBounds(false)
+  body.enable = true
   body.moves = true
   setupCircleHitbox(body, PLAYER_BULLET_RADIUS, PLAYER_BULLET_WIDTH, PLAYER_BULLET_HEIGHT)
   // Group.add() のあとでないと createCallback が velocity を 0 に戻してしまう
@@ -61,7 +65,26 @@ function applyBulletBodySettings(
 }
 
 /**
+ * 弾をプールへ戻す（destroy しない）。
+ * GameScene の命中処理や画面外掃除から呼ぶ。
+ */
+export function recyclePlayerBullet(bullet: Phaser.GameObjects.Rectangle): void {
+  if (!bullet.active && bullet.body === null) {
+    return
+  }
+
+  if (bullet.body !== null) {
+    const body = bullet.body as Phaser.Physics.Arcade.Body
+    body.enable = false
+    body.setVelocity(0, 0)
+  }
+  bullet.setActive(false)
+  bullet.setVisible(false)
+}
+
+/**
  * 弾を1発発射する（velocity で動かす）。上限超過や距離0のときは null。
+ * 非 active の弾があれば再利用し、なければ新規作成する。
  *
  * @param damage 命中時ダメージ（レベルアップで増える）
  * @param maxHits 貫通で当たれる回数（pierceLevel+1）。hitsLeft に保存
@@ -101,16 +124,25 @@ export function firePlayerBullet(
   const bulletStartX = startX + directionX * spawnOffset
   const bulletStartY = startY + directionY * spawnOffset
 
-  const bullet = scene.add.rectangle(
-    bulletStartX,
-    bulletStartY,
-    PLAYER_BULLET_WIDTH,
-    PLAYER_BULLET_HEIGHT,
-    PLAYER_BULLET_COLOR,
-  )
-  // 床タイルに溶け込まないよう黒枠で囲む
-  bullet.setStrokeStyle(ENTITY_OUTLINE_WIDTH, ENTITY_OUTLINE_COLOR)
-  bullet.setDepth(9)
+  // Phaser: getFirstDead(false) = 非 active の子を再利用（なければ null）
+  let bullet = bulletGroup.getFirstDead(false) as Phaser.GameObjects.Rectangle | null
+  if (bullet === null) {
+    bullet = scene.add.rectangle(
+      bulletStartX,
+      bulletStartY,
+      PLAYER_BULLET_WIDTH,
+      PLAYER_BULLET_HEIGHT,
+      PLAYER_BULLET_COLOR,
+    )
+    // 床タイルに溶け込まないよう黒枠で囲む
+    bullet.setStrokeStyle(ENTITY_OUTLINE_WIDTH, ENTITY_OUTLINE_COLOR)
+    bullet.setDepth(9)
+    bulletGroup.add(bullet)
+  } else {
+    bullet.setPosition(bulletStartX, bulletStartY)
+    bullet.setActive(true)
+    bullet.setVisible(true)
+  }
 
   bullet.setData('damage', damage)
   // 貫通 + 跳弾で当たれる合計回数
@@ -123,7 +155,6 @@ export function firePlayerBullet(
   bullet.setData('hitEnemyUids', [])
   // 0 の間は当たり判定しない（発射と同じフレームで撃破扱いにしない）
   bullet.setData('collisionAge', 0)
-  bulletGroup.add(bullet)
 
   const body = bullet.body as Phaser.Physics.Arcade.Body
   const flight = applyBulletBodySettings(body, directionX, directionY)
@@ -220,7 +251,7 @@ export function maintainPlayerBulletVelocities(
 }
 
 /**
- * プレイエリア外に出た弾を destroy する。
+ * プレイエリア外に出た弾をプールへ戻す。
  * 画面外に溜まって上限を圧迫しないようにする掃除処理。
  */
 export function removePlayerBulletsOutsidePlayArea(
@@ -241,7 +272,7 @@ export function removePlayerBulletsOutsidePlayArea(
       bullet.y > PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT
 
     if (isOutside) {
-      bullet.destroy()
+      recyclePlayerBullet(bullet)
     }
   }
 }

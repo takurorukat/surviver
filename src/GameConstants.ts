@@ -716,7 +716,7 @@ export const ENEMY_MELEE_DAMAGE = 1
 // 元に戻すときは true にするだけでよい。
 export const ENEMY_WALK_SPRITES_ENABLED = false
 // 静止PNG＋呼吸アニメの新方式
-// true のとき melee / toughMelee / mushroom / spiritFire / stump / beetle / branch / gravestone / ranged に BreathingSprite を付ける
+// true のとき melee / toughMelee / mushroom / spiritFire / spiritThunder / burningTree / ashKnight / chaosElemental / stump / beetle / branch / gravestone / ranged に BreathingSprite を付ける
 export const ENEMY_BREATHING_SPRITES_ENABLED = true
 // 呼吸スライム（静止1枚）。枠は実行時に黒シルエットを背面重ねする
 export const ENEMY_SLIME_BREATH_SPRITE_KEY = 'enemy-slime-breath'
@@ -730,6 +730,19 @@ export const ENEMY_MUSHROOM_BREATH_SPRITE_PATH = 'assets/sprites/enemy_mushroom_
 // Volcano Stage1 の火の精霊（ステータスは緑スライムと同じ）
 export const ENEMY_SPIRIT_FIRE_BREATH_SPRITE_KEY = 'enemy-spirit-fire-breath'
 export const ENEMY_SPIRIT_FIRE_BREATH_SPRITE_PATH = 'assets/sprites/enemy_spirit_fire_breath.png'
+// Volcano Stage2 の雷の精霊（HP3・速度はプレイヤー初期速度）
+export const ENEMY_SPIRIT_THUNDER_BREATH_SPRITE_KEY = 'enemy-spirit-thunder-breath'
+export const ENEMY_SPIRIT_THUNDER_BREATH_SPRITE_PATH = 'assets/sprites/enemy_spirit_thunder_breath.png'
+// Volcano Stage3 の燃え木（HP8・3〜5秒ごとに火の精霊を出す）
+export const ENEMY_BURNING_TREE_BREATH_SPRITE_KEY = 'enemy-burning-tree-breath'
+export const ENEMY_BURNING_TREE_BREATH_SPRITE_PATH = 'assets/sprites/enemy_burning_tree_breath.png'
+// Volcano Stage4 の灰騎士（HP6・最初の2発はシールドで無効）
+export const ENEMY_ASH_KNIGHT_BREATH_SPRITE_KEY = 'enemy-ash-knight-breath'
+export const ENEMY_ASH_KNIGHT_BREATH_SPRITE_PATH = 'assets/sprites/enemy_ash_knight_breath.png'
+// Volcano Stage5 の混沌エレメンタル（HP50・動かない・2秒ごとに下位ステージの敵を出す）
+export const ENEMY_CHAOS_ELEMENTAL_BREATH_SPRITE_KEY = 'enemy-chaos-elemental-breath'
+export const ENEMY_CHAOS_ELEMENTAL_BREATH_SPRITE_PATH =
+  'assets/sprites/enemy_chaos_elemental_breath.png'
 // Forest Stage2 の切り株（泥スライム相当 HP・速度は半分・3秒ごとにキノコを出す）
 export const ENEMY_STUMP_BREATH_SPRITE_KEY = 'enemy-stump-breath'
 export const ENEMY_STUMP_BREATH_SPRITE_PATH = 'assets/sprites/enemy_stump_breath.png'
@@ -753,6 +766,21 @@ export const ENEMY_BRANCH_SIZE_SCALE = 2
 export const ENEMY_BRANCH_WIDTH = ENEMY_WIDTH * ENEMY_BRANCH_SIZE_SCALE
 export const ENEMY_BRANCH_HEIGHT = ENEMY_HEIGHT * ENEMY_BRANCH_SIZE_SCALE
 export const ENEMY_BRANCH_RADIUS = ENEMY_RADIUS * ENEMY_BRANCH_SIZE_SCALE
+// 燃え木は切り株と同じく通常敵の 2 倍（見た目・当たり判定）
+export const ENEMY_BURNING_TREE_SIZE_SCALE = 2
+export const ENEMY_BURNING_TREE_WIDTH = ENEMY_WIDTH * ENEMY_BURNING_TREE_SIZE_SCALE
+export const ENEMY_BURNING_TREE_HEIGHT = ENEMY_HEIGHT * ENEMY_BURNING_TREE_SIZE_SCALE
+export const ENEMY_BURNING_TREE_RADIUS = ENEMY_RADIUS * ENEMY_BURNING_TREE_SIZE_SCALE
+// 灰騎士は通常敵の 2.4 倍（見た目・当たり判定。以前 1.6 の 1.5 倍）
+export const ENEMY_ASH_KNIGHT_SIZE_SCALE = 2.4
+export const ENEMY_ASH_KNIGHT_WIDTH = ENEMY_WIDTH * ENEMY_ASH_KNIGHT_SIZE_SCALE
+export const ENEMY_ASH_KNIGHT_HEIGHT = ENEMY_HEIGHT * ENEMY_ASH_KNIGHT_SIZE_SCALE
+export const ENEMY_ASH_KNIGHT_RADIUS = ENEMY_RADIUS * ENEMY_ASH_KNIGHT_SIZE_SCALE
+// 混沌エレメンタルはボス寄りに 2.5 倍（見た目・当たり判定）
+export const ENEMY_CHAOS_ELEMENTAL_SIZE_SCALE = 2.5
+export const ENEMY_CHAOS_ELEMENTAL_WIDTH = ENEMY_WIDTH * ENEMY_CHAOS_ELEMENTAL_SIZE_SCALE
+export const ENEMY_CHAOS_ELEMENTAL_HEIGHT = ENEMY_HEIGHT * ENEMY_CHAOS_ELEMENTAL_SIZE_SCALE
+export const ENEMY_CHAOS_ELEMENTAL_RADIUS = ENEMY_RADIUS * ENEMY_CHAOS_ELEMENTAL_SIZE_SCALE
 // カブトムシは見た目・当たり判定とも 1.5 倍
 export const ENEMY_BEETLE_SIZE_SCALE = 1.5
 export const ENEMY_BEETLE_WIDTH = ENEMY_WIDTH * ENEMY_BEETLE_SIZE_SCALE
@@ -764,10 +792,19 @@ export const ENEMY_SPIRIT_FIRE_SIZE_SCALE = 1.75
 export const ENEMY_SPIRIT_FIRE_WIDTH = ENEMY_WIDTH * ENEMY_SPIRIT_FIRE_SIZE_SCALE
 export const ENEMY_SPIRIT_FIRE_HEIGHT = ENEMY_HEIGHT * ENEMY_SPIRIT_FIRE_SIZE_SCALE
 export const ENEMY_SPIRIT_FIRE_RADIUS = ENEMY_RADIUS * ENEMY_SPIRIT_FIRE_SIZE_SCALE
+// 雷の精霊も通常敵の 1.6 倍（見た目・当たり判定）
+export const ENEMY_SPIRIT_THUNDER_SIZE_SCALE = 1.6
+export const ENEMY_SPIRIT_THUNDER_WIDTH = ENEMY_WIDTH * ENEMY_SPIRIT_THUNDER_SIZE_SCALE
+export const ENEMY_SPIRIT_THUNDER_HEIGHT = ENEMY_HEIGHT * ENEMY_SPIRIT_THUNDER_SIZE_SCALE
+export const ENEMY_SPIRIT_THUNDER_RADIUS = ENEMY_RADIUS * ENEMY_SPIRIT_THUNDER_SIZE_SCALE
 // 見た目の高さは敵の当たり判定に合わせる（プレイヤー24pxと同程度の小ささ）
 export const ENEMY_SLIME_BREATH_DISPLAY_HEIGHT = ENEMY_HEIGHT
 export const ENEMY_SLIME_MUD_BREATH_DISPLAY_HEIGHT = ENEMY_HEIGHT
 export const ENEMY_SPIRIT_FIRE_BREATH_DISPLAY_HEIGHT = ENEMY_SPIRIT_FIRE_HEIGHT
+export const ENEMY_SPIRIT_THUNDER_BREATH_DISPLAY_HEIGHT = ENEMY_SPIRIT_THUNDER_HEIGHT
+export const ENEMY_BURNING_TREE_BREATH_DISPLAY_HEIGHT = ENEMY_BURNING_TREE_HEIGHT
+export const ENEMY_ASH_KNIGHT_BREATH_DISPLAY_HEIGHT = ENEMY_ASH_KNIGHT_HEIGHT
+export const ENEMY_CHAOS_ELEMENTAL_BREATH_DISPLAY_HEIGHT = ENEMY_CHAOS_ELEMENTAL_HEIGHT
 export const ENEMY_MUSHROOM_BREATH_DISPLAY_HEIGHT = ENEMY_MUSHROOM_HEIGHT
 export const ENEMY_STUMP_BREATH_DISPLAY_HEIGHT = ENEMY_STUMP_HEIGHT
 export const ENEMY_BEETLE_BREATH_DISPLAY_HEIGHT = ENEMY_BEETLE_HEIGHT
@@ -793,6 +830,51 @@ export const ENEMY_SPIRIT_FIRE_BREATH_SCALE_Y_MAX = ENEMY_SLIME_BREATH_SCALE_Y_M
 export const ENEMY_SPIRIT_FIRE_BREATH_SCALE_Y_MIN = ENEMY_SLIME_BREATH_SCALE_Y_MIN
 export const ENEMY_SPIRIT_FIRE_BREATH_DURATION_MS = ENEMY_SLIME_BREATH_DURATION_MS
 export const ENEMY_SPIRIT_FIRE_COLOR = 0xf97316
+// 雷の精霊も緑スライムと同じ呼吸パラメータ
+export const ENEMY_SPIRIT_THUNDER_BREATH_OUTLINE_SCALE = ENEMY_SLIME_BREATH_OUTLINE_SCALE
+export const ENEMY_SPIRIT_THUNDER_BREATH_SCALE_Y_MAX = ENEMY_SLIME_BREATH_SCALE_Y_MAX
+export const ENEMY_SPIRIT_THUNDER_BREATH_SCALE_Y_MIN = ENEMY_SLIME_BREATH_SCALE_Y_MIN
+export const ENEMY_SPIRIT_THUNDER_BREATH_DURATION_MS = ENEMY_SLIME_BREATH_DURATION_MS
+export const ENEMY_SPIRIT_THUNDER_COLOR = 0x22d3ee
+export const ENEMY_SPIRIT_THUNDER_HP = 3
+// プレイヤー初期速度と同じ
+export const ENEMY_SPIRIT_THUNDER_SPEED = PLAYER_SPEED
+// 燃え木も緑スライムと同じ呼吸パラメータ
+export const ENEMY_BURNING_TREE_BREATH_OUTLINE_SCALE = ENEMY_SLIME_BREATH_OUTLINE_SCALE
+export const ENEMY_BURNING_TREE_BREATH_SCALE_Y_MAX = ENEMY_SLIME_BREATH_SCALE_Y_MAX
+export const ENEMY_BURNING_TREE_BREATH_SCALE_Y_MIN = ENEMY_SLIME_BREATH_SCALE_Y_MIN
+export const ENEMY_BURNING_TREE_BREATH_DURATION_MS = ENEMY_SLIME_BREATH_DURATION_MS
+export const ENEMY_BURNING_TREE_COLOR = 0xea580c
+export const ENEMY_BURNING_TREE_HP = 8
+// 火の精霊を出す間隔（毎回この範囲からランダム）
+export const ENEMY_BURNING_TREE_SPAWN_INTERVAL_MIN_MS = 3000
+export const ENEMY_BURNING_TREE_SPAWN_INTERVAL_MAX_MS = 5000
+export const ENEMY_BURNING_TREE_SPAWN_OFFSET = 28 * WORLD_ENTITY_SCALE
+// 灰騎士も緑スライムと同じ呼吸パラメータ
+export const ENEMY_ASH_KNIGHT_BREATH_OUTLINE_SCALE = ENEMY_SLIME_BREATH_OUTLINE_SCALE
+export const ENEMY_ASH_KNIGHT_BREATH_SCALE_Y_MAX = ENEMY_SLIME_BREATH_SCALE_Y_MAX
+export const ENEMY_ASH_KNIGHT_BREATH_SCALE_Y_MIN = ENEMY_SLIME_BREATH_SCALE_Y_MIN
+export const ENEMY_ASH_KNIGHT_BREATH_DURATION_MS = ENEMY_SLIME_BREATH_DURATION_MS
+export const ENEMY_ASH_KNIGHT_COLOR = 0x94a3b8
+export const ENEMY_ASH_KNIGHT_HP = 6
+// 最初の何発をシールドで無効にするか
+export const ENEMY_ASH_KNIGHT_BLOCK_HIT_COUNT = 2
+// Forest のカブトムシ／枝と同じく、火山のステージ3以上の敵は経験値2倍
+export const ENEMY_BURNING_TREE_XP_DROP_MULTIPLIER = 2
+export const ENEMY_ASH_KNIGHT_XP_DROP_MULTIPLIER = 2
+export const ENEMY_CHAOS_ELEMENTAL_XP_DROP_MULTIPLIER = 2
+// 混沌エレメンタルも緑スライムと同じ呼吸パラメータ
+export const ENEMY_CHAOS_ELEMENTAL_BREATH_OUTLINE_SCALE = ENEMY_SLIME_BREATH_OUTLINE_SCALE
+export const ENEMY_CHAOS_ELEMENTAL_BREATH_SCALE_Y_MAX = ENEMY_SLIME_BREATH_SCALE_Y_MAX
+export const ENEMY_CHAOS_ELEMENTAL_BREATH_SCALE_Y_MIN = ENEMY_SLIME_BREATH_SCALE_Y_MIN
+export const ENEMY_CHAOS_ELEMENTAL_BREATH_DURATION_MS = ENEMY_SLIME_BREATH_DURATION_MS
+export const ENEMY_CHAOS_ELEMENTAL_COLOR = 0xf472b6
+export const ENEMY_CHAOS_ELEMENTAL_HP = 75
+// 下位ステージの敵を出す間隔
+export const ENEMY_CHAOS_ELEMENTAL_SPAWN_INTERVAL_MS = 2000
+export const ENEMY_CHAOS_ELEMENTAL_SPAWN_OFFSET = 36 * WORLD_ENTITY_SCALE
+// 開始時の出現位置を中央より少し上へずらす
+export const ENEMY_CHAOS_ELEMENTAL_SPAWN_OFFSET_Y = -72 * WORLD_ENTITY_SCALE
 export const ENEMY_STUMP_BREATH_OUTLINE_SCALE = ENEMY_SLIME_BREATH_OUTLINE_SCALE
 export const ENEMY_STUMP_BREATH_SCALE_Y_MAX = ENEMY_SLIME_BREATH_SCALE_Y_MAX
 export const ENEMY_STUMP_BREATH_SCALE_Y_MIN = ENEMY_SLIME_BREATH_SCALE_Y_MIN
@@ -815,6 +897,8 @@ export const ENEMY_STUMP_HP = 7
 export const ENEMY_STUMP_PACK_SIZE = 2
 // 切り株の速度 = 泥スライム速度 × この倍率
 export const ENEMY_STUMP_SPEED_FACTOR = 0.5
+// 燃え木の速度 = 切り株と同じ（泥スライムの半分）
+export const ENEMY_BURNING_TREE_SPEED_FACTOR = ENEMY_STUMP_SPEED_FACTOR
 // 切り株がキノコを出す間隔
 export const ENEMY_STUMP_MUSHROOM_SPAWN_INTERVAL_MS = 3000
 // 切り株の隣にキノコを出す距離
@@ -824,7 +908,7 @@ export const ENEMY_BEETLE_HP = 8
 export const ENEMY_BEETLE_XP_DROP_MULTIPLIER = 2
 // カブトムシ: 初期攻撃レンジ内 → 0.3秒停止 → その瞬間の方向へ4倍速で一直線突進
 export const ENEMY_BEETLE_CHARGE_TRIGGER_DISTANCE = PLAYER_ATTACK_RANGE
-export const ENEMY_BEETLE_CHARGE_SPEED_MULTIPLIER = 4
+export const ENEMY_BEETLE_CHARGE_SPEED_MULTIPLIER = 3
 export const ENEMY_BEETLE_CHARGE_WINDUP_MS = 300
 export const ENEMY_BEETLE_CHARGE_DURATION_MS = 700
 export const ENEMY_BEETLE_CHARGE_COOLDOWN_MS = 800
@@ -843,6 +927,9 @@ export const ENEMY_BRANCH_XP_DROP_MULTIPLIER = 2
 export const ENEMY_BRANCH_BLAST_DAMAGE_MULTIPLIER = 2
 // 緑スライム速度 × この倍率（0.65 = 35% 遅い）
 export const ENEMY_BRANCH_SPEED_FACTOR = 0.65
+// Forest Stage5 だけ1回あたり出現数を抑える（他ステージは通常）
+// 以前 0.6 → さらにその 0.8 倍（= 0.48）
+export const FOREST_STAGE5_SPAWN_COUNT_FACTOR = 0.48
 export const ENEMY_BRANCH_COLOR = 0xa16207
 // 枝がカブトムシを出す間隔（少し余裕を持たせる）
 export const ENEMY_BRANCH_BEETLE_SPAWN_INTERVAL_MS = 1500
@@ -1017,15 +1104,17 @@ export const DEV_ENTITY_DEPTH = 1
 // --- ウェーブ（後方互換・レガシー用）---
 export const WAVE_SPAWN_INTERVAL_SECONDS = 2
 
-// --- 同時出現上限（弾・敵・コインの Group 肥大化防止）---
-export const MAX_ENEMIES = 24
-export const MAX_ENEMIES_PER_STAGE_BONUS = 2
-export const MAX_ENEMIES_HARD_CAP = 36
+// --- 同時出現のソフト上限（出しすぎ防止の安全弁。厳しく絞らない）---
+// 重さ対策はオブジェクトプールと HP バー軽量化で行い、ここは非常時の天井だけ。
+export const MAX_ENEMIES = 64
+export const MAX_ENEMIES_PER_STAGE_BONUS = 6
+export const MAX_ENEMIES_HARD_CAP = 160
 // 同時出現上限で空きがないとき、この待ちのあと再試行（捨てない）
 export const ENEMY_SPAWN_RETRY_DELAY_MS = 750
-export const MAX_PLAYER_BULLETS = 8
-export const MAX_ENEMY_BULLETS = 15
-export const MAX_COINS = 60
+// 弾・コインもプール再利用前提で余裕を持たせる
+export const MAX_PLAYER_BULLETS = 40
+export const MAX_ENEMY_BULLETS = 48
+export const MAX_COINS = 160
 
 // --- レベルアップ成長・貫通／爆破スキル ---
 // LevelUpSystem / 攻撃計算。PIERCE / BLAST は実績解放とも連動。
@@ -1272,7 +1361,7 @@ export const STAGE_RESULT_BUTTON_TEXT_COLOR = '#ffffff'
 export const STAGE_RESULT_UI_DEPTH = 420
 
 // --- 実績・スキル解放（localStorage）---
-// ノーダメージ／素振りクリアなどで貫通・爆破を解放。Unlock / Achievement 系が参照。
+// ノーダメージ／エリアクリアなどで貫通・爆破などを解放。Unlock / Achievement 系が参照。
 export const UNLOCK_SAVE_STORAGE_KEY = 'survivor-stage-unlocks'
 export const ACHIEVEMENT_ID_UNTOUCHED = 'untouched'
 export const ACHIEVEMENT_ID_PURE_POWER = 'pure_power'
@@ -1307,7 +1396,7 @@ export const UNLOCK_SKILL_LABEL_MOVE = 'Move'
 export const UNLOCK_SKILL_LABEL_MAGNET = 'Pickup'
 export const UNLOCK_SKILL_LABEL_HP = 'HP'
 export const UNLOCK_SKILL_LABEL_FOREST_REWARDS =
-  'Move / Pickup'
+  'Move / Pickup / Pierce'
 export const UNLOCK_SKILL_LABEL_XP_BONUS = 'XP Bonus'
 // スキルアイコン・実績画面用の短い効果説明（+1 や level-up は書かない）
 export const UNLOCK_SKILL_DESC_POWER = 'Increases bullet damage'
@@ -1394,10 +1483,9 @@ export const STAGE_RESULT_UNLOCK_PANEL_CHROME_HEIGHT = 174
 export const STAGE_RESULT_PANEL_MAX_HEIGHT = GAME_HEIGHT - 40
 
 // --- 撃破・被弾フラッシュ演出 ---
-export const ENEMY_DEFEAT_FLASH_DURATION_MS = 100
-export const ENEMY_DEFEAT_FLASH_COLOR = 0xffffff
-export const ENEMY_DEFEAT_FADE_DURATION_MS = 180
-export const ENEMY_DEFEAT_SCALE_TO = 1.55
+// 撃破は playEnemyDefeatFadeOut（Enemy.ts）の tween フェードのみ使う
+export const ENEMY_DEFEAT_FADE_DURATION_MS = 140
+export const ENEMY_DEFEAT_SCALE_TO = 1.35
 export const PLAYER_HURT_FLASH_DURATION_MS = 120
 export const PLAYER_HURT_FLASH_COLOR = 0xff4444
 export const PLAYER_HURT_FLASH_ALPHA = 0.35
@@ -1605,6 +1693,15 @@ export function isForestFinalStage(
   return areaId === 'forest' && isFinalStage(stageNumber, totalStages)
 }
 
+/** Volcano の最終ステージ（Stage1〜4 の敵を混ぜるステージ）か。 */
+export function isVolcanoFinalStage(
+  areaId: StageAreaId,
+  stageNumber: number,
+  totalStages: number,
+): boolean {
+  return areaId === 'volcano' && isFinalStage(stageNumber, totalStages)
+}
+
 /**
  * 定期スポーン（バースト）の間隔（秒）。
  * Forest 最終は早め。
@@ -1628,7 +1725,7 @@ export function getEnemyPackGapSeconds(
   stageNumber: number,
   _totalStages: number,
 ): number {
-  if (areaId === 'volcano' && stageNumber === 5) {
+  if (isVolcanoFinalStage(areaId, stageNumber, _totalStages)) {
     return 0.35
   }
   if (isForestFinalStage(areaId, stageNumber, _totalStages)) {
@@ -1689,6 +1786,20 @@ export function getInitialEnemyCountForStage(
 }
 
 /**
+ * Forest Stage5 だけ出現数を調整する。Stage1〜4 は通常のまま。
+ */
+export function applyForestStage5SpawnCountFactor(
+  areaId: StageAreaId,
+  stageNumber: number,
+  enemyCount: number,
+): number {
+  if (areaId === 'forest' && stageNumber === 5) {
+    return Math.max(1, Math.round(enemyCount * FOREST_STAGE5_SPAWN_COUNT_FACTOR))
+  }
+  return enemyCount
+}
+
+/**
  * 全ステージ共通: 最初に数体、以降一定間隔でバーストする予定表を返す。
  * WaveSystem がこのスケジュールに沿って警告付きスポーンを予約する。
  */
@@ -1697,8 +1808,10 @@ export function getSpawnScheduleForStage(
   totalStages: number,
   areaId: StageAreaId = 'plains',
 ): SpawnBurst[] | null {
-  const initialCount = getInitialEnemyCountForStage(stageNumber, totalStages)
-  const recurringCount = getRecurringEnemyCountForStage(stageNumber, totalStages)
+  let initialCount = getInitialEnemyCountForStage(stageNumber, totalStages)
+  let recurringCount = getRecurringEnemyCountForStage(stageNumber, totalStages)
+  initialCount = applyForestStage5SpawnCountFactor(areaId, stageNumber, initialCount)
+  recurringCount = applyForestStage5SpawnCountFactor(areaId, stageNumber, recurringCount)
   const burstIntervalSeconds = getSpawnBurstIntervalSeconds(areaId, stageNumber, totalStages)
 
   const schedule: SpawnBurst[] = [
@@ -1728,8 +1841,8 @@ export function getWaveConfigForStage(_stageNumber: number): WaveConfig {
 }
 
 /**
- * ステージごとの同時敵数上限（ハードキャップ付き）。
- * スポーン側がこれ以上出さないよう見る。
+ * ステージごとの同時敵数のソフト上限（暴走防止の天井付き）。
+ * スポーン側がこれ以上出さないよう見る。画面スプライトの厳密上限ではない。
  */
 export function getMaxEnemiesForStage(stageNumber: number, totalStages: number): number {
   const safeStage = Math.max(1, stageNumber)
@@ -1789,6 +1902,13 @@ export function calculateToughMeleeSpeed(): number {
  */
 export function calculateStumpSpeed(): number {
   return calculateToughMeleeSpeed() * ENEMY_STUMP_SPEED_FACTOR
+}
+
+/**
+ * Volcano Stage3 燃え木の移動速度（切り株と同じ）。
+ */
+export function calculateBurningTreeSpeed(): number {
+  return calculateToughMeleeSpeed() * ENEMY_BURNING_TREE_SPEED_FACTOR
 }
 
 /**

@@ -7,8 +7,6 @@
 
 import Phaser from 'phaser'
 import {
-  ENEMY_DEFEAT_FLASH_DURATION_MS,
-  ENEMY_DEFEAT_FLASH_COLOR,
   PLAYER_HURT_FLASH_DURATION_MS,
   PLAYER_HURT_FLASH_COLOR,
   PLAYER_HURT_FLASH_ALPHA,
@@ -240,26 +238,6 @@ export function playAutoGoldLevelUpText(
           levelUpText.destroy()
         },
       })
-    },
-  })
-}
-
-// 撃破位置に短い白フラッシュを出す（敵スプライト自体は別処理で消える）
-export function playEnemyDefeatFlash(
-  scene: Phaser.Scene,
-  x: number,
-  y: number,
-  size: number,
-): void {
-  const flash = scene.add.rectangle(x, y, size, size, ENEMY_DEFEAT_FLASH_COLOR, 0.9)
-  flash.setDepth(50)
-
-  scene.tweens.add({
-    targets: flash,
-    alpha: 0,
-    duration: ENEMY_DEFEAT_FLASH_DURATION_MS,
-    onComplete: () => {
-      flash.destroy()
     },
   })
 }

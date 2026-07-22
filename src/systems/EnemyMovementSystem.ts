@@ -83,8 +83,11 @@ export function updateEnemyChaseMovement(
       continue
     }
 
-    if (enemy.getData('enemyKind') === 'beetle') {
-      applyBeetleMovement(enemy, body, playerX, playerY)
+    if (
+      enemy.getData('enemyKind') === 'beetle' ||
+      enemy.getData('enemyKind') === 'spiritThunder'
+    ) {
+      applyBeetleStyleChargeMovement(enemy, body, playerX, playerY)
       continue
     }
 
@@ -103,10 +106,11 @@ export function updateEnemyChaseMovement(
 }
 
 /**
- * カブトムシ: プレイヤー初期レンジ内に近づいたら、
- * 0.3秒止まってから、その瞬間のプレイヤー位置へ一直線に 4 倍速で突進する。
+ * カブトムシ／雷の精霊: プレイヤー初期レンジ内に近づいたら、
+ * 0.3秒止まってから、その瞬間のプレイヤー位置へ一直線に突進する。
+ * 通常速度（normalSpeed）はその敵自身の値を使う（雷は PLAYER_SPEED のまま）。
  */
-function applyBeetleMovement(
+function applyBeetleStyleChargeMovement(
   enemy: Phaser.GameObjects.Rectangle,
   body: Phaser.Physics.Arcade.Body,
   playerX: number,

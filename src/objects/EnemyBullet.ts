@@ -41,6 +41,7 @@ export function createEnemyBulletGroup(scene: Phaser.Scene): Phaser.Physics.Arca
     allowGravity: false,
     velocityX: 0,
     velocityY: 0,
+    maxSize: MAX_ENEMY_BULLETS,
   })
 }
 
@@ -55,6 +56,7 @@ function applyEnemyBulletBodySettings(
 ): { flightVx: number; flightVy: number } {
   body.setAllowGravity(false)
   body.setCollideWorldBounds(false)
+  body.enable = true
   body.moves = true
   setupCircleHitbox(body, ENEMY_BULLET_RADIUS, ENEMY_BULLET_WIDTH, ENEMY_BULLET_HEIGHT)
   const flightVx = directionX * ENEMY_BULLET_SPEED
@@ -94,8 +96,22 @@ function createStingerTriangle(
 }
 
 /**
+ * 敵弾をプールへ戻す（destroy しない）。
+ */
+export function recycleEnemyBullet(bullet: EnemyBulletVisual): void {
+  if (bullet.body !== null) {
+    const body = bullet.body as Phaser.Physics.Arcade.Body
+    body.enable = false
+    body.setVelocity(0, 0)
+  }
+  bullet.setActive(false)
+  bullet.setVisible(false)
+}
+
+/**
  * プレイヤー（target）へ向かって敵弾を1発撃つ。
  * 上限超過・距離0なら null。敵本体の少し外側から出現。
+ * 非 active の弾があれば再利用する。
  */
 export function fireEnemyBullet(
   scene: Phaser.Scene,
@@ -123,18 +139,27 @@ export function fireEnemyBullet(
   const bulletStartX = startX + directionX * spawnOffset
   const bulletStartY = startY + directionY * spawnOffset
 
-  const bullet = createStingerTriangle(
-    scene,
-    bulletStartX,
-    bulletStartY,
-    directionX,
-    directionY,
-  )
-  bullet.setDepth(9)
+  let bullet = bulletGroup.getFirstDead(false) as EnemyBulletVisual | null
+  if (bullet === null) {
+    bullet = createStingerTriangle(
+      scene,
+      bulletStartX,
+      bulletStartY,
+      directionX,
+      directionY,
+    )
+    bullet.setDepth(9)
+    bulletGroup.add(bullet)
+  } else {
+    bullet.setPosition(bulletStartX, bulletStartY)
+    bullet.setRotation(Math.atan2(directionY, directionX))
+    bullet.setActive(true)
+    bullet.setVisible(true)
+  }
+
   bullet.setData('damage', ENEMY_BULLET_DAMAGE)
   // 0 のフレームはプレイヤーとの overlap を無視
   bullet.setData('collisionAge', 0)
-  bulletGroup.add(bullet)
 
   const body = bullet.body as Phaser.Physics.Arcade.Body
   const flight = applyEnemyBulletBodySettings(body, directionX, directionY)
@@ -197,7 +222,7 @@ export function maintainEnemyBulletVelocities(
 }
 
 /**
- * プレイエリア外の敵弾を破棄する。
+ * プレイエリア外の敵弾をプールへ戻す。
  */
 export function removeEnemyBulletsOutsidePlayArea(
   bulletGroup: Phaser.Physics.Arcade.Group,
@@ -217,24 +242,23 @@ export function removeEnemyBulletsOutsidePlayArea(
       bullet.y > PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT
 
     if (isOutside) {
-      bullet.destroy()
+      recycleEnemyBullet(bullet)
     }
   }
 }
 
 /**
- * 画面上の敵弾をすべて消す（ステージ切替・クリア時など）。
- * 後ろから回して destroy 中のインデックスずれを避ける。
+ * 画面上の敵弾をすべてプールへ戻す（ステージ切替・クリア時など）。
  */
 export function destroyAllEnemyBullets(
   bulletGroup: Phaser.Physics.Arcade.Group,
 ): void {
   const children = bulletGroup.getChildren()
 
-  for (let index = children.length - 1; index >= 0; index--) {
+  for (let index = 0; index < children.length; index++) {
     const bullet = children[index] as EnemyBulletVisual
     if (bullet.active) {
-      bullet.destroy()
+      recycleEnemyBullet(bullet)
     }
   }
 }

@@ -74,10 +74,10 @@ export type AchievementDef = {
 export const ALL_ACHIEVEMENTS: AchievementDef[] = [
   {
     id: ACHIEVEMENT_ID_PLAINS_CLEAR,
-    title: ACHIEVEMENT_TITLE_UNTOUCHED,
+    title: ACHIEVEMENT_TITLE_XP_BONUS,
     condition: ACHIEVEMENT_CONDITION_PLAINS_CLEAR,
-    rewardLabel: UNLOCK_SKILL_LABEL_PIERCE,
-    skillId: 'pierce',
+    rewardLabel: UNLOCK_SKILL_LABEL_XP_BONUS,
+    skillId: 'xpBonus',
   },
   {
     id: ACHIEVEMENT_ID_FOREST_UNTOUCHED,
@@ -102,18 +102,18 @@ export const ALL_ACHIEVEMENTS: AchievementDef[] = [
     skillId: 'magnet',
   },
   {
+    id: ACHIEVEMENT_ID_FOREST_CLEAR,
+    title: ACHIEVEMENT_TITLE_UNTOUCHED,
+    condition: ACHIEVEMENT_CONDITION_FOREST_CLEAR,
+    rewardLabel: UNLOCK_SKILL_LABEL_PIERCE,
+    skillId: 'pierce',
+  },
+  {
     id: ACHIEVEMENT_ID_VOLCANO_UNTOUCHED,
     title: ACHIEVEMENT_TITLE_RICOCHET,
     condition: ACHIEVEMENT_CONDITION_VOLCANO_UNTOUCHED,
     rewardLabel: UNLOCK_SKILL_LABEL_RICOCHET,
     skillId: 'ricochet',
-  },
-  {
-    id: ACHIEVEMENT_ID_PLAINS_CLEAR,
-    title: ACHIEVEMENT_TITLE_XP_BONUS,
-    condition: ACHIEVEMENT_CONDITION_PLAINS_CLEAR,
-    rewardLabel: UNLOCK_SKILL_LABEL_XP_BONUS,
-    skillId: 'xpBonus',
   },
 ]
 
@@ -195,7 +195,7 @@ export function isSkillUnlocked(skillId: SkillHudId): boolean {
     return hasUnlockedAchievement(ACHIEVEMENT_ID_VOLCANO_UNTOUCHED)
   }
   if (skillId === 'pierce') {
-    return hasUnlockedAchievement(ACHIEVEMENT_ID_PLAINS_CLEAR)
+    return hasUnlockedAchievement(ACHIEVEMENT_ID_FOREST_CLEAR)
   }
   if (skillId === 'blast') {
     return hasUnlockedAchievement(ACHIEVEMENT_ID_FOREST_UNTOUCHED)
@@ -259,7 +259,7 @@ export function getUnlockStatusRows(): UnlockStatusRow[] {
       skillLabel: UNLOCK_SKILL_LABEL_PIERCE,
       skillDescription: UNLOCK_SKILL_DESC_PIERCE,
       isUnlocked: isSkillUnlocked('pierce'),
-      unlockCondition: ACHIEVEMENT_CONDITION_PLAINS_CLEAR,
+      unlockCondition: ACHIEVEMENT_CONDITION_FOREST_CLEAR,
     },
     {
       skillId: 'blast',
@@ -288,15 +288,10 @@ export function evaluateAndUnlockGameClearAchievements(
 ): NewlyUnlockedAchievement[] {
   const newlyUnlocked: NewlyUnlockedAchievement[] = []
 
-  // Plains をクリア → Pierce と XP Bonus
+  // Plains をクリア → XP Bonus
   if (flags.areaId === 'plains') {
     const didUnlock = unlockAchievement(ACHIEVEMENT_ID_PLAINS_CLEAR)
     if (didUnlock) {
-      newlyUnlocked.push({
-        achievementId: ACHIEVEMENT_ID_PLAINS_CLEAR,
-        achievementTitle: ACHIEVEMENT_TITLE_UNTOUCHED,
-        unlockedSkillLabel: UNLOCK_SKILL_LABEL_PIERCE,
-      })
       newlyUnlocked.push({
         achievementId: ACHIEVEMENT_ID_PLAINS_CLEAR,
         achievementTitle: ACHIEVEMENT_TITLE_XP_BONUS,
@@ -317,7 +312,7 @@ export function evaluateAndUnlockGameClearAchievements(
     }
   }
 
-  // Forest をゲームクリア → Forest系スキル
+  // Forest をゲームクリア → Move / Pickup / Pierce
   if (flags.areaId === 'forest') {
     const didUnlock = unlockAchievement(ACHIEVEMENT_ID_FOREST_CLEAR)
     if (didUnlock) {
