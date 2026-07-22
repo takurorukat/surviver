@@ -24,16 +24,17 @@ export const FONT_FAMILY_UI = '"Silkscreen", monospace'
 // --- HUD・プレイエリア配置 ---
 // 上部 HUD と、その下の戦闘エリア（縮小して中央寄せ）の幾何。
 // PLAY_AREA_* はスポーン範囲・弾の画面外判定・移動境界の基準になる。
-export const HUD_SIDE_MARGIN = 12
-// 一番上の細い設定バー
-export const TOP_BAR_HEIGHT = 16
+export const HUD_SIDE_MARGIN = 18
+// 一番上の設定バー（アイコンを押しやすくするため太め）
+export const TOP_BAR_HEIGHT = 24
 // HP / Stage / Timer / XP の帯（設定バーの下）
 export const HUD_CONTENT_HEIGHT = 64
 // 設定バー込みの上部予約高さ（プレイエリア計算の基準）
 export const HUD_HEIGHT = TOP_BAR_HEIGHT + HUD_CONTENT_HEIGHT
 // 上部バー右端の設定歯車
-export const SETTINGS_GEAR_SIZE = 14
-export const SETTINGS_GEAR_GAP = 8
+export const SETTINGS_GEAR_SIZE = 21
+export const SETTINGS_GEAR_GAP = 12
+export const SETTINGS_GEAR_HIT_PADDING = 12
 export const SETTINGS_GEAR_COLOR = '#cbd5e1'
 export const SETTINGS_GEAR_HOVER_COLOR = '#fde68a'
 // レベルアップ UI（400）より手前に置き、レベルアップ中も歯車・実績を押せるようにする
@@ -41,24 +42,29 @@ export const SETTINGS_GEAR_DEPTH = 415
 export const TOP_BAR_BACKGROUND_COLOR = 0x334155
 export const TOP_BAR_DEPTH = 150
 // 歯車の左に置く実績（書類）ボタン（数字は出さずアイコンのみ）
-export const ACHIEVEMENT_ICON_SIZE = 14
-export const ACHIEVEMENT_BUTTON_WIDTH = 28
+export const ACHIEVEMENT_ICON_SIZE = 21
+export const ACHIEVEMENT_BUTTON_WIDTH = 42
 export const ACHIEVEMENT_ICON_COLOR = '#cbd5e1'
 export const ACHIEVEMENT_ICON_HOVER_COLOR = '#86efac'
 // 実績表示の左に置く、全ラン共通のゴールド所持数
-export const GOLD_DISPLAY_WIDTH = 68
-export const GOLD_DISPLAY_GAP = 8
+export const GOLD_DISPLAY_WIDTH = 102
+export const GOLD_DISPLAY_GAP = 12
 export const GOLD_ICON_COLOR = '#facc15'
 export const GOLD_TEXT_COLOR = '#fde68a'
+export const GOLD_BAR_FONT_SIZE = '16px'
+export const GOLD_ICON_FONT_SIZE = '16px'
+export const GOLD_ICON_OFFSET_X = -24
+export const GOLD_TEXT_OFFSET_X = 8
 // 上部バー項目のホバー説明フロート
 export const TOP_BAR_TOOLTIP_BG_COLOR = 0x111827
 export const TOP_BAR_TOOLTIP_BG_ALPHA = 0.94
 export const TOP_BAR_TOOLTIP_TEXT_COLOR = '#e5e7eb'
-export const TOP_BAR_TOOLTIP_PADDING = 6
+export const TOP_BAR_TOOLTIP_PADDING = 8
 export const TOP_BAR_TOOLTIP_TWEEN_MS = 140
 export const TOP_BAR_TOOLTIP_SLIDE_Y = 6
+export const TOP_BAR_TOOLTIP_FONT_SIZE = '14px'
 // 選択の黄色い枠の下に少し隙間を空ける（バー直下だと枠が隠れる）
-export const TOP_BAR_TOOLTIP_GAP_BELOW_BAR = 10
+export const TOP_BAR_TOOLTIP_GAP_BELOW_BAR = 12
 export const TOP_BAR_TOOLTIP_LABEL_SETTINGS = 'Settings'
 export const TOP_BAR_TOOLTIP_LABEL_ACHIEVEMENTS = 'Achievements'
 export const TOP_BAR_TOOLTIP_LABEL_GOLD = 'Gold — spend in the Shop'
@@ -82,7 +88,6 @@ export const SETTINGS_CREDITS_BODY = [
   '',
   'Assets',
   'Graphics, Music: Pixel-Boy (Ninja Adventure, CC0)',
-  'Music: Jack Fox',
 ].join('\n')
 // Phaser postFX.addBlur(quality, x, y, strength, color, steps)
 export const SETTINGS_MENU_BLUR_QUALITY = 1
@@ -348,10 +353,14 @@ export function calculateStageClearGold(
   return awardedGold
 }
 
-export const TITLE_AREA_PANEL_WIDTH = 720
-// 6エリア（Plains〜Dungeon）が1画面に収まる高さ。スクロールはしない
-export const TITLE_AREA_PANEL_HEIGHT = 38
-export const TITLE_AREA_PANEL_GAP = 6
+export const TITLE_AREA_PANEL_COLUMNS = 2
+// タイトルに出すエリア数（Plains / Forest / Volcano / Ruins のみ。Castle 以降は出さない）
+export const TITLE_AREA_VISIBLE_COUNT = 4
+// 2×2 グリッド用。横は広め、縦は SELECT AREA や下部の Shop を隠さない高さ
+export const TITLE_AREA_PANEL_WIDTH = 440
+export const TITLE_AREA_PANEL_HEIGHT = 118
+export const TITLE_AREA_PANEL_GAP = 20
+export const TITLE_AREA_PANEL_ROW_GAP = 14
 export const TITLE_AREA_PANEL_COLOR = 0x1e293b
 export const TITLE_AREA_PANEL_BORDER_COLOR = 0x475569
 export const TITLE_AREA_PANEL_SELECTED_BORDER_COLOR = 0xfde68a
@@ -360,10 +369,10 @@ export const TITLE_AREA_LOCKED_PANEL_COLOR = 0x111827
 export const TITLE_AREA_NAME_COLOR = '#f4f4f5'
 export const TITLE_AREA_SUB_COLOR = '#a1a1aa'
 export const TITLE_AREA_LOCKED_NAME_COLOR = '#6b7280'
-export const TITLE_LOCK_ICON_SIZE = 16
+export const TITLE_LOCK_ICON_SIZE = 18
 // ロック中テキスト（#6b7280）と同じグレー
 export const TITLE_LOCK_ICON_COLOR = 0x6b7280
-export const TITLE_LOCK_ICON_GAP = 8
+export const TITLE_LOCK_ICON_GAP = 10
 // ロック中エリアを決定したときの南京錠の拡大縮小（1 → この倍率 → 1）
 export const TITLE_LOCK_ICON_DENIED_PULSE_SCALE = 1.55
 export const TITLE_LOCK_ICON_DENIED_PULSE_DURATION_MS = 110
@@ -373,16 +382,28 @@ export const UI_LOCK_ICON_PATH = 'assets/sprites/ui_lock_icon.png'
 export const TITLE_AREA_LOCKED_LABEL = 'LOCKED'
 export const TITLE_AREA_NAME_LEFT_PADDING = 24
 export const TITLE_AREA_STAGES_RIGHT_PADDING = 24
+export const TITLE_AREA_NAME_OFFSET_Y = -18
+export const TITLE_AREA_STAGES_OFFSET_Y = 20
+export const TITLE_AREA_NAME_FONT_SIZE = '24px'
+export const TITLE_AREA_STAGES_FONT_SIZE = '15px'
 export const TITLE_AREA_CONDITION_COLOR = '#fde68a'
+// グリッド上端（1行目パネル中心）。SELECT AREA の下に隙間を残す
+export const TITLE_AREA_GRID_START_Y = TOP_BAR_HEIGHT + 136
 // タイトル下部のショップ案内枠（中身の購入UIは後続）
 // 枠・背景はエリアパネルと同じ配色（選択時の金色ハイライトも共通）
 export const TITLE_SHOP_PANEL_WIDTH = 300
-export const TITLE_SHOP_PANEL_HEIGHT = 48
+export const TITLE_SHOP_PANEL_HEIGHT = 72
 export const TITLE_ACTION_PANEL_GAP = 16
+// conditionText（GAME_HEIGHT - 56）のすぐ上。高さ増に合わせて少し上げる
+export const TITLE_SHOP_PANEL_CENTER_Y = GAME_HEIGHT - 104
 export const TITLE_SHOP_PANEL_BORDER_COLOR = TITLE_AREA_PANEL_BORDER_COLOR
 export const TITLE_SHOP_PANEL_COLOR = TITLE_AREA_PANEL_COLOR
 export const TITLE_SHOP_TITLE_COLOR = '#facc15'
 export const TITLE_SHOP_DESC_COLOR = '#d6d3d1'
+export const TITLE_SHOP_TITLE_FONT_SIZE = '24px'
+export const TITLE_SHOP_DESC_FONT_SIZE = '18px'
+export const TITLE_SHOP_TITLE_OFFSET_Y = -14
+export const TITLE_SHOP_DESC_OFFSET_Y = 17
 export const TITLE_SHOP_TITLE_TEXT = 'Shop'
 export const TITLE_SHOP_DESC_TEXT = 'Raise skill caps · Buy Max HP'
 // 初回プレイ時のショップ解除条件（タイトル案内用）
@@ -450,6 +471,14 @@ export const START_COUNTDOWN_DEPTH = 300
 // Stage 1: 中央より下にずらす（上側に余白を確保）
 export const START_COUNTDOWN_STAGE1_OFFSET_Y = 72
 
+// --- レベルアップ後の再開カウントダウン（ready・GO! のみ）---
+// ラベルが2つなので、3・2・1・START（4つ）のおよそ半分の長さになる
+export const RESUME_COUNTDOWN_LABELS = ['ready', 'GO!'] as const
+export const RESUME_COUNTDOWN_STEP_MS = START_COUNTDOWN_STEP_MS
+export const RESUME_COUNTDOWN_POP_IN_MS = START_COUNTDOWN_POP_IN_MS
+export const RESUME_COUNTDOWN_HOLD_MS = START_COUNTDOWN_HOLD_MS
+export const RESUME_COUNTDOWN_FADE_OUT_MS = START_COUNTDOWN_FADE_OUT_MS
+
 // --- プレイヤー本体・戦闘基礎値 ---
 // createPlayer / PlayerMovement / 被ダメ・攻撃 System が参照。
 // 実際の移動速度は GameScene.currentMoveSpeed（アイテムで増減）。PLAYER_SPEED は基準・上限用。
@@ -457,20 +486,6 @@ export const PLAYER_HP = 2
 // 基本移動速度。実際の速度は GameScene の currentMoveSpeed（アイテムで増減可能）
 export const PLAYER_SPEED = 200
 
-// --- タッチ用仮想ジョイスティック（マウスは従来の追従のまま）---
-// 指を置いた位置にベースを出し、ドラッグ方向へアナログ移動する（Phaser Pointer 標準）
-export const VIRTUAL_JOYSTICK_BASE_RADIUS = 52
-export const VIRTUAL_JOYSTICK_THUMB_RADIUS = 24
-export const VIRTUAL_JOYSTICK_MAX_OFFSET = 40
-export const VIRTUAL_JOYSTICK_DEAD_ZONE = 10
-export const VIRTUAL_JOYSTICK_DEPTH = 280
-export const VIRTUAL_JOYSTICK_BASE_COLOR = 0xffffff
-export const VIRTUAL_JOYSTICK_BASE_ALPHA = 0.22
-export const VIRTUAL_JOYSTICK_THUMB_COLOR = 0xffffff
-export const VIRTUAL_JOYSTICK_THUMB_ALPHA = 0.45
-export const VIRTUAL_JOYSTICK_BASE_STROKE_COLOR = 0xffffff
-export const VIRTUAL_JOYSTICK_BASE_STROKE_ALPHA = 0.35
-export const VIRTUAL_JOYSTICK_BASE_STROKE_WIDTH = 2
 // ゲームロジックの基準フレームレート（描画・速度計算の基準）。
 export const PHYSICS_FPS = 60
 export const PHYSICS_FIXED_STEP_SECONDS = 1 / PHYSICS_FPS
@@ -486,7 +501,7 @@ export const ARCADE_PHYSICS_FPS = PHYSICS_FPS * PHYSICS_SUBSTEPS_PER_FRAME
 export const PLAYER_MOVEMENT_FIXED_STEP_SECONDS = PHYSICS_FIXED_STEP_SECONDS
 
 // プレイ画面のキャラ・コイン・当たり判定の拡大率（スマホでも見やすく）
-export const WORLD_ENTITY_SCALE = 1.7
+export const WORLD_ENTITY_SCALE = 1.5
 
 export const PLAYER_WIDTH = 24 * WORLD_ENTITY_SCALE
 export const PLAYER_HEIGHT = 24 * WORLD_ENTITY_SCALE
@@ -726,10 +741,16 @@ export const ENEMY_BEETLE_SIZE_SCALE = 1.5
 export const ENEMY_BEETLE_WIDTH = ENEMY_WIDTH * ENEMY_BEETLE_SIZE_SCALE
 export const ENEMY_BEETLE_HEIGHT = ENEMY_HEIGHT * ENEMY_BEETLE_SIZE_SCALE
 export const ENEMY_BEETLE_RADIUS = ENEMY_RADIUS * ENEMY_BEETLE_SIZE_SCALE
+// 炎スプライトは縦長（129x161）。高さだけ合わせると緑スライムより細く小さく見えるので補正
+// 緑スライムの表示横幅（約42px）に近づける倍率 ≈ (169/120) / (129/161)
+export const ENEMY_SPIRIT_FIRE_SIZE_SCALE = 1.75
+export const ENEMY_SPIRIT_FIRE_WIDTH = ENEMY_WIDTH * ENEMY_SPIRIT_FIRE_SIZE_SCALE
+export const ENEMY_SPIRIT_FIRE_HEIGHT = ENEMY_HEIGHT * ENEMY_SPIRIT_FIRE_SIZE_SCALE
+export const ENEMY_SPIRIT_FIRE_RADIUS = ENEMY_RADIUS * ENEMY_SPIRIT_FIRE_SIZE_SCALE
 // 見た目の高さは敵の当たり判定に合わせる（プレイヤー24pxと同程度の小ささ）
 export const ENEMY_SLIME_BREATH_DISPLAY_HEIGHT = ENEMY_HEIGHT
 export const ENEMY_SLIME_MUD_BREATH_DISPLAY_HEIGHT = ENEMY_HEIGHT
-export const ENEMY_SPIRIT_FIRE_BREATH_DISPLAY_HEIGHT = ENEMY_HEIGHT
+export const ENEMY_SPIRIT_FIRE_BREATH_DISPLAY_HEIGHT = ENEMY_SPIRIT_FIRE_HEIGHT
 export const ENEMY_MUSHROOM_BREATH_DISPLAY_HEIGHT = ENEMY_MUSHROOM_HEIGHT
 export const ENEMY_STUMP_BREATH_DISPLAY_HEIGHT = ENEMY_STUMP_HEIGHT
 export const ENEMY_BEETLE_BREATH_DISPLAY_HEIGHT = ENEMY_BEETLE_HEIGHT
@@ -1394,9 +1415,49 @@ export const HP_FULL_DURATION_MS = 700
 export const HP_FULL_FLOAT_UP = 36
 export const HP_FULL_DEPTH = 220
 
+// --- 能力上限時の自動ゴールドレベルアップ表示（プレイは止めない）---
+export const AUTO_GOLD_LEVEL_UP_TEXT = 'LEVEL UP'
+export const AUTO_GOLD_LEVEL_UP_FONT_SIZE = '20px'
+export const AUTO_GOLD_LEVEL_UP_COLOR = '#fde68a'
+export const AUTO_GOLD_LEVEL_UP_STROKE_COLOR = '#000000'
+export const AUTO_GOLD_LEVEL_UP_STROKE_THICKNESS = 5
+export const AUTO_GOLD_LEVEL_UP_DURATION_MS = 900
+export const AUTO_GOLD_LEVEL_UP_FLOAT_UP = 42
+export const AUTO_GOLD_LEVEL_UP_DEPTH = 230
+export const AUTO_GOLD_LEVEL_UP_CHAIN_DELAY_MS = 280
+
 // --- ステージ床の色（Rectangle のみ・背景画像なし）---
 // 床の上に重ねる黒の濃さ（0 = 変化なし、1 = 真っ黒）。フィールドを暗めに見せる
 export const FLOOR_DARKEN_ALPHA = 0.3
+
+// --- Volcano 床（Plains タイルを使い、明るい赤 → 徐々に黒へ）---
+// タイル自体は Plains Stage1 と同じ明るいマスを使い、色はオーバーレイで変える
+export const VOLCANO_FLOOR_TILE_BLOCK_INDEX = 0
+// 床全体に重ねる赤い色（明るい溶岩っぽさ）
+export const VOLCANO_FLOOR_RED_OVERLAY_COLOR = 0xff3b2f
+// ステージごとの赤オーバーレイの濃さ（最初が一番赤く、後半は弱める）
+export const VOLCANO_FLOOR_RED_OVERLAY_ALPHAS: number[] = [0.48, 0.38, 0.28, 0.18, 0.1]
+// ステージごとの黒オーバーレイの濃さ（後半ほど真っ暗）
+export const VOLCANO_FLOOR_DARKEN_ALPHAS: number[] = [0.08, 0.28, 0.45, 0.62, 0.78]
+
+/** Volcano 床の赤オーバーレイ濃さ（stage 1〜）。 */
+export function getVolcanoFloorRedOverlayAlpha(stageNumber: number): number {
+  const index = Math.max(0, Math.floor(stageNumber) - 1)
+  if (index >= VOLCANO_FLOOR_RED_OVERLAY_ALPHAS.length) {
+    return VOLCANO_FLOOR_RED_OVERLAY_ALPHAS[VOLCANO_FLOOR_RED_OVERLAY_ALPHAS.length - 1]
+  }
+  return VOLCANO_FLOOR_RED_OVERLAY_ALPHAS[index]
+}
+
+/** Volcano 床の黒オーバーレイ濃さ（stage 1〜）。 */
+export function getVolcanoFloorDarkenAlpha(stageNumber: number): number {
+  const index = Math.max(0, Math.floor(stageNumber) - 1)
+  if (index >= VOLCANO_FLOOR_DARKEN_ALPHAS.length) {
+    return VOLCANO_FLOOR_DARKEN_ALPHAS[VOLCANO_FLOOR_DARKEN_ALPHAS.length - 1]
+  }
+  return VOLCANO_FLOOR_DARKEN_ALPHAS[index]
+}
+
 // インデックス = stageNumber - 1。GameScene が床色を切り替える。
 export const STAGE_FLOOR_COLORS: number[] = [
   0x1a2e1a, // Stage 1

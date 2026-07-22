@@ -15,6 +15,7 @@ import {
   SETTINGS_GEAR_HOVER_COLOR,
   SETTINGS_GEAR_DEPTH,
   SETTINGS_GEAR_GAP,
+  SETTINGS_GEAR_HIT_PADDING,
   TOP_BAR_BACKGROUND_COLOR,
   TOP_BAR_DEPTH,
   ACHIEVEMENT_ICON_SIZE,
@@ -25,6 +26,10 @@ import {
   GOLD_DISPLAY_GAP,
   GOLD_ICON_COLOR,
   GOLD_TEXT_COLOR,
+  GOLD_BAR_FONT_SIZE,
+  GOLD_ICON_FONT_SIZE,
+  GOLD_ICON_OFFSET_X,
+  GOLD_TEXT_OFFSET_X,
   TOP_BAR_TOOLTIP_BG_COLOR,
   TOP_BAR_TOOLTIP_BG_ALPHA,
   TOP_BAR_TOOLTIP_TEXT_COLOR,
@@ -32,6 +37,7 @@ import {
   TOP_BAR_TOOLTIP_TWEEN_MS,
   TOP_BAR_TOOLTIP_SLIDE_Y,
   TOP_BAR_TOOLTIP_GAP_BELOW_BAR,
+  TOP_BAR_TOOLTIP_FONT_SIZE,
   TOP_BAR_TOOLTIP_LABEL_SETTINGS,
   TOP_BAR_TOOLTIP_LABEL_ACHIEVEMENTS,
   TOP_BAR_TOOLTIP_LABEL_GOLD,
@@ -89,7 +95,7 @@ export function createTopBar(
   const gearHit = scene.add.rectangle(
     gearCenterX,
     barCenterY,
-    SETTINGS_GEAR_SIZE + 8,
+    SETTINGS_GEAR_SIZE + SETTINGS_GEAR_HIT_PADDING,
     TOP_BAR_HEIGHT,
     0x000000,
     0,
@@ -204,17 +210,17 @@ export function createTopBar(
     ACHIEVEMENT_BUTTON_WIDTH / 2 -
     GOLD_DISPLAY_GAP -
     GOLD_DISPLAY_WIDTH / 2
-  const goldIcon = scene.add.text(goldCenterX - 16, barCenterY, '●', {
-    fontSize: '11px',
+  const goldIcon = scene.add.text(goldCenterX + GOLD_ICON_OFFSET_X, barCenterY, '●', {
+    fontSize: GOLD_ICON_FONT_SIZE,
     color: GOLD_ICON_COLOR,
   })
   goldIcon.setOrigin(0.5)
   goldIcon.setScrollFactor(0)
   goldIcon.setDepth(SETTINGS_GEAR_DEPTH + 1)
 
-  const goldText = scene.add.text(goldCenterX + 5, barCenterY, '0', {
+  const goldText = scene.add.text(goldCenterX + GOLD_TEXT_OFFSET_X, barCenterY, '0', {
     fontFamily: FONT_FAMILY_UI,
-    fontSize: '11px',
+    fontSize: GOLD_BAR_FONT_SIZE,
     color: GOLD_TEXT_COLOR,
     fontStyle: 'bold',
   })
@@ -251,7 +257,7 @@ export function createTopBar(
 
   const tooltipText = scene.add.text(0, 0, '', {
     fontFamily: FONT_FAMILY_UI,
-    fontSize: '11px',
+    fontSize: TOP_BAR_TOOLTIP_FONT_SIZE,
     color: TOP_BAR_TOOLTIP_TEXT_COLOR,
   })
   tooltipText.setOrigin(0.5, 0)

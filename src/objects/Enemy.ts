@@ -22,6 +22,9 @@ import {
   ENEMY_MUSHROOM_HEIGHT,
   ENEMY_MUSHROOM_RADIUS,
   ENEMY_SPIRIT_FIRE_COLOR,
+  ENEMY_SPIRIT_FIRE_WIDTH,
+  ENEMY_SPIRIT_FIRE_HEIGHT,
+  ENEMY_SPIRIT_FIRE_RADIUS,
   ENEMY_STUMP_COLOR,
   ENEMY_STUMP_HP,
   ENEMY_STUMP_WIDTH,
@@ -645,6 +648,10 @@ function spawnEnemyCommon(
     hitboxWidth = ENEMY_MUSHROOM_WIDTH
     hitboxHeight = ENEMY_MUSHROOM_HEIGHT
     hitboxRadius = ENEMY_MUSHROOM_RADIUS
+  } else if (enemyKind === 'spiritFire') {
+    hitboxWidth = ENEMY_SPIRIT_FIRE_WIDTH
+    hitboxHeight = ENEMY_SPIRIT_FIRE_HEIGHT
+    hitboxRadius = ENEMY_SPIRIT_FIRE_RADIUS
   } else if (enemyKind === 'stump') {
     hitboxWidth = ENEMY_STUMP_WIDTH
     hitboxHeight = ENEMY_STUMP_HEIGHT

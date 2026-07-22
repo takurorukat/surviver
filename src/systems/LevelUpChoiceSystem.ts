@@ -200,6 +200,16 @@ function buildAvailableLevelUpChoicePool(
 }
 
 /**
+ * 通常の強化候補が1つも残っていないか（このときだけゴールド自動付与）。
+ * Python: len(build_available(...)) == 0 に相当
+ */
+export function hasNoNormalLevelUpChoices(
+  maxedChoiceIds: LevelUpChoiceId[] = [],
+): boolean {
+  return buildAvailableLevelUpChoicePool(maxedChoiceIds).length === 0
+}
+
+/**
  * プールから重複なしで N 個ひく。
  * Python: random.sample(pool, k) に相当
  */

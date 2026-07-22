@@ -5,17 +5,15 @@
 // 2. body.setVelocity で動かす（座標は直接書き換えない）
 // 3. WASD / 矢印キーを押したらキーボードモード
 // 4. キーボードモード中にキーを離したら停止（マウス／タッチへ引かれない）
-// 5. マウスクリック後はポインタ追従モード（キー未入力時）
-// 6. タッチ中だけ仮想ジョイスティック（指を置いた位置基準の相対方向）
-// 7. 新規開始時のデフォルトはキーボードモード（止まっている状態）
-// 8. 1描画フレームで届く距離なら止める（通り過ぎ防止・マウス追従時）
+// 5. マウス／タッチ後はポインタ追従モード（キー未入力時）
+// 6. 新規開始時のデフォルトはキーボードモード（止まっている状態）
+// 7. 1描画フレームで届く距離なら止める（通り過ぎ防止・ポインタ追従時）
 // GameScene はノックバック中でないとき、物理ステップ直前に applyPlayerMovement を呼ぶ
 // ============================================================
 
 import Phaser from 'phaser'
 import { PLAYER_RADIUS } from '../GameConstants'
 import { configureArcadeBodyForConstantSpeed } from '../utils/arcadePhysicsHelpers'
-import type { VirtualJoystick } from './VirtualJoystick'
 
 // プレイ可能エリア（ポインタ目標のクランプに使う）
 export type PlayAreaBounds = {
@@ -26,8 +24,8 @@ export type PlayAreaBounds = {
 }
 
 // 移動モード（GameScene が保持する）
-// isKeyboardMode=true の間はマウス追従しない
-// allowMouseFollow=true のときだけマウス追従（タッチ後は false のまま）
+// isKeyboardMode=true の間はポインタ追従しない
+// allowMouseFollow=true のときだけポインタ追従（マウス／タッチ共通）
 export type MovementState = {
   isKeyboardMode: boolean
   allowMouseFollow: boolean
@@ -184,7 +182,6 @@ export function applyPlayerMovement(
   movementState: MovementState,
   playArea: PlayAreaBounds,
   moveSpeed: number,
-  virtualJoystick: VirtualJoystick,
   deltaSeconds: number,
 ): void {
   // maxVelocity が低すぎて希望速度がクリップされないようにする
@@ -194,35 +191,24 @@ export function applyPlayerMovement(
   if (isAnyKeyboardKeyPressed(keys)) {
     movementState.isKeyboardMode = true
     movementState.allowMouseFollow = false
-    if (virtualJoystick.isActive()) {
-      virtualJoystick.cancel()
-    }
     const keyboardDir = getKeyboardDirection(keys)
     const normalized = normalizeDirection(keyboardDir.x, keyboardDir.y)
     playerBody.setVelocity(normalized.x * moveSpeed, normalized.y * moveSpeed)
     return
   }
 
-  // キーを離した直後もキーボードモードのまま → 停止（マウスに吸い寄せない）
+  // キーを離した直後もキーボードモードのまま → 停止（ポインタに吸い寄せない）
   if (movementState.isKeyboardMode) {
     playerBody.setVelocity(0, 0)
     return
   }
 
-  // タッチ中: 仮想ジョイスティックの力（0〜1）× 移動速度
-  if (virtualJoystick.isActive()) {
-    const force = virtualJoystick.getForce()
-    playerBody.setVelocity(force.x * moveSpeed, force.y * moveSpeed)
-    return
-  }
-
-  // マウス追従モードのときだけポインタへ追従
+  // マウス／タッチ追従モードのときだけポインタへ追従
   if (movementState.allowMouseFollow) {
     const target = getPointerTargetPosition(scene, playArea)
     setVelocityTowardTarget(player, playerBody, target.x, target.y, moveSpeed, deltaSeconds)
     return
   }
 
-  // タッチを離したあとなど → 停止
   playerBody.setVelocity(0, 0)
 }

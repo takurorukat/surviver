@@ -48,7 +48,12 @@ import {
   FINAL_WAVE_REMAINING_SECONDS,
   getAreaStageCount,
   getStageFloorColor,
+  AUTO_GOLD_LEVEL_UP_CHAIN_DELAY_MS,
   FLOOR_DARKEN_ALPHA,
+  VOLCANO_FLOOR_TILE_BLOCK_INDEX,
+  VOLCANO_FLOOR_RED_OVERLAY_COLOR,
+  getVolcanoFloorRedOverlayAlpha,
+  getVolcanoFloorDarkenAlpha,
   PLAINS_FLOOR_TILESET_KEY,
   PLAINS_FLOOR_BLOCK_HEIGHT,
   PLAINS_FLOOR_BLOCK_COUNT,
@@ -81,7 +86,6 @@ import {
   type MovementState,
   type PlayAreaBounds,
 } from '../systems/PlayerMovementSystem'
-import { VirtualJoystick } from '../systems/VirtualJoystick'
 import { stepArcadePhysicsOnce } from '../utils/arcadePhysicsHelpers'
 import { HudSystem } from '../systems/HudSystem'
 import { WaveSystem } from '../systems/WaveSystem'
@@ -142,7 +146,7 @@ import {
 } from '../objects/GoldCoin'
 import { playXpGainVisualEffect } from '../systems/XpGainEffectSystem'
 import { playGoldGainVisualEffect, playGoldCoinFlyToHud } from '../systems/GoldGainEffectSystem'
-import { playStartCountdown } from '../systems/StartCountdownSystem'
+import { playStartCountdown, playResumeCountdown } from '../systems/StartCountdownSystem'
 import {
   createOrientationGuide,
   type OrientationGuideView,
@@ -160,6 +164,7 @@ import { SettingsMenuSystem } from '../systems/SettingsMenuSystem'
 import { ConfirmDialogSystem } from '../systems/ConfirmDialogSystem'
 import {
   LevelUpChoiceSystem,
+  hasNoNormalLevelUpChoices,
   type LevelUpChoiceId,
 } from '../systems/LevelUpChoiceSystem'
 import { StageResultSystem } from '../systems/StageResultSystem'
@@ -203,6 +208,7 @@ import {
   playEnemyBlockedShield,
   playEnemyDefeatFlash,
   playHpFullText,
+  playAutoGoldLevelUpText,
   playPlayerHurtFlash,
 } from '../systems/CombatFeedbackSystem'
 
@@ -278,11 +284,10 @@ export class GameScene extends Phaser.Scene {
   // --- 移動・被ダメ・攻撃の内部状態 ---
   private movementKeys!: MovementKeys
   private movementState: MovementState = { isKeyboardMode: true, allowMouseFollow: false }
-  private virtualJoystick!: VirtualJoystick
   private orientationGuide: OrientationGuideView | null = null
   private scaleResizeHandler: ((gameSize: Phaser.Structs.Size) => void) | null = null
   // scene.restart 前に渡されたキーボードモード（resetStageState で復元）
-  // 新規開始のデフォルトはキーボードモード（止まっている）。クリックでマウス追従へ
+  // 新規開始のデフォルトはキーボードモード（止まっている）。クリック／タップでポインタ追従へ
   private pendingKeyboardMode = true
   private damageState: PlayerDamageState = createPlayerDamageState()
   private attackState: PlayerAttackState = createPlayerAttackState()
@@ -334,6 +339,8 @@ export class GameScene extends Phaser.Scene {
 
   // --- 一時停止・クリア演出フラグ ---
   private isLevelUpPaused = false
+  // レベルアップ選択後の再開カウントダウン中（プレイヤー・敵とも動かない）
+  private isResumeCountdownActive = false
   private isStageActive = false
   private isPlayerDead = false
   private isStageSettled = false
@@ -442,6 +449,7 @@ export class GameScene extends Phaser.Scene {
         if (
           !this.wasTimePausedBeforeSettings &&
           !this.isLevelUpPaused &&
+          !this.isResumeCountdownActive &&
           !this.isStageSettled &&
           !this.isPlayerDead
         ) {
@@ -452,8 +460,12 @@ export class GameScene extends Phaser.Scene {
           this.levelUpChoiceSystem.setKeyboardEnabled(true)
         }
         // 設定を閉じたあと BGM が完全に止まっていたら再開する。
-        // クリア BGM などが鳴っている場合はそのまま（切り替えない）
-        if (!this.gameAudioSystem.isAnyBgmActive()) {
+        // クリア BGM などが鳴っている場合／再開カウントダウン中はそのまま
+        if (
+          !this.isResumeCountdownActive &&
+          !this.isLevelUpPaused &&
+          !this.gameAudioSystem.isAnyBgmActive()
+        ) {
           this.startAreaBattleBgm()
         }
       },
@@ -573,6 +585,7 @@ export class GameScene extends Phaser.Scene {
         if (
           !this.wasTimePausedBeforeSettings &&
           !this.isLevelUpPaused &&
+          !this.isResumeCountdownActive &&
           !this.isStageSettled &&
           !this.isPlayerDead
         ) {
@@ -635,28 +648,24 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.isAchievementsPaused) {
-      this.cancelVirtualJoystickIfNeeded()
       this.updateHudDisplay()
       this.stopAllMovingBodies()
       return
     }
 
     if (this.confirmDialogSystem !== undefined && this.confirmDialogSystem.isOpen()) {
-      this.cancelVirtualJoystickIfNeeded()
       this.updateHudDisplay()
       this.stopAllMovingBodies()
       return
     }
 
     if (this.settingsMenuSystem !== undefined && this.settingsMenuSystem.isMenuOpen()) {
-      this.cancelVirtualJoystickIfNeeded()
       this.updateHudDisplay()
       this.stopAllMovingBodies()
       return
     }
 
     if (this.isPlayerDead || this.isStageSettled) {
-      this.cancelVirtualJoystickIfNeeded()
       this.updateHudDisplay()
       this.stopAllMovingBodies()
       return
@@ -664,21 +673,18 @@ export class GameScene extends Phaser.Scene {
 
     // クリア演出中（大きな文字 → コイン吸引）は戦闘を止める
     if (this.isStageClearBannerPlaying) {
-      this.cancelVirtualJoystickIfNeeded()
       this.updateHudDisplay()
       this.stopAllMovingBodies()
       return
     }
 
     if (this.isClearCoinVacuum) {
-      this.cancelVirtualJoystickIfNeeded()
       this.updateClearCoinVacuum()
       return
     }
 
-    // レベルアップ選択中はゲーム進行を止める
-    if (this.isLevelUpPaused) {
-      this.cancelVirtualJoystickIfNeeded()
+    // レベルアップ選択中／再開カウントダウン中はゲーム進行を止める
+    if (this.isLevelUpPaused || this.isResumeCountdownActive) {
       this.updateHudDisplay()
       this.updateRangeDisplay()
       this.updateHitboxDisplay()
@@ -723,7 +729,6 @@ export class GameScene extends Phaser.Scene {
         this.movementState,
         this.playAreaBounds,
         this.currentMoveSpeed,
-        this.virtualJoystick,
         this.game.loop.delta / 1000,
       )
     }
@@ -750,9 +755,6 @@ export class GameScene extends Phaser.Scene {
       this.scale.off('resize', this.scaleResizeHandler)
       this.scaleResizeHandler = null
     }
-    if (this.virtualJoystick !== undefined) {
-      this.virtualJoystick.destroy()
-    }
     if (this.waveSystem !== undefined) {
       this.waveSystem.stopWaves()
     }
@@ -770,6 +772,7 @@ export class GameScene extends Phaser.Scene {
     this.xpBarTween = null
     this.pendingLevelUps = 0
     this.isLevelUpPaused = false
+    this.isResumeCountdownActive = false
     this.isStageActive = false
     this.isPlayerDead = false
     this.isStageSettled = false
@@ -908,17 +911,23 @@ export class GameScene extends Phaser.Scene {
 
   // 役割: ステージに応じた床をプレイエリアに敷く
   // 呼び出し元: create
-  // Plains / Forest はタイルシートの色（上から順）。Forest はさらに枝・葉を散らす。
+  // Plains / Forest / Volcano は Plains タイルシート。Forest は枝・葉、Volcano は赤→黒。
   // 他エリアは従来の単色四角
   private createFloor(): void {
     if (this.areaId === 'plains') {
       this.createTiledFloor(false)
-      this.createFloorDarkenOverlay()
+      this.createFloorDarkenOverlay(FLOOR_DARKEN_ALPHA)
       return
     }
     if (this.areaId === 'forest') {
       this.createTiledFloor(true)
-      this.createFloorDarkenOverlay()
+      this.createFloorDarkenOverlay(FLOOR_DARKEN_ALPHA)
+      return
+    }
+    if (this.areaId === 'volcano') {
+      // Plains と同じタイル（一番明るい色）＋ 赤オーバーレイ＋黒で徐々に暗く
+      this.createTiledFloor(false, VOLCANO_FLOOR_TILE_BLOCK_INDEX)
+      this.createVolcanoFloorOverlays()
       return
     }
 
@@ -933,19 +942,40 @@ export class GameScene extends Phaser.Scene {
       PLAY_AREA_HEIGHT,
       floorColor,
     )
-    this.createFloorDarkenOverlay()
+    this.createFloorDarkenOverlay(FLOOR_DARKEN_ALPHA)
+  }
+
+  // 役割: Volcano 用。明るい赤から、ステージが進むほど黒く見せる
+  // 呼び出し元: createFloor
+  private createVolcanoFloorOverlays(): void {
+    const centerX = PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH / 2
+    const centerY = PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT / 2
+    const redAlpha = getVolcanoFloorRedOverlayAlpha(this.stageNumber)
+    const darkAlpha = getVolcanoFloorDarkenAlpha(this.stageNumber)
+
+    const redOverlay = this.add.rectangle(
+      centerX,
+      centerY,
+      PLAY_AREA_WIDTH,
+      PLAY_AREA_HEIGHT,
+      VOLCANO_FLOOR_RED_OVERLAY_COLOR,
+      redAlpha,
+    )
+    redOverlay.setDepth(0)
+
+    this.createFloorDarkenOverlay(darkAlpha)
   }
 
   // 役割: 床の上に半透明の黒を重ねて、フィールド全体を暗めに見せる
-  // 呼び出し元: createFloor
-  private createFloorDarkenOverlay(): void {
+  // 呼び出し元: createFloor / createVolcanoFloorOverlays
+  private createFloorDarkenOverlay(darkenAlpha: number): void {
     const overlay = this.add.rectangle(
       PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH / 2,
       PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT / 2,
       PLAY_AREA_WIDTH,
       PLAY_AREA_HEIGHT,
       0x000000,
-      FLOOR_DARKEN_ALPHA,
+      darkenAlpha,
     )
     // 生成順で床の直後に追加しているため、キャラや弾より下に表示される
     overlay.setDepth(0)
@@ -954,8 +984,18 @@ export class GameScene extends Phaser.Scene {
   // 役割: 床タイルを敷き詰めた1枚絵テクスチャを作って表示する
   // タイルシートは縦に5色。Stage 1 = 一番上の色、Stage 2 = 2番目... と順に使う
   // withForestDetails が true のときは枝・草・葉の装飾をランダムに散らす
-  private createTiledFloor(withForestDetails: boolean): void {
-    const blockIndex = Math.min(this.stageNumber - 1, PLAINS_FLOOR_BLOCK_COUNT - 1)
+  // forceBlockIndex を渡すと、ステージ番号ではなく指定色ブロックを使う（Volcano 用）
+  private createTiledFloor(
+    withForestDetails: boolean,
+    forceBlockIndex?: number,
+  ): void {
+    let blockIndex = Math.min(this.stageNumber - 1, PLAINS_FLOOR_BLOCK_COUNT - 1)
+    if (forceBlockIndex !== undefined) {
+      blockIndex = Math.min(
+        Math.max(0, forceBlockIndex),
+        PLAINS_FLOOR_BLOCK_COUNT - 1,
+      )
+    }
     const textureKey = `${this.areaId}-floor-stage-${blockIndex}`
 
     if (!this.textures.exists(textureKey)) {
@@ -1103,12 +1143,10 @@ export class GameScene extends Phaser.Scene {
     this.movementKeys = createMovementKeys(this)
   }
 
-  // 役割: マウスは追従、タッチは仮想ジョイスティックに切り替える
+  // 役割: マウス／タッチともポインタ追従で移動する
   // 呼び出し元: create
-  // 呼び出し先: this.input.on（コールバック内で movementState / VirtualJoystick を操作）
+  // 呼び出し先: this.input.on（コールバック内で movementState を操作）
   private setupMovementInput(): void {
-    this.virtualJoystick = new VirtualJoystick(this)
-
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!this.canStartPointerMovement()) {
         return
@@ -1120,39 +1158,15 @@ export class GameScene extends Phaser.Scene {
         return
       }
 
+      // マウスもタッチも同じ: ポインタ位置へ追従
       this.movementState.isKeyboardMode = false
-
-      if (pointer.wasTouch) {
-        // タッチ: 仮想ジョイスティック（指を離した座標へ吸い寄せない）
-        this.movementState.allowMouseFollow = false
-        this.virtualJoystick.start(pointer)
-        return
-      }
-
-      // マウス: 従来どおりポインタ追従
       this.movementState.allowMouseFollow = true
-      this.virtualJoystick.cancel()
-    })
-
-    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      if (!pointer.wasTouch) {
-        return
-      }
-      this.virtualJoystick.updatePointer(pointer)
-    })
-
-    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
-      this.virtualJoystick.stop(pointer)
-    })
-
-    this.input.on('pointerupoutside', (pointer: Phaser.Input.Pointer) => {
-      this.virtualJoystick.stop(pointer)
     })
   }
 
   /** 戦闘中だけポインタ移動を受け付ける。 */
   private canStartPointerMovement(): boolean {
-    if (this.isLevelUpPaused) {
+    if (this.isLevelUpPaused || this.isResumeCountdownActive) {
       return false
     }
     if (this.isAchievementsPaused) {
@@ -1173,11 +1187,6 @@ export class GameScene extends Phaser.Scene {
     return true
   }
 
-  private cancelVirtualJoystickIfNeeded(): void {
-    if (this.virtualJoystick !== undefined) {
-      this.virtualJoystick.cancel()
-    }
-  }
 
   // 役割: プレイヤーと敵の接触 overlap を登録する（体当たりダメージ）
   // 呼び出し元: create
@@ -1605,7 +1614,7 @@ export class GameScene extends Phaser.Scene {
     bullet: Phaser.GameObjects.Rectangle,
     enemy: Phaser.GameObjects.Rectangle,
   ): void {
-    if (!bullet.active || !enemy.active || this.isLevelUpPaused) {
+    if (!bullet.active || !enemy.active || this.isLevelUpPaused || this.isResumeCountdownActive) {
       return
     }
 
@@ -1811,8 +1820,8 @@ export class GameScene extends Phaser.Scene {
     if (!coin.active || this.isPlayerDead || this.isStageSettled) {
       return
     }
-    // クリア吸引中は拾える。通常のレベルアップ UI 中だけ拾わない
-    if (this.isLevelUpPaused && !this.isClearCoinVacuum) {
+    // クリア吸引中は拾える。通常のレベルアップ UI／再開カウントダウン中は拾わない
+    if ((this.isLevelUpPaused || this.isResumeCountdownActive) && !this.isClearCoinVacuum) {
       return
     }
 
@@ -1869,7 +1878,7 @@ export class GameScene extends Phaser.Scene {
       return
     }
 
-    if (!this.isLevelUpPaused) {
+    if (!this.isLevelUpPaused && !this.isResumeCountdownActive) {
       this.beginNextLevelUpChoice()
     }
   }
@@ -1923,12 +1932,20 @@ export class GameScene extends Phaser.Scene {
   // 役割: 次のレベルアップ選択 UI を開き、ゲームを一時停止する
   // 呼び出し元: checkAndQueueLevelUps / applyLevelUpChoice / finishClearCoinVacuum
   // 呼び出し先: pauseGameForLevelUp, levelUpChoiceSystem.show → applyLevelUpChoice
+  //             または applyAutoGoldLevelUp（能力上限でゴールドだけのとき）
   private beginNextLevelUpChoice(): void {
     if (this.pendingLevelUps <= 0 || this.isPlayerDead || this.isStageSettled) {
       return
     }
     // 順番: バナー → コイン吸引 → レベルアップ → 四角 UI
     if (this.isClearCoinVacuum || this.isStageClearBannerPlaying) {
+      return
+    }
+
+    const maxedChoiceIds = this.getMaxedLevelUpChoiceIds()
+    // 通常強化が残っていない＝ゴールドしか選べない → 画面を止めず自動付与
+    if (hasNoNormalLevelUpChoices(maxedChoiceIds)) {
+      this.applyAutoGoldLevelUp()
       return
     }
 
@@ -1958,8 +1975,61 @@ export class GameScene extends Phaser.Scene {
         this.applyLevelUpChoice(choiceId)
       },
       requiredChoice,
-      this.getMaxedLevelUpChoiceIds(),
+      maxedChoiceIds,
     )
+  }
+
+  // 役割: 能力が全部上限のとき、選択 UI なしで 1G を付与してプレイ継続
+  // 呼び出し元: beginNextLevelUpChoice
+  private applyAutoGoldLevelUp(): void {
+    const goldResult = addGold(1)
+    if (goldResult.shopJustUnlocked) {
+      this.pendingShopUnlockNotify = true
+    }
+
+    this.currentLevel = this.currentLevel + 1
+    this.pendingLevelUps = this.pendingLevelUps - 1
+
+    // 通常レベルアップと同じく HP 全回復（Ruins は除く）
+    if (this.areaId !== 'ruins') {
+      this.currentHp = this.maxHp
+      playHpFullText(this, this.player.x, this.player.y)
+    }
+    this.hudSystem.updateHpBar(this.currentHp, this.maxHp)
+
+    const xpProgress = getXpProgressForLevel(this.displayedTotalXp, this.currentLevel)
+    this.hudSystem.updateXpBar(xpProgress.currentInLevel, xpProgress.neededForNext)
+    this.hudSystem.updateStatusLine(this.currentLevel, this.stageNumber)
+    this.refreshPlayerStatsHud()
+    this.hudSystem.refreshGold()
+
+    // 止めずに「LEVEL UP」＋ゴールドが HUD へ飛ぶ演出
+    this.gameAudioSystem.playLevelUp()
+    this.gameAudioSystem.playCoinPickup()
+    playAutoGoldLevelUpText(this, this.player.x, this.player.y)
+    playGoldGainVisualEffect(
+      this,
+      this.hudSystem,
+      this.player.x,
+      this.player.y - 10,
+      1,
+    )
+
+    if (this.pendingLevelUps > 0) {
+      // 連続時は少し間を空けて、ゴールドが飛んでいくのが見えるようにする
+      this.time.delayedCall(AUTO_GOLD_LEVEL_UP_CHAIN_DELAY_MS, () => {
+        if (this.isPlayerDead || this.isStageSettled) {
+          return
+        }
+        this.beginNextLevelUpChoice()
+      })
+      return
+    }
+
+    if (this.waitingToShowStageClear) {
+      this.showStageClearResult()
+    }
+    // 通常プレイ中はポーズも再開カウントダウンもしない
   }
 
   // 役割: レベルアップ UI 中のポーズ（time 停止＋移動体の速度ゼロ）
@@ -1972,11 +2042,28 @@ export class GameScene extends Phaser.Scene {
     this.stopAllMovingBodies()
   }
 
-  // 役割: レベルアップ UI 終了後に時間と弾の速度を再開する
+  // 役割: レベルアップ UI 終了後、ready・GO! のあと戦闘を再開する
   // 呼び出し元: applyLevelUpChoice（残りレベルアップがなく、クリア待ちでもないとき）
+  // 呼び出し先: playResumeCountdown → resumeGameAfterLevelUp
+  private beginResumeCountdownAfterLevelUp(): void {
+    // 選択 UI は閉じ済み。カウントダウン中も移動・攻撃・被ダメを止める
+    this.isLevelUpPaused = false
+    this.isResumeCountdownActive = true
+    this.time.paused = true
+    this.stopAllMovingBodies()
+
+    playResumeCountdown(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, () => {
+      this.isResumeCountdownActive = false
+      this.resumeGameAfterLevelUp()
+    })
+  }
+
+  // 役割: レベルアップ UI 終了後に時間と弾の速度を再開する
+  // 呼び出し元: beginResumeCountdownAfterLevelUp の完了コールバック
   // 呼び出し先: maintainPlayerBulletVelocities / maintainEnemyBulletVelocities
   private resumeGameAfterLevelUp(): void {
     this.isLevelUpPaused = false
+    this.isResumeCountdownActive = false
     this.time.paused = false
     // 通常戦闘中のレベルアップが終わったら、そのエリアのBGMを再開する
     this.startAreaBattleBgm()
@@ -2002,6 +2089,7 @@ export class GameScene extends Phaser.Scene {
     const shouldRemainPaused =
       this.wasTimePausedBeforeAchievements ||
       this.isLevelUpPaused ||
+      this.isResumeCountdownActive ||
       this.isStageSettled ||
       this.isPlayerDead ||
       this.confirmDialogSystem.isOpen() ||
@@ -2148,7 +2236,7 @@ export class GameScene extends Phaser.Scene {
       return
     }
 
-    this.resumeGameAfterLevelUp()
+    this.beginResumeCountdownAfterLevelUp()
   }
 
   // 役割: レベルアップ選択肢 ID を HUD ステータス表示のキーに変換する
@@ -2230,7 +2318,7 @@ export class GameScene extends Phaser.Scene {
   // 呼び出し元: setupPlayerEnemyOverlap のコールバック
   // 呼び出し先: PlayerDamageSystem*, handlePlayerDeath
   private handlePlayerEnemyOverlap(enemy: Phaser.GameObjects.Rectangle): void {
-    if (this.isPlayerDead || this.isLevelUpPaused) {
+    if (this.isPlayerDead || this.isLevelUpPaused || this.isResumeCountdownActive) {
       return
     }
 
@@ -2260,7 +2348,7 @@ export class GameScene extends Phaser.Scene {
   // 呼び出し元: setupPlayerEnemyBulletOverlap のコールバック
   // 呼び出し先: PlayerDamageSystem*, handlePlayerDeath
   private handlePlayerEnemyBulletHit(bullet: Phaser.GameObjects.Triangle): void {
-    if (this.isPlayerDead || this.isLevelUpPaused) {
+    if (this.isPlayerDead || this.isLevelUpPaused || this.isResumeCountdownActive) {
       return
     }
     if (!bullet.active) {
@@ -2327,6 +2415,7 @@ export class GameScene extends Phaser.Scene {
       this.levelUpChoiceSystem.hide()
       this.isLevelUpPaused = false
     }
+    this.isResumeCountdownActive = false
 
     this.time.paused = true
     this.gameAudioSystem.stopBgm()
@@ -2350,6 +2439,7 @@ export class GameScene extends Phaser.Scene {
       this.isClearCoinVacuum ||
       this.waitingToShowStageClear ||
       this.isLevelUpPaused ||
+      this.isResumeCountdownActive ||
       this.currentHp <= 0
     ) {
       return
@@ -2386,6 +2476,7 @@ export class GameScene extends Phaser.Scene {
       this.isLevelUpPaused = false
       this.time.paused = false
     }
+    this.isResumeCountdownActive = false
 
     // 戦闘 BGM を止めて、バナー表示と同時にクリア音を鳴らす。
     // エリア最終: AREA CLEAR! 表示と同時に LevelUp2／途中ステージ: STAGE CLEAR! と同時に通常クリア音

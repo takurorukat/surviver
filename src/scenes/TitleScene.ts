@@ -4,9 +4,13 @@ import {
   GAME_HEIGHT,
   TOP_BAR_HEIGHT,
   STAGE_AREAS,
+  TITLE_AREA_PANEL_COLUMNS,
+  TITLE_AREA_VISIBLE_COUNT,
   TITLE_AREA_PANEL_WIDTH,
   TITLE_AREA_PANEL_HEIGHT,
   TITLE_AREA_PANEL_GAP,
+  TITLE_AREA_PANEL_ROW_GAP,
+  TITLE_AREA_GRID_START_Y,
   TITLE_AREA_PANEL_COLOR,
   TITLE_AREA_PANEL_BORDER_COLOR,
   TITLE_AREA_PANEL_SELECTED_BORDER_COLOR,
@@ -18,15 +22,22 @@ import {
   TITLE_LOCK_ICON_SIZE,
   TITLE_LOCK_ICON_COLOR,
   TITLE_LOCK_ICON_GAP,
-  TITLE_AREA_NAME_LEFT_PADDING,
-  TITLE_AREA_STAGES_RIGHT_PADDING,
+  TITLE_AREA_NAME_OFFSET_Y,
+  TITLE_AREA_STAGES_OFFSET_Y,
+  TITLE_AREA_NAME_FONT_SIZE,
+  TITLE_AREA_STAGES_FONT_SIZE,
   TITLE_AREA_CONDITION_COLOR,
   TITLE_SHOP_PANEL_WIDTH,
   TITLE_SHOP_PANEL_HEIGHT,
+  TITLE_SHOP_PANEL_CENTER_Y,
   TITLE_SHOP_PANEL_BORDER_COLOR,
   TITLE_SHOP_PANEL_COLOR,
   TITLE_SHOP_TITLE_COLOR,
   TITLE_SHOP_DESC_COLOR,
+  TITLE_SHOP_TITLE_FONT_SIZE,
+  TITLE_SHOP_DESC_FONT_SIZE,
+  TITLE_SHOP_TITLE_OFFSET_Y,
+  TITLE_SHOP_DESC_OFFSET_Y,
   TITLE_SHOP_TITLE_TEXT,
   TITLE_SHOP_DESC_TEXT,
   TITLE_SHOP_UNLOCK_CONDITION,
@@ -58,10 +69,6 @@ import {
   type BgmToggleButtonView,
 } from '../systems/BgmToggleButtonSystem'
 import {
-  createFullscreenToggleButton,
-  type FullscreenToggleButtonView,
-} from '../systems/FullscreenToggleButtonSystem'
-import {
   createOrientationGuide,
   type OrientationGuideView,
 } from '../systems/OrientationGuideSystem'
@@ -72,7 +79,6 @@ import { SealSkillSystem } from '../systems/SealSkillSystem'
 import { shrinkTextToFitWidth } from '../utils/fitTextToWidth'
 import {
   createLockIcon,
-  layoutLockIconAfterText,
   layoutLockIconWithCenteredText,
   playLockIconDeniedPulse,
   setLockIconColor,
@@ -132,7 +138,6 @@ export class TitleScene extends Phaser.Scene {
   private shopUnlockTipObjects: Phaser.GameObjects.GameObject[] = []
   private topBarView: TopBarView | null = null
   private bgmToggleButton: BgmToggleButtonView | null = null
-  private fullscreenToggleButton: FullscreenToggleButtonView | null = null
   private orientationGuide: OrientationGuideView | null = null
 
   constructor() {
@@ -309,16 +314,6 @@ export class TitleScene extends Phaser.Scene {
       this.selectMenuItem(this.getBgmSelectionIndex())
     })
 
-    this.fullscreenToggleButton = createFullscreenToggleButton(this, () => {
-      if (
-        this.confirmDialogSystem.isOpen() ||
-        this.shopSystem.isOpen() ||
-        this.sealSkillSystem.isOpen()
-      ) {
-        return
-      }
-      this.selectMenuItem(this.getFullscreenSelectionIndex())
-    })
 
     this.setupKeyboard()
     this.refreshSelectionVisual()
@@ -353,10 +348,9 @@ export class TitleScene extends Phaser.Scene {
   update(): void {
     // 設定メニュー側でBGMを切り替えた場合も、右下アイコンへすぐ反映する
     this.bgmToggleButton?.refresh()
-    this.fullscreenToggleButton?.refresh()
   }
 
-  // 選択番号: エリア → Shop → Seal Skills → 実績 → Settings → BGM → Fullscreen
+  // 選択番号: エリア → Shop → Seal Skills → 実績 → Settings → BGM
   // 縦移動では実績を飛ばし、実績は Settings から左右キーだけ
   private getShopSelectionIndex(): number {
     return this.panelViews.length
@@ -378,9 +372,6 @@ export class TitleScene extends Phaser.Scene {
     return this.panelViews.length + 5
   }
 
-  private getFullscreenSelectionIndex(): number {
-    return this.panelViews.length + 6
-  }
 
   private getGoldSelectionIndex(): number {
     // 上部バー左端寄り: Gold → Achievements → Settings
@@ -421,21 +412,6 @@ export class TitleScene extends Phaser.Scene {
     this.refreshSelectionVisual()
   }
 
-  /** エリア一覧で、direction 方向の次に選べるパネル index。なければ null。 */
-  private findNextSelectableAreaIndex(
-    fromIndex: number,
-    direction: number,
-  ): number | null {
-    let index = fromIndex + direction
-    while (index >= 0 && index < this.panelViews.length) {
-      if (isAreaSelectableOnTitle(this.panelViews[index].area)) {
-        return index
-      }
-      index = index + direction
-    }
-    return null
-  }
-
   /** 下から見て、最後に選べるエリアの index（なければ 0）。 */
   private findLastSelectableAreaIndex(): number {
     for (let index = this.panelViews.length - 1; index >= 0; index--) {
@@ -462,19 +438,26 @@ export class TitleScene extends Phaser.Scene {
     return this.selectedIndex === this.getBgmSelectionIndex()
   }
 
-  private isFullscreenSelected(): boolean {
-    return this.selectedIndex === this.getFullscreenSelectionIndex()
-  }
 
   private createAreaPanels(): void {
-    const centerX = GAME_WIDTH / 2
-    // SELECT AREA の下に余白を空けて、文字がパネルに隠れないようにする
-    // 6エリア全体が GAME_HEIGHT に収まる位置から始める（スクロールなし）
-    const startY = TOP_BAR_HEIGHT + 104
+    const columns = TITLE_AREA_PANEL_COLUMNS
+    const visibleCount = Math.min(TITLE_AREA_VISIBLE_COUNT, STAGE_AREAS.length)
+    const totalWidth =
+      columns * TITLE_AREA_PANEL_WIDTH + (columns - 1) * TITLE_AREA_PANEL_GAP
+    const gridLeft = (GAME_WIDTH - totalWidth) / 2
+    // SELECT AREA の下。2×2 パネルがラベルを隠さない位置
+    const startY = TITLE_AREA_GRID_START_Y
 
-    for (let index = 0; index < STAGE_AREAS.length; index++) {
+    for (let index = 0; index < visibleCount; index++) {
       const area = STAGE_AREAS[index]
-      const centerY = startY + index * (TITLE_AREA_PANEL_HEIGHT + TITLE_AREA_PANEL_GAP)
+      const column = index % columns
+      const row = Math.floor(index / columns)
+      const centerX =
+        gridLeft +
+        TITLE_AREA_PANEL_WIDTH / 2 +
+        column * (TITLE_AREA_PANEL_WIDTH + TITLE_AREA_PANEL_GAP)
+      const centerY =
+        startY + row * (TITLE_AREA_PANEL_HEIGHT + TITLE_AREA_PANEL_ROW_GAP)
       const panelView = this.createOneAreaPanel(area, centerX, centerY, index)
       this.panelViews.push(panelView)
     }
@@ -484,8 +467,7 @@ export class TitleScene extends Phaser.Scene {
   private createShopPreviewPanel(): ActionPreviewView {
     const centerX =
       GAME_WIDTH / 2 - TITLE_SHOP_PANEL_WIDTH / 2 - TITLE_ACTION_PANEL_GAP / 2
-    // conditionText（GAME_HEIGHT - 56）のすぐ上
-    const centerY = GAME_HEIGHT - 92
+    const centerY = TITLE_SHOP_PANEL_CENTER_Y
 
     const border = this.add.rectangle(
       centerX,
@@ -506,21 +488,26 @@ export class TitleScene extends Phaser.Scene {
     background.setScrollFactor(0)
     background.setInteractive({ useHandCursor: true })
 
-    const titleCenterY = centerY - 9
+    const titleCenterY = centerY + TITLE_SHOP_TITLE_OFFSET_Y
     const titleText = this.add.text(centerX, titleCenterY, TITLE_SHOP_TITLE_TEXT, {
       fontFamily: FONT_FAMILY_UI,
-      fontSize: '16px',
+      fontSize: TITLE_SHOP_TITLE_FONT_SIZE,
       color: TITLE_SHOP_TITLE_COLOR,
       fontStyle: 'bold',
     })
     titleText.setOrigin(0.5)
     titleText.setScrollFactor(0)
 
-    const descText = this.add.text(centerX, centerY + 11, TITLE_SHOP_DESC_TEXT, {
-      fontFamily: FONT_FAMILY_UI,
-      fontSize: '12px',
-      color: TITLE_SHOP_DESC_COLOR,
-    })
+    const descText = this.add.text(
+      centerX,
+      centerY + TITLE_SHOP_DESC_OFFSET_Y,
+      TITLE_SHOP_DESC_TEXT,
+      {
+        fontFamily: FONT_FAMILY_UI,
+        fontSize: TITLE_SHOP_DESC_FONT_SIZE,
+        color: TITLE_SHOP_DESC_COLOR,
+      },
+    )
     descText.setOrigin(0.5)
     descText.setScrollFactor(0)
     shrinkTextToFitWidth(descText, TITLE_SHOP_PANEL_WIDTH - 16)
@@ -575,7 +562,7 @@ export class TitleScene extends Phaser.Scene {
   private createSealPreviewPanel(): ActionPreviewView {
     const centerX =
       GAME_WIDTH / 2 + TITLE_SHOP_PANEL_WIDTH / 2 + TITLE_ACTION_PANEL_GAP / 2
-    const centerY = GAME_HEIGHT - 92
+    const centerY = TITLE_SHOP_PANEL_CENTER_Y
 
     const border = this.add.rectangle(
       centerX,
@@ -593,19 +580,24 @@ export class TitleScene extends Phaser.Scene {
     )
     background.setInteractive({ useHandCursor: true })
 
-    const titleCenterY = centerY - 9
+    const titleCenterY = centerY + TITLE_SHOP_TITLE_OFFSET_Y
     const titleText = this.add.text(centerX, titleCenterY, TITLE_SEAL_TITLE_TEXT, {
       fontFamily: FONT_FAMILY_UI,
-      fontSize: '16px',
+      fontSize: TITLE_SHOP_TITLE_FONT_SIZE,
       color: TITLE_SHOP_TITLE_COLOR,
       fontStyle: 'bold',
     })
     titleText.setOrigin(0.5)
-    const descText = this.add.text(centerX, centerY + 11, TITLE_SEAL_DESC_TEXT, {
-      fontFamily: FONT_FAMILY_UI,
-      fontSize: '12px',
-      color: TITLE_SHOP_DESC_COLOR,
-    })
+    const descText = this.add.text(
+      centerX,
+      centerY + TITLE_SHOP_DESC_OFFSET_Y,
+      TITLE_SEAL_DESC_TEXT,
+      {
+        fontFamily: FONT_FAMILY_UI,
+        fontSize: TITLE_SHOP_DESC_FONT_SIZE,
+        color: TITLE_SHOP_DESC_COLOR,
+      },
+    )
     descText.setOrigin(0.5)
     shrinkTextToFitWidth(descText, TITLE_SHOP_PANEL_WIDTH - 16)
 
@@ -682,40 +674,44 @@ export class TitleScene extends Phaser.Scene {
       fillColor,
     )
 
-    const panelLeft = centerX - TITLE_AREA_PANEL_WIDTH / 2
-    const nameX = panelLeft + TITLE_AREA_NAME_LEFT_PADDING
     let nameLabel = '?'
     if (revealed) {
       nameLabel = area.name
     }
-    const nameText = this.add.text(nameX, centerY, nameLabel, {
+    const nameCenterY = centerY + TITLE_AREA_NAME_OFFSET_Y
+    const nameText = this.add.text(centerX, nameCenterY, nameLabel, {
       fontFamily: FONT_FAMILY_UI,
-      fontSize: '18px',
+      fontSize: TITLE_AREA_NAME_FONT_SIZE,
       color: nameColor,
       fontStyle: 'bold',
     })
-    nameText.setOrigin(0, 0.5)
+    nameText.setOrigin(0.5)
 
-    const panelRight = centerX + TITLE_AREA_PANEL_WIDTH / 2
-    const stagesX = panelRight - TITLE_AREA_STAGES_RIGHT_PADDING
     const stagesLabel = revealed ? `${area.stageCount} Stages` : '???'
-    const stagesText = this.add.text(stagesX, centerY, stagesLabel, {
-      fontFamily: FONT_FAMILY_UI,
-      fontSize: '14px',
-      color: playable ? TITLE_AREA_SUB_COLOR : TITLE_AREA_LOCKED_NAME_COLOR,
-    })
-    stagesText.setOrigin(1, 0.5)
+    const stagesText = this.add.text(
+      centerX,
+      centerY + TITLE_AREA_STAGES_OFFSET_Y,
+      stagesLabel,
+      {
+        fontFamily: FONT_FAMILY_UI,
+        fontSize: TITLE_AREA_STAGES_FONT_SIZE,
+        color: playable ? TITLE_AREA_SUB_COLOR : TITLE_AREA_LOCKED_NAME_COLOR,
+      },
+    )
+    stagesText.setOrigin(0.5)
 
     const lockIcon = createLockIcon(
       this,
-      nameX,
-      centerY,
+      centerX,
+      nameCenterY,
       TITLE_LOCK_ICON_SIZE,
       TITLE_LOCK_ICON_COLOR,
     )
-    layoutLockIconAfterText(
+    layoutLockIconWithCenteredText(
       lockIcon,
       nameText,
+      centerX,
+      nameCenterY,
       TITLE_LOCK_ICON_GAP,
       revealed && !playable,
     )
@@ -897,19 +893,30 @@ export class TitleScene extends Phaser.Scene {
       return
     }
 
-    // 右下ボタン: Fullscreen ←→ BGM
-    if (this.isBgmSelected()) {
-      if (direction < 0) {
-        this.selectMenuItem(this.getFullscreenSelectionIndex())
-      }
+    // エリアグリッド内: 同じ行の左右移動
+    if (this.selectedIndex >= 0 && this.selectedIndex < this.panelViews.length) {
+      this.moveAreaGridHorizontal(direction)
+    }
+  }
+
+  // 役割: エリア 2列グリッドの左右移動（? は飛ばす）
+  private moveAreaGridHorizontal(direction: number): void {
+    const columns = TITLE_AREA_PANEL_COLUMNS
+    const row = Math.floor(this.selectedIndex / columns)
+    const column = this.selectedIndex % columns
+    const targetColumn = column + direction
+    if (targetColumn < 0 || targetColumn >= columns) {
       return
     }
-    if (this.isFullscreenSelected()) {
-      if (direction > 0) {
-        this.selectMenuItem(this.getBgmSelectionIndex())
-      }
+
+    const targetIndex = row * columns + targetColumn
+    if (targetIndex < 0 || targetIndex >= this.panelViews.length) {
       return
     }
+    if (!isAreaSelectableOnTitle(this.panelViews[targetIndex].area)) {
+      return
+    }
+    this.selectMenuItem(targetIndex)
   }
 
   private moveSelection(direction: number): void {
@@ -942,7 +949,7 @@ export class TitleScene extends Phaser.Scene {
       return
     }
 
-    if (this.isBgmSelected() || this.isFullscreenSelected()) {
+    if (this.isBgmSelected()) {
       if (direction > 0) {
         this.selectMenuItem(this.getSettingsSelectionIndex())
       } else {
@@ -972,29 +979,36 @@ export class TitleScene extends Phaser.Scene {
       return
     }
 
-    // エリア一覧内の上下移動（? 表記はスキップ）
+    // エリアグリッド内の上下移動（同じ列。? 表記はスキップ）
     if (this.panelViews.length <= 0) {
       return
     }
 
-    if (direction < 0) {
-      const nextAreaIndex = this.findNextSelectableAreaIndex(this.selectedIndex, -1)
-      if (nextAreaIndex === null) {
-        // 上に選べるエリアがない → Settings
-        this.selectMenuItem(this.getSettingsSelectionIndex())
+    const columns = TITLE_AREA_PANEL_COLUMNS
+    const column = this.selectedIndex % columns
+    const row = Math.floor(this.selectedIndex / columns)
+    const rowStep = direction < 0 ? -1 : 1
+    let nextRow = row + rowStep
+
+    while (nextRow >= 0) {
+      const candidateIndex = nextRow * columns + column
+      if (candidateIndex >= this.panelViews.length) {
+        break
+      }
+      if (isAreaSelectableOnTitle(this.panelViews[candidateIndex].area)) {
+        this.selectMenuItem(candidateIndex)
         return
       }
-      this.selectMenuItem(nextAreaIndex)
-      return
+      nextRow = nextRow + rowStep
     }
 
-    const nextAreaIndex = this.findNextSelectableAreaIndex(this.selectedIndex, 1)
-    if (nextAreaIndex === null) {
-      // 下に選べるエリアがない → Shop
-      this.selectMenuItem(this.getShopSelectionIndex())
+    if (direction < 0) {
+      // 上に選べるエリアがない → Settings
+      this.selectMenuItem(this.getSettingsSelectionIndex())
       return
     }
-    this.selectMenuItem(nextAreaIndex)
+    // 下に選べるエリアがない → Shop
+    this.selectMenuItem(this.getShopSelectionIndex())
   }
 
   private refreshSelectionVisual(): void {
@@ -1015,18 +1029,41 @@ export class TitleScene extends Phaser.Scene {
       const isSelected = index === this.selectedIndex
 
       // Clear Save 直後にも即時反映されるよう、文字の内容と色を毎回更新する
+      const nameCenterX = panel.background.x
+      const nameCenterY = panel.nameText.y
       if (!revealed) {
         panel.nameText.setText('?')
         panel.stagesText.setText('???')
-        layoutLockIconAfterText(panel.lockIcon, panel.nameText, TITLE_LOCK_ICON_GAP, false)
+        layoutLockIconWithCenteredText(
+          panel.lockIcon,
+          panel.nameText,
+          nameCenterX,
+          nameCenterY,
+          TITLE_LOCK_ICON_GAP,
+          false,
+        )
       } else if (playable) {
         panel.nameText.setText(panel.area.name)
         panel.stagesText.setText(`${panel.area.stageCount} Stages`)
-        layoutLockIconAfterText(panel.lockIcon, panel.nameText, TITLE_LOCK_ICON_GAP, false)
+        layoutLockIconWithCenteredText(
+          panel.lockIcon,
+          panel.nameText,
+          nameCenterX,
+          nameCenterY,
+          TITLE_LOCK_ICON_GAP,
+          false,
+        )
       } else {
         panel.nameText.setText(panel.area.name)
         panel.stagesText.setText(`${panel.area.stageCount} Stages`)
-        layoutLockIconAfterText(panel.lockIcon, panel.nameText, TITLE_LOCK_ICON_GAP, true)
+        layoutLockIconWithCenteredText(
+          panel.lockIcon,
+          panel.nameText,
+          nameCenterX,
+          nameCenterY,
+          TITLE_LOCK_ICON_GAP,
+          true,
+        )
       }
 
       if (playable) {
@@ -1069,7 +1106,6 @@ export class TitleScene extends Phaser.Scene {
       this.topBarView.setGoldSelected(this.isGoldSelected())
     }
     this.bgmToggleButton?.setSelected(this.isBgmSelected())
-    this.fullscreenToggleButton?.setSelected(this.isFullscreenSelected())
 
     if (this.shopPreviewView !== null) {
       const shopUnlocked = this.isShopMenuUnlocked()
@@ -1517,10 +1553,6 @@ export class TitleScene extends Phaser.Scene {
       return
     }
 
-    if (this.isFullscreenSelected()) {
-      this.fullscreenToggleButton?.toggle()
-      return
-    }
 
     const panel = this.panelViews[this.selectedIndex]
     if (panel === undefined) {

@@ -35,6 +35,14 @@ import {
   HP_FULL_DURATION_MS,
   HP_FULL_FLOAT_UP,
   HP_FULL_DEPTH,
+  AUTO_GOLD_LEVEL_UP_TEXT,
+  AUTO_GOLD_LEVEL_UP_FONT_SIZE,
+  AUTO_GOLD_LEVEL_UP_COLOR,
+  AUTO_GOLD_LEVEL_UP_STROKE_COLOR,
+  AUTO_GOLD_LEVEL_UP_STROKE_THICKNESS,
+  AUTO_GOLD_LEVEL_UP_DURATION_MS,
+  AUTO_GOLD_LEVEL_UP_FLOAT_UP,
+  AUTO_GOLD_LEVEL_UP_DEPTH,
   GAME_WIDTH,
   GAME_HEIGHT,
   FONT_FAMILY_UI,
@@ -185,6 +193,51 @@ export function playHpFullText(scene: Phaser.Scene, x: number, y: number): void 
         ease: 'Sine.Out',
         onComplete: () => {
           fullText.destroy()
+        },
+      })
+    },
+  })
+}
+
+// 能力が全部上限のとき、選択画面なしでレベルアップしたことを知らせる
+export function playAutoGoldLevelUpText(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+): void {
+  const levelUpText = scene.add.text(x, y - 36, AUTO_GOLD_LEVEL_UP_TEXT, {
+    fontFamily: FONT_FAMILY_UI,
+    fontSize: AUTO_GOLD_LEVEL_UP_FONT_SIZE,
+    color: AUTO_GOLD_LEVEL_UP_COLOR,
+    fontStyle: 'bold',
+  })
+  levelUpText.setOrigin(0.5, 0.5)
+  levelUpText.setStroke(
+    AUTO_GOLD_LEVEL_UP_STROKE_COLOR,
+    AUTO_GOLD_LEVEL_UP_STROKE_THICKNESS,
+  )
+  levelUpText.setDepth(AUTO_GOLD_LEVEL_UP_DEPTH)
+  levelUpText.setScale(0.55)
+  levelUpText.setAlpha(0)
+
+  scene.tweens.add({
+    targets: levelUpText,
+    alpha: 1,
+    scaleX: 1.2,
+    scaleY: 1.2,
+    duration: 180,
+    ease: 'Back.Out',
+    onComplete: () => {
+      scene.tweens.add({
+        targets: levelUpText,
+        y: levelUpText.y - AUTO_GOLD_LEVEL_UP_FLOAT_UP,
+        alpha: 0,
+        scaleX: 1,
+        scaleY: 1,
+        duration: AUTO_GOLD_LEVEL_UP_DURATION_MS - 180,
+        ease: 'Sine.Out',
+        onComplete: () => {
+          levelUpText.destroy()
         },
       })
     },
