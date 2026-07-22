@@ -28,8 +28,8 @@ import {
   GOLD_TEXT_COLOR,
   GOLD_BAR_FONT_SIZE,
   GOLD_ICON_FONT_SIZE,
-  GOLD_ICON_OFFSET_X,
-  GOLD_TEXT_OFFSET_X,
+  GOLD_ICON_LEFT_PADDING,
+  GOLD_ICON_TEXT_GAP,
   TOP_BAR_TOOLTIP_BG_COLOR,
   TOP_BAR_TOOLTIP_BG_ALPHA,
   TOP_BAR_TOOLTIP_TEXT_COLOR,
@@ -205,12 +205,14 @@ export function createTopBar(
   achievementIcon.setDepth(SETTINGS_GEAR_DEPTH + 1)
 
   // 実績の左に、すべてのランで共有するゴールド所持数を表示
-  const goldCenterX =
-    achievementCenterX -
-    ACHIEVEMENT_BUTTON_WIDTH / 2 -
-    GOLD_DISPLAY_GAP -
-    GOLD_DISPLAY_WIDTH / 2
-  const goldIcon = scene.add.text(goldCenterX + GOLD_ICON_OFFSET_X, barCenterY, '●', {
+  // レイアウト: [エリア左][アイコン][隙間][数字…右へ伸びる]（桁が増えてもアイコンと重ならない）
+  const goldAreaRight =
+    achievementCenterX - ACHIEVEMENT_BUTTON_WIDTH / 2 - GOLD_DISPLAY_GAP
+  const goldAreaLeft = goldAreaRight - GOLD_DISPLAY_WIDTH
+  const goldCenterX = goldAreaLeft + GOLD_DISPLAY_WIDTH / 2
+  const goldIconX = goldAreaLeft + GOLD_ICON_LEFT_PADDING
+
+  const goldIcon = scene.add.text(goldIconX, barCenterY, '●', {
     fontSize: GOLD_ICON_FONT_SIZE,
     color: GOLD_ICON_COLOR,
   })
@@ -218,13 +220,15 @@ export function createTopBar(
   goldIcon.setScrollFactor(0)
   goldIcon.setDepth(SETTINGS_GEAR_DEPTH + 1)
 
-  const goldText = scene.add.text(goldCenterX + GOLD_TEXT_OFFSET_X, barCenterY, '0', {
+  // アイコンの右端から隙間を空けて数字を左揃え（幅が増えても右へ伸びる）
+  const goldTextX = goldIconX + goldIcon.width / 2 + GOLD_ICON_TEXT_GAP
+  const goldText = scene.add.text(goldTextX, barCenterY, '0', {
     fontFamily: FONT_FAMILY_UI,
     fontSize: GOLD_BAR_FONT_SIZE,
     color: GOLD_TEXT_COLOR,
     fontStyle: 'bold',
   })
-  goldText.setOrigin(0.5)
+  goldText.setOrigin(0, 0.5)
   goldText.setScrollFactor(0)
   goldText.setDepth(SETTINGS_GEAR_DEPTH + 1)
 

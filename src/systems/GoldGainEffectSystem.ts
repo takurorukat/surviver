@@ -1,8 +1,8 @@
 // ============================================================
 // ゴールド獲得演出
 // ------------------------------------------------------------
-// XP のキラキラ（✦）とは別。ゴールドコインの見た目のまま、
-// 上部バーのゴールド表示へ飛ばす。
+// ・レベルアップのゴールド: プレイヤーから上へ浮かぶ
+// ・クリア吸引の拾得: 上部バーのゴールド表示へ飛ぶ
 // 実際の保存・加算は GameScene / UnlockSaveSystem が担当する。
 // ============================================================
 
@@ -10,6 +10,8 @@ import Phaser from 'phaser'
 import {
   GOLD_GAIN_EFFECT_DURATION_MS,
   GOLD_GAIN_TEXT_COLOR,
+  GOLD_GAIN_FLOAT_UP,
+  GOLD_GAIN_FLOAT_END_SCALE,
   GOLD_COIN_SPRITE_KEY,
   GOLD_COIN_ANIM_KEY,
   GOLD_COIN_DISPLAY_SIZE,
@@ -18,20 +20,44 @@ import { ensureGoldCoinAnimation } from '../objects/GoldCoin'
 import type { HudSystem } from './HudSystem'
 
 const GOLD_FLY_EFFECT_DEPTH = 440
-// バーに吸い込まれて小さく見える終了スケール
+// バーに吸い込まれて小さく見える終了スケール（クリア吸引用）
 const GOLD_FLY_END_SCALE = 0.45
 
-/** ゴールド加算時のコイン飛行＋文言（レベルアップの Gold 選択など）。 */
+/**
+ * レベルアップでゴールドを得たときの演出。
+ * コインと「+N GOLD」がプレイヤー位置から上へ浮かんで消える。
+ */
 export function playGoldGainVisualEffect(
   scene: Phaser.Scene,
-  hudSystem: HudSystem,
+  _hudSystem: HudSystem,
   startX: number,
   startY: number,
   goldGained: number,
 ): void {
-  playGoldCoinFlyToHud(scene, hudSystem, startX, startY)
+  ensureGoldCoinAnimation(scene)
 
-  const target = hudSystem.getGoldEffectTargetPosition()
+  const coin = scene.add.sprite(startX, startY, GOLD_COIN_SPRITE_KEY, 0)
+  coin.setDisplaySize(GOLD_COIN_DISPLAY_SIZE, GOLD_COIN_DISPLAY_SIZE)
+  coin.setDepth(GOLD_FLY_EFFECT_DEPTH)
+  if (scene.anims.exists(GOLD_COIN_ANIM_KEY)) {
+    coin.play(GOLD_COIN_ANIM_KEY)
+  }
+
+  const endY = startY - GOLD_GAIN_FLOAT_UP
+
+  scene.tweens.add({
+    targets: coin,
+    y: endY,
+    scaleX: GOLD_GAIN_FLOAT_END_SCALE,
+    scaleY: GOLD_GAIN_FLOAT_END_SCALE,
+    alpha: 0,
+    duration: GOLD_GAIN_EFFECT_DURATION_MS,
+    ease: 'Cubic.Out',
+    onComplete: () => {
+      coin.destroy()
+    },
+  })
+
   const gainedText = scene.add
     .text(startX, startY - 24, `+${goldGained} GOLD`, {
       fontSize: '17px',
@@ -45,11 +71,10 @@ export function playGoldGainVisualEffect(
 
   scene.tweens.add({
     targets: gainedText,
-    x: target.x,
-    y: target.y,
+    y: endY - 20,
     alpha: 0,
     duration: GOLD_GAIN_EFFECT_DURATION_MS,
-    ease: 'Quad.InOut',
+    ease: 'Cubic.Out',
     onComplete: () => {
       gainedText.destroy()
     },

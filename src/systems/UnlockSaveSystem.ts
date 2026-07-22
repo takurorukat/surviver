@@ -517,7 +517,8 @@ function usesSkillCapShopPricing(upgradeId: ShopUpgradeId): boolean {
     upgradeId === 'powerCap' ||
     upgradeId === 'speedCap' ||
     upgradeId === 'rangeCap' ||
-    upgradeId === 'xpBonusCap'
+    upgradeId === 'xpBonusCap' ||
+    upgradeId === 'pierceCap'
   )
 }
 
@@ -529,7 +530,7 @@ function calculateMaxHpShopPrice(purchases: number): number {
   return MAX_HP_SHOP_PRICES[MAX_HP_SHOP_PRICES.length - 1]
 }
 
-/** Power / Speed / Range / XP Bonus Cap の価格。それ以降も 40G。 */
+/** Power / Speed / Range / XP Bonus / Pierce Cap の価格。それ以降も 40G。 */
 function calculateSkillCapShopPrice(purchases: number): number {
   if (purchases < SKILL_CAP_SHOP_PRICES.length) {
     return SKILL_CAP_SHOP_PRICES[purchases]

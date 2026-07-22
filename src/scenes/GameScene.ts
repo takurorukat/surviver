@@ -82,9 +82,18 @@ import {
 import {
   createMovementKeys,
   applyPlayerMovement,
+  createInitialMovementState,
+  createPointerFollowMarker,
+  destroyPointerFollowMarker,
+  beginRelativePointerFollow,
+  beginAbsolutePointerFollow,
+  shouldUseRelativePointerFollow,
+  endRelativePointerFollow,
+  updateRelativeFollowAimOnly,
   type MovementKeys,
   type MovementState,
   type PlayAreaBounds,
+  type PointerFollowMarker,
 } from '../systems/PlayerMovementSystem'
 import { stepArcadePhysicsOnce } from '../utils/arcadePhysicsHelpers'
 import { HudSystem } from '../systems/HudSystem'
@@ -283,7 +292,8 @@ export class GameScene extends Phaser.Scene {
 
   // --- 移動・被ダメ・攻撃の内部状態 ---
   private movementKeys!: MovementKeys
-  private movementState: MovementState = { isKeyboardMode: true, allowMouseFollow: false }
+  private movementState: MovementState = createInitialMovementState(true)
+  private pointerFollowMarker: PointerFollowMarker | null = null
   private orientationGuide: OrientationGuideView | null = null
   private scaleResizeHandler: ((gameSize: Phaser.Structs.Size) => void) | null = null
   // scene.restart 前に渡されたキーボードモード（resetStageState で復元）
@@ -341,6 +351,8 @@ export class GameScene extends Phaser.Scene {
   private isLevelUpPaused = false
   // レベルアップ選択後の再開カウントダウン中（プレイヤー・敵とも動かない）
   private isResumeCountdownActive = false
+  // ステージ開始の 3・2・1・START 中（狙い点だけ操作可）
+  private isStartCountdownActive = false
   private isStageActive = false
   private isPlayerDead = false
   private isStageSettled = false
@@ -615,7 +627,9 @@ export class GameScene extends Phaser.Scene {
       countdownCenterY = countdownCenterY + START_COUNTDOWN_STAGE1_OFFSET_Y
     }
 
+    this.isStartCountdownActive = true
     playStartCountdown(this, GAME_WIDTH / 2, countdownCenterY, () => {
+      this.isStartCountdownActive = false
       this.isStageActive = true
       this.stageElapsedMs = 0
       this.spawnForestStage5GravestoneIfNeeded()
@@ -683,12 +697,26 @@ export class GameScene extends Phaser.Scene {
       return
     }
 
-    // レベルアップ選択中／再開カウントダウン中はゲーム進行を止める
-    if (this.isLevelUpPaused || this.isResumeCountdownActive) {
+    // レベルアップ選択中は完全停止。カウントダウン中は移動だけ止め、狙い点は操作可
+    if (this.isLevelUpPaused) {
       this.updateHudDisplay()
       this.updateRangeDisplay()
       this.updateHitboxDisplay()
       this.stopAllMovingBodies()
+      return
+    }
+    if (this.isResumeCountdownActive || this.isStartCountdownActive) {
+      this.updateHudDisplay()
+      this.updateRangeDisplay()
+      this.updateHitboxDisplay()
+      // 相対追従の目標点だけ更新（キャラ・敵は動かさない）
+      this.stopAllMovingBodies({ keepRelativeFollow: true })
+      updateRelativeFollowAimOnly(
+        this,
+        this.movementState,
+        this.playAreaBounds,
+        this.pointerFollowMarker,
+      )
       return
     }
 
@@ -730,6 +758,7 @@ export class GameScene extends Phaser.Scene {
         this.playAreaBounds,
         this.currentMoveSpeed,
         this.game.loop.delta / 1000,
+        this.pointerFollowMarker,
       )
     }
 
@@ -747,6 +776,8 @@ export class GameScene extends Phaser.Scene {
   // 補足: ステージ遷移では BGM を止めない（共有1本を継続）。止めたいときは明示的に stopBgm
   shutdown(): void {
     this.physics.enableUpdate()
+    destroyPointerFollowMarker(this.pointerFollowMarker)
+    this.pointerFollowMarker = null
     if (this.orientationGuide !== null) {
       this.orientationGuide.destroy()
       this.orientationGuide = null
@@ -773,6 +804,7 @@ export class GameScene extends Phaser.Scene {
     this.pendingLevelUps = 0
     this.isLevelUpPaused = false
     this.isResumeCountdownActive = false
+    this.isStartCountdownActive = false
     this.isStageActive = false
     this.isPlayerDead = false
     this.isStageSettled = false
@@ -782,10 +814,7 @@ export class GameScene extends Phaser.Scene {
     this.clearCoinVacuumEmptySinceMs = 0
     this.hasStartedFinalWave = false
     this.tookDamageThisStage = false
-    this.movementState = {
-      isKeyboardMode: this.pendingKeyboardMode,
-      allowMouseFollow: false,
-    }
+    this.movementState = createInitialMovementState(this.pendingKeyboardMode)
     this.damageState = createPlayerDamageState()
     this.attackState = createPlayerAttackState()
 
@@ -1143,10 +1172,12 @@ export class GameScene extends Phaser.Scene {
     this.movementKeys = createMovementKeys(this)
   }
 
-  // 役割: マウス／タッチともポインタ追従で移動する
+  // 役割: マウス／タッチ押し込み中の相対追従を開始・終了する
   // 呼び出し元: create
-  // 呼び出し先: this.input.on（コールバック内で movementState を操作）
+  // 呼び出し先: beginRelativePointerFollow / endRelativePointerFollow
   private setupMovementInput(): void {
+    this.pointerFollowMarker = createPointerFollowMarker(this)
+
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!this.canStartPointerMovement()) {
         return
@@ -1158,15 +1189,44 @@ export class GameScene extends Phaser.Scene {
         return
       }
 
-      // マウスもタッチも同じ: ポインタ位置へ追従
-      this.movementState.isKeyboardMode = false
-      this.movementState.allowMouseFollow = true
+      if (shouldUseRelativePointerFollow(pointer)) {
+        // タッチ: 押した位置起点の相対追従
+        beginRelativePointerFollow(
+          this.movementState,
+          pointer,
+          this.player.x,
+          this.player.y,
+        )
+        return
+      }
+
+      // PCマウス: クリック後はカーソル位置へ追従
+      beginAbsolutePointerFollow(this.movementState)
+    })
+
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      this.tryEndRelativePointerFollow(pointer)
+    })
+    this.input.on('pointerupoutside', (pointer: Phaser.Input.Pointer) => {
+      this.tryEndRelativePointerFollow(pointer)
     })
   }
 
-  /** 戦闘中だけポインタ移動を受け付ける。 */
+  // 役割: 追従を開始したポインタが離されたときだけ相対追従を終了する
+  private tryEndRelativePointerFollow(pointer: Phaser.Input.Pointer): void {
+    if (!this.movementState.isRelativeFollowActive) {
+      return
+    }
+    if (pointer.id !== this.movementState.relativePointerId) {
+      return
+    }
+    endRelativePointerFollow(this.movementState, this.pointerFollowMarker)
+  }
+
+  /** 戦闘中、またはカウントダウン中だけポインタ移動（狙い）を受け付ける。 */
   private canStartPointerMovement(): boolean {
-    if (this.isLevelUpPaused || this.isResumeCountdownActive) {
+    // レベルアップ選択中は狙いも受け付けない
+    if (this.isLevelUpPaused) {
       return false
     }
     if (this.isAchievementsPaused) {
@@ -1184,7 +1244,15 @@ export class GameScene extends Phaser.Scene {
     if (this.confirmDialogSystem !== undefined && this.confirmDialogSystem.isOpen()) {
       return false
     }
-    return true
+    // 通常戦闘中、または 3・2・1 / ready・GO! 中
+    if (
+      this.isStageActive ||
+      this.isResumeCountdownActive ||
+      this.isStartCountdownActive
+    ) {
+      return true
+    }
+    return false
   }
 
 
@@ -2003,7 +2071,7 @@ export class GameScene extends Phaser.Scene {
     this.refreshPlayerStatsHud()
     this.hudSystem.refreshGold()
 
-    // 止めずに「LEVEL UP」＋ゴールドが HUD へ飛ぶ演出
+    // 止めずに「LEVEL UP」＋ゴールドが上へ浮かぶ演出
     this.gameAudioSystem.playLevelUp()
     this.gameAudioSystem.playCoinPickup()
     playAutoGoldLevelUpText(this, this.player.x, this.player.y)
@@ -2050,7 +2118,8 @@ export class GameScene extends Phaser.Scene {
     this.isLevelUpPaused = false
     this.isResumeCountdownActive = true
     this.time.paused = true
-    this.stopAllMovingBodies()
+    // 狙い点は ready/GO! 中に操作できるので、ここでは消さない
+    this.stopAllMovingBodies({ keepRelativeFollow: true })
 
     playResumeCountdown(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, () => {
       this.isResumeCountdownActive = false
@@ -2108,7 +2177,13 @@ export class GameScene extends Phaser.Scene {
   // 役割: プレイヤー・敵・コインの速度を 0 にする（弾は復元用データがあるので触らない）
   // 呼び出し元: update のポーズ分岐, pauseGameForLevelUp, 死亡／クリア処理など
   // 呼び出し先: body.setVelocity(0, 0)
-  private stopAllMovingBodies(): void {
+  // keepRelativeFollow=true のときは狙い点（相対追従）を消さない（ready/GO! 用）
+  private stopAllMovingBodies(options?: { keepRelativeFollow?: boolean }): void {
+    const keepRelativeFollow =
+      options !== undefined && options.keepRelativeFollow === true
+    if (!keepRelativeFollow) {
+      endRelativePointerFollow(this.movementState, this.pointerFollowMarker)
+    }
     this.playerBody.setVelocity(0, 0)
 
     const enemies = this.enemyGroup.getChildren()
@@ -2167,8 +2242,8 @@ export class GameScene extends Phaser.Scene {
       playGoldGainVisualEffect(
         this,
         this.hudSystem,
-        GAME_WIDTH / 2,
-        GAME_HEIGHT / 2,
+        this.player.x,
+        this.player.y - 10,
         1,
       )
       this.gameAudioSystem.playCoinPickup()
@@ -2416,6 +2491,7 @@ export class GameScene extends Phaser.Scene {
       this.isLevelUpPaused = false
     }
     this.isResumeCountdownActive = false
+    this.isStartCountdownActive = false
 
     this.time.paused = true
     this.gameAudioSystem.stopBgm()
@@ -2477,6 +2553,7 @@ export class GameScene extends Phaser.Scene {
       this.time.paused = false
     }
     this.isResumeCountdownActive = false
+    this.isStartCountdownActive = false
 
     // 戦闘 BGM を止めて、バナー表示と同時にクリア音を鳴らす。
     // エリア最終: AREA CLEAR! 表示と同時に LevelUp2／途中ステージ: STAGE CLEAR! と同時に通常クリア音

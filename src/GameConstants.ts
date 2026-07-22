@@ -47,14 +47,17 @@ export const ACHIEVEMENT_BUTTON_WIDTH = 42
 export const ACHIEVEMENT_ICON_COLOR = '#cbd5e1'
 export const ACHIEVEMENT_ICON_HOVER_COLOR = '#86efac'
 // 実績表示の左に置く、全ラン共通のゴールド所持数
-export const GOLD_DISPLAY_WIDTH = 102
+// 幅は「● 999 G」程度が収まるサイズ（2桁以上でもアイコンと重ならない）
+export const GOLD_DISPLAY_WIDTH = 120
 export const GOLD_DISPLAY_GAP = 12
 export const GOLD_ICON_COLOR = '#facc15'
 export const GOLD_TEXT_COLOR = '#fde68a'
 export const GOLD_BAR_FONT_SIZE = '16px'
 export const GOLD_ICON_FONT_SIZE = '16px'
-export const GOLD_ICON_OFFSET_X = -24
-export const GOLD_TEXT_OFFSET_X = 8
+// 表示エリア左端からアイコン中心までの余白
+export const GOLD_ICON_LEFT_PADDING = 14
+// アイコン右端〜数字左端の隙間
+export const GOLD_ICON_TEXT_GAP = 12
 // 上部バー項目のホバー説明フロート
 export const TOP_BAR_TOOLTIP_BG_COLOR = 0x111827
 export const TOP_BAR_TOOLTIP_BG_ALPHA = 0.94
@@ -440,7 +443,7 @@ export const SHOP_BASE_PRICE = 1
 export const SHOP_PRICE_INCREASE = 1
 // Max HP は 1G → 10G → 20G → 30G → 40G（以降も 40G）
 export const MAX_HP_SHOP_PRICES = [1, 10, 20, 30, 40] as const
-// Power / Speed / Range / XP Bonus Cap は 1G → 5G → 10G → 20G → 30G → 40G（以降も 40G）
+// Power / Speed / Range / XP Bonus / Pierce Cap は 1G → 5G → 10G → 20G → 30G → 40G（以降も 40G）
 export const SKILL_CAP_SHOP_PRICES = [1, 5, 10, 20, 30, 40] as const
 // 封印枠は 10G → 20G → 30G → 40G... と購入ごとに10Gずつ上がる
 export const SEAL_SLOT_BASE_PRICE = 10
@@ -485,6 +488,17 @@ export const RESUME_COUNTDOWN_FADE_OUT_MS = START_COUNTDOWN_FADE_OUT_MS
 export const PLAYER_HP = 2
 // 基本移動速度。実際の速度は GameScene の currentMoveSpeed（アイテムで増減可能）
 export const PLAYER_SPEED = 200
+
+// --- 相対ポインタ追従（タッチ専用）---
+// 押した位置を起点に、指の移動量 × 倍率ぶん先を目標にする（指の下にキャラが来ない）
+export const POINTER_FOLLOW_DRAG_GAIN = 2
+// false: PCマウスは従来どおりカーソル位置へ追従。タッチだけ相対追従
+export const POINTER_FOLLOW_MOUSE_USES_RELATIVE = false
+export const POINTER_FOLLOW_MARKER_RADIUS = 10
+export const POINTER_FOLLOW_MARKER_COLOR = 0xffffff
+export const POINTER_FOLLOW_MARKER_ALPHA = 0.35
+export const POINTER_FOLLOW_MARKER_DEPTH = 6
+export const POINTER_FOLLOW_MARKER_STROKE_WIDTH = 2
 
 // ゲームロジックの基準フレームレート（描画・速度計算の基準）。
 export const PHYSICS_FPS = 60
@@ -662,8 +676,11 @@ export const XP_GAIN_EFFECT_DURATION_MS = 520
 export const XP_GAIN_SPARKLE_COLOR = '#fde68a'
 export const XP_GAIN_TEXT_COLOR = '#86efac'
 // --- ステージクリア時のゴールド獲得演出（コインが上部バーの所持金へ飛ぶ）---
-export const GOLD_GAIN_EFFECT_DURATION_MS = 620
+export const GOLD_GAIN_EFFECT_DURATION_MS = 700
 export const GOLD_GAIN_TEXT_COLOR = '#fde68a'
+// レベルアップでゴールドを得たとき: プレイヤーから上へ浮かぶ距離
+export const GOLD_GAIN_FLOAT_UP = 80
+export const GOLD_GAIN_FLOAT_END_SCALE = 1.15
 // ステージクリア用ゴールドコイン（4コマ回転アニメ）
 export const GOLD_COIN_SPRITE_KEY = 'gold-coin'
 export const GOLD_COIN_SPRITE_PATH = 'assets/sprites/gold_coin.png'
