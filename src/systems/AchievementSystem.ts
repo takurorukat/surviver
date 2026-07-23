@@ -33,11 +33,9 @@ import {
   ACHIEVEMENT_TITLE_MAGNET,
   ACHIEVEMENT_TITLE_RICOCHET,
   ACHIEVEMENT_TITLE_XP_BONUS,
-  ACHIEVEMENT_TITLE_VOLCANO_UNTOUCHED,
   ACHIEVEMENT_CONDITION_PLAINS_CLEAR,
   ACHIEVEMENT_CONDITION_FOREST_CLEAR,
   ACHIEVEMENT_CONDITION_VOLCANO_CLEAR,
-  ACHIEVEMENT_CONDITION_VOLCANO_UNTOUCHED,
   ACHIEVEMENT_CONDITION_PIERCE,
   ACHIEVEMENT_CONDITION_BLAST,
   ACHIEVEMENT_CONDITION_RICOCHET,
@@ -49,7 +47,6 @@ import {
   UNLOCK_SKILL_LABEL_RICOCHET,
   UNLOCK_SKILL_LABEL_MOVE,
   UNLOCK_SKILL_LABEL_MAGNET,
-  UNLOCK_SKILL_LABEL_FOREST_REWARDS,
   UNLOCK_SKILL_LABEL_XP_BONUS,
   UNLOCK_SKILL_DESC_POWER,
   UNLOCK_SKILL_DESC_SPEED,
@@ -61,12 +58,14 @@ import {
   UNLOCK_SKILL_DESC_BLAST,
   UNLOCK_SKILL_DESC_RICOCHET,
   AREA_UNLOCK_NOTIFICATION_REASON,
+  AREA_CLEAR_MAX_HP_BONUS_LABEL,
+  AREA_CLEAR_MAX_HP_BONUS_REASON,
   SKILL_UNLOCK_NOTIFICATION_REASON,
   SHOP_UNLOCK_NOTIFICATION_LABEL,
   SHOP_UNLOCK_NOTIFICATION_REASON,
   getAreasUnlockedByClearing,
 } from '../GameConstants'
-import { hasUnlockedAchievement, unlockAchievement } from './UnlockSaveSystem'
+import { hasUnlockedAchievement, unlockAchievement, doesAreaClearGrantMaxHpBonus } from './UnlockSaveSystem'
 
 // 実績の定義一覧（進捗カウント・一覧表示で共通）
 // skillId があるものは、実績画面でバトル画面と同じスキルアイコンを添える
@@ -121,12 +120,7 @@ export const ALL_ACHIEVEMENTS: AchievementDef[] = [
     rewardLabel: UNLOCK_SKILL_LABEL_RICOCHET,
     skillId: 'ricochet',
   },
-  {
-    id: ACHIEVEMENT_ID_VOLCANO_UNTOUCHED,
-    title: ACHIEVEMENT_TITLE_VOLCANO_UNTOUCHED,
-    condition: ACHIEVEMENT_CONDITION_VOLCANO_UNTOUCHED,
-    rewardLabel: ACHIEVEMENT_TITLE_VOLCANO_UNTOUCHED,
-  },
+  // Volcano Untouched などスキルなし実績は、結果画面・実績一覧とも当面出さない
 ]
 
 export type AchievementProgress = {
@@ -317,14 +311,14 @@ export function evaluateAndUnlockGameClearAchievements(
     }
   }
 
-  // Forest をゲームクリア → Pickup
+  // Forest をゲームクリア → Pickup + Power/Speed 上限 +2（5→7）
   if (flags.areaId === 'forest') {
     const didUnlock = unlockAchievement(ACHIEVEMENT_ID_FOREST_CLEAR)
     if (didUnlock) {
       newlyUnlocked.push({
         achievementId: ACHIEVEMENT_ID_FOREST_CLEAR,
         achievementTitle: ACHIEVEMENT_TITLE_FOREST_CLEAR,
-        unlockedSkillLabel: UNLOCK_SKILL_LABEL_FOREST_REWARDS,
+        unlockedSkillLabel: 'Pickup · Power/Speed Cap 7',
       })
     }
   }
@@ -341,16 +335,10 @@ export function evaluateAndUnlockGameClearAchievements(
     }
   }
 
-  // Volcano をノーダメージでゲームクリア（スキル解放なし・実績のみ）
+  // ノーダメージ実績などはセーブにだけ残し、結果画面の UNLOCKED には出さない
+  // （スキルではないのに New Skill と出るのを避ける。他エリアも同様）
   if (flags.areaId === 'volcano' && !flags.tookDamageThisRun) {
-    const didUnlock = unlockAchievement(ACHIEVEMENT_ID_VOLCANO_UNTOUCHED)
-    if (didUnlock) {
-      newlyUnlocked.push({
-        achievementId: ACHIEVEMENT_ID_VOLCANO_UNTOUCHED,
-        achievementTitle: ACHIEVEMENT_TITLE_VOLCANO_UNTOUCHED,
-        unlockedSkillLabel: ACHIEVEMENT_TITLE_VOLCANO_UNTOUCHED,
-      })
-    }
+    unlockAchievement(ACHIEVEMENT_ID_VOLCANO_UNTOUCHED)
   }
 
   return newlyUnlocked
@@ -386,6 +374,20 @@ export function formatAreaUnlockNotificationLines(clearedAreaId: string): string
     lines.push(`(${AREA_UNLOCK_NOTIFICATION_REASON})`)
   }
   return lines
+}
+
+/**
+ * エリア初クリアで Max HP +1 が付くときの文言。
+ * 例: ["UNLOCKED: Max HP +1", "(Area Clear Bonus)"]
+ */
+export function formatAreaClearMaxHpBonusLines(clearedAreaId: string): string[] {
+  if (!doesAreaClearGrantMaxHpBonus(clearedAreaId)) {
+    return []
+  }
+  return [
+    `UNLOCKED: ${AREA_CLEAR_MAX_HP_BONUS_LABEL}`,
+    `(${AREA_CLEAR_MAX_HP_BONUS_REASON})`,
+  ]
 }
 
 /**

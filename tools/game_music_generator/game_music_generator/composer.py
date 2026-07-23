@@ -44,11 +44,13 @@ class GameMusicComposer:
             progression_index = rng.randrange(len(theme.progressions))
         progression = theme.progressions[progression_index % len(theme.progressions)]
 
-        # タイトル／Forest は鼻歌モチーフ、それ以外は通常のモチーフ生成
+        # タイトル／Forest／Dungeon は鼻歌モチーフ、それ以外は通常のモチーフ生成
         if theme.theme_id == "title":
             melody_style = "title"
         elif theme.theme_id == "forest":
             melody_style = "forest"
+        elif theme.theme_id == "dungeon":
+            melody_style = "dungeon"
         else:
             melody_style = "default"
         melody = self.melody_generator.generate(
@@ -86,6 +88,26 @@ class GameMusicComposer:
             )
             for hit in drums:
                 hit.velocity = max(32, int(hit.velocity * 0.7))
+        elif theme.theme_id == "volcano":
+            # Fire Volcano: やや強めのドラムで熱さを出す（やりすぎない）
+            drums = self.drum_generator.generate(
+                rng, bars, beats_per_bar, pattern_index=2
+            )
+            for hit in drums:
+                hit.velocity = max(40, min(110, int(hit.velocity * 1.05)))
+            for note in bass:
+                note.velocity = max(55, min(115, int(note.velocity * 1.05)))
+        elif theme.theme_id == "dungeon":
+            # Earth Dungeon: ハーフタイム寄りのドラム＋低音を少し厚く
+            drums = self.drum_generator.generate(
+                rng, bars, beats_per_bar, pattern_index=3
+            )
+            for hit in drums:
+                hit.velocity = max(30, min(100, int(hit.velocity * 0.85)))
+            for note in bass:
+                note.velocity = max(58, min(118, int(note.velocity * 1.08)))
+            for note in chords:
+                note.velocity = max(42, min(105, int(note.velocity * 0.9)))
         else:
             drums = self.drum_generator.generate(rng, bars, beats_per_bar)
 

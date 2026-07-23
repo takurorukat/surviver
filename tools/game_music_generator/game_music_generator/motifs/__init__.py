@@ -4,6 +4,11 @@ from .forest_hum import (
     FOREST_HUM_MOTIF,
     FOREST_HUM_MOTIF_HIGH,
 )
+from .dungeon_hum import (
+    DUNGEON_HUM_LANDING_PITCH,
+    DUNGEON_HUM_MOTIF,
+    DUNGEON_HUM_MOTIF_HIGH,
+)
 
 __all__ = [
     "TITLE_HUM_MOTIF",
@@ -11,4 +16,7 @@ __all__ = [
     "FOREST_HUM_MOTIF",
     "FOREST_HUM_MOTIF_HIGH",
     "FOREST_HUM_LANDING_PITCH",
+    "DUNGEON_HUM_MOTIF",
+    "DUNGEON_HUM_MOTIF_HIGH",
+    "DUNGEON_HUM_LANDING_PITCH",
 ]

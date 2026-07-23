@@ -55,6 +55,7 @@ import {
   ACHIEVEMENT_ID_PIERCE_UNLOCK,
   ACHIEVEMENT_ID_BLAST_UNLOCK,
   ACHIEVEMENT_ID_RICOCHET_UNLOCK,
+  TITLE_SHOW_SHOP_AND_SEAL,
   FLOOR_DARKEN_ALPHA,
   VOLCANO_FLOOR_TILE_BLOCK_INDEX,
   VOLCANO_FLOOR_RED_OVERLAY_COLOR,
@@ -194,6 +195,7 @@ import {
   evaluateAndUnlockGameClearAchievements,
   formatUnlockNotificationLines,
   formatAreaUnlockNotificationLines,
+  formatAreaClearMaxHpBonusLines,
   formatShopUnlockNotificationLines,
   isSkillUnlocked,
 } from '../systems/AchievementSystem'
@@ -222,7 +224,7 @@ import {
   playAllEnemiesRewardBanner,
 } from '../systems/StageClearBannerSystem'
 import { playFinalWaveBanner } from '../systems/FinalWaveBannerSystem'
-import { playPierceUnlockBanner } from '../systems/PierceUnlockBannerSystem'
+import { playPierceUnlockBanner, playPierceLevelUpBanner } from '../systems/PierceUnlockBannerSystem'
 import {
   playBlastUnlockBanner,
   playBlastLevelUpBanner,
@@ -554,7 +556,24 @@ export class GameScene extends Phaser.Scene {
     this.setupRangeDisplay()
     this.setupAudio()
     // タイトルと同じ右下の BGM ON/OFF スイッチ
-    this.bgmToggleButton = createBgmToggleButton(this, this.gameAudioSystem)
+    // レベルアップ選択中はトグルしない（クリックで戦闘 BGM が始まらないようにする）
+    this.bgmToggleButton = createBgmToggleButton(
+      this,
+      this.gameAudioSystem,
+      undefined,
+      () => {
+        if (this.isLevelUpPaused) {
+          return false
+        }
+        if (
+          this.levelUpChoiceSystem !== undefined &&
+          this.levelUpChoiceSystem.isOpen()
+        ) {
+          return false
+        }
+        return true
+      },
+    )
     this.levelUpChoiceSystem = new LevelUpChoiceSystem(this, () => {
       this.gameAudioSystem.playMenuMove()
     })
@@ -637,7 +656,7 @@ export class GameScene extends Phaser.Scene {
     this.time.paused = false
     this.isStageActive = false
     this.waveSystem.stopWaves()
-    this.gameAudioSystem.stopBgm()
+    this.gameAudioSystem.stopAllSounds()
     clearRunProgress()
     this.scene.start('TitleScene')
   }
@@ -713,16 +732,23 @@ export class GameScene extends Phaser.Scene {
       return
     }
 
-    if (this.isPlayerDead || this.isStageSettled) {
+    if (this.isPlayerDead) {
       this.updateHudDisplay()
       this.stopAllMovingBodies()
+      return
+    }
+
+    if (this.isStageSettled) {
+      this.updateHudDisplay()
+      // クリア結果表示中もマウス追従モードは消さない（次ステージへ引き継ぐ）
+      this.stopAllMovingBodies({ keepRelativeFollow: true })
       return
     }
 
     // クリア演出中（大きな文字 → コイン吸引）は戦闘を止める
     if (this.isStageClearBannerPlaying) {
       this.updateHudDisplay()
-      this.stopAllMovingBodies()
+      this.stopAllMovingBodies({ keepRelativeFollow: true })
       return
     }
 
@@ -736,7 +762,8 @@ export class GameScene extends Phaser.Scene {
       this.updateHudDisplay()
       this.updateRangeDisplay()
       this.updateHitboxDisplay()
-      this.stopAllMovingBodies()
+      // マウス追従は維持（キーボードを押すまで続く）。速度だけ止める
+      this.stopAllMovingBodies({ keepRelativeFollow: true })
       return
     }
     if (this.isResumeCountdownActive || this.isStartCountdownActive) {
@@ -1427,6 +1454,17 @@ export class GameScene extends Phaser.Scene {
       this.gameAudioSystem.prepare()
       // ゲームオーバー・ステージ決着後は、クリックしても BGM を再開しない
       if (this.isPlayerDead || this.isStageSettled) {
+        return
+      }
+      // レベルアップ選択中は、選択肢以外（暗い背景など）をクリックしても
+      // 戦闘 BGM を始めない。選択後の再開カウントダウンで流す
+      if (this.isLevelUpPaused) {
+        return
+      }
+      if (
+        this.levelUpChoiceSystem !== undefined &&
+        this.levelUpChoiceSystem.isOpen()
+      ) {
         return
       }
       if (this.gameAudioSystem.isAnyBgmActive()) {
@@ -2138,6 +2176,16 @@ export class GameScene extends Phaser.Scene {
       },
       requiredChoice,
       maxedChoiceIds,
+      {
+        attackDamage: this.currentAttackDamage,
+        fireRateLevel: this.currentFireRateLevel,
+        rangeLevel: this.currentRangeLevel,
+        moveLevel: this.currentMoveLevel,
+        magnetLevel: this.currentMagnetLevel,
+        pierceLevel: this.currentPierceLevel,
+        blastLevel: this.currentBlastLevel,
+        ricochetLevel: this.currentRicochetLevel,
+      },
     )
   }
 
@@ -2152,7 +2200,7 @@ export class GameScene extends Phaser.Scene {
     this.currentLevel = this.currentLevel + 1
     this.pendingLevelUps = this.pendingLevelUps - 1
 
-    // 通常レベルアップと同じく HP 全回復（Ruins は除く）
+    // 通常レベルアップと同じく HP 全回復（Dungeon は除く）
     if (this.areaId !== 'ruins') {
       this.currentHp = this.maxHp
       playHpFullText(this, this.player.x, this.player.y)
@@ -2201,7 +2249,8 @@ export class GameScene extends Phaser.Scene {
     this.isLevelUpPaused = true
     this.time.paused = true
     // 弾は消さず、flightVx/Vy を残したまま他だけ止める（再開後に同じ方向へ飛ぶ）
-    this.stopAllMovingBodies()
+    // マウス追従も消さない（選択後もキーボードなしなら追従継続）
+    this.stopAllMovingBodies({ keepRelativeFollow: true })
   }
 
   // 役割: レベルアップ UI 終了後、ready・GO! のあと戦闘を再開する
@@ -2271,7 +2320,8 @@ export class GameScene extends Phaser.Scene {
   // 役割: プレイヤー・敵・コインの速度を 0 にする（弾は復元用データがあるので触らない）
   // 呼び出し元: update のポーズ分岐, pauseGameForLevelUp, 死亡／クリア処理など
   // 呼び出し先: body.setVelocity(0, 0)
-  // keepRelativeFollow=true のときは狙い点（相対追従）を消さない（ready/GO! 用）
+  // keepRelativeFollow=true のときはポインタ追従（相対／絶対マウス）を消さない
+  // （レベルアップ選択中・ready/GO! カウントダウン用）
   private stopAllMovingBodies(options?: { keepRelativeFollow?: boolean }): void {
     const keepRelativeFollow =
       options !== undefined && options.keepRelativeFollow === true
@@ -2372,7 +2422,7 @@ export class GameScene extends Phaser.Scene {
     this.currentLevel = this.currentLevel + 1
     this.pendingLevelUps = this.pendingLevelUps - 1
 
-    // Ruins ではレベルアップによる全回復なし。
+    // Dungeon ではレベルアップによる全回復なし。
     // HP を選んだ場合だけ、増えた最大HPぶん現在HPも増やす。
     if (this.areaId === 'ruins') {
       const gainedMaxHp = this.maxHp - previousMaxHp
@@ -2438,6 +2488,12 @@ export class GameScene extends Phaser.Scene {
       })
       return
     }
+    if (pierceSyncResult === 'upgraded') {
+      playPierceLevelUpBanner(this, this.currentPierceLevel, () => {
+        runBlastBannerIfNeeded(afterBanners)
+      })
+      return
+    }
 
     runBlastBannerIfNeeded(afterBanners)
   }
@@ -2494,11 +2550,11 @@ export class GameScene extends Phaser.Scene {
     const wasLocked = this.currentBlastLevel <= BLAST_LEVEL_START
     this.currentBlastLevel = targetBlast
     this.pickedBlastThisRun = true
-    const isLifetimeFirst = unlockAchievement(ACHIEVEMENT_ID_BLAST_UNLOCK)
+    unlockAchievement(ACHIEVEMENT_ID_BLAST_UNLOCK)
     this.refreshPlayerStatsHud()
     this.hudSystem.playStatUpgradePulse('blast')
 
-    if (wasLocked && isLifetimeFirst) {
+    if (wasLocked) {
       this.gameAudioSystem.playLevelUp()
       return 'firstUnlock'
     }
@@ -2526,11 +2582,11 @@ export class GameScene extends Phaser.Scene {
 
     const wasLocked = this.currentRicochetLevel <= RICOCHET_LEVEL_START
     this.currentRicochetLevel = targetRicochet
-    const isLifetimeFirst = unlockAchievement(ACHIEVEMENT_ID_RICOCHET_UNLOCK)
+    unlockAchievement(ACHIEVEMENT_ID_RICOCHET_UNLOCK)
     this.refreshPlayerStatsHud()
     this.hudSystem.playStatUpgradePulse('ricochet')
 
-    if (wasLocked && isLifetimeFirst) {
+    if (wasLocked) {
       this.gameAudioSystem.playLevelUp()
       return 'firstUnlock'
     }
@@ -2628,11 +2684,35 @@ export class GameScene extends Phaser.Scene {
     updatePlayerInvincibilityBlink(this.player, this.damageState, this.time.now)
   }
 
+  /**
+   * 戦闘中だけ被ダメを受け付ける。
+   * ステージクリア演出・コイン吸引中などは接触してもダメージにしない。
+   */
+  private canPlayerReceiveCombatDamage(): boolean {
+    if (this.isPlayerDead) {
+      return false
+    }
+    if (this.isLevelUpPaused || this.isResumeCountdownActive || this.isStartCountdownActive) {
+      return false
+    }
+    if (this.isStageClearBannerPlaying || this.isClearCoinVacuum) {
+      return false
+    }
+    if (this.waitingToShowStageClear || this.isStageSettled) {
+      return false
+    }
+    // クリア開始と同じフレームで物理が走ってもダメージにしない
+    if (!this.isStageActive) {
+      return false
+    }
+    return true
+  }
+
   // 役割: 敵との体当たりダメージ・ノックバック・死亡判定
   // 呼び出し元: setupPlayerEnemyOverlap のコールバック
   // 呼び出し先: PlayerDamageSystem*, handlePlayerDeath
   private handlePlayerEnemyOverlap(enemy: Phaser.GameObjects.Rectangle): void {
-    if (this.isPlayerDead || this.isLevelUpPaused || this.isResumeCountdownActive) {
+    if (!this.canPlayerReceiveCombatDamage()) {
       return
     }
 
@@ -2662,7 +2742,10 @@ export class GameScene extends Phaser.Scene {
   // 呼び出し元: setupPlayerEnemyBulletOverlap のコールバック
   // 呼び出し先: PlayerDamageSystem*, handlePlayerDeath
   private handlePlayerEnemyBulletHit(bullet: Phaser.GameObjects.Triangle): void {
-    if (this.isPlayerDead || this.isLevelUpPaused || this.isResumeCountdownActive) {
+    if (!this.canPlayerReceiveCombatDamage()) {
+      if (bullet.active) {
+        recycleEnemyBullet(bullet)
+      }
       return
     }
     if (!bullet.active) {
@@ -2739,6 +2822,8 @@ export class GameScene extends Phaser.Scene {
     this.stageResultSystem.show('defeat', this.stageNumber, () => {
       this.time.paused = false
       clearRunProgress()
+      // タイトル create 前にゲームオーバー音などを止める
+      this.gameAudioSystem.stopAllSounds()
       this.scene.start('TitleScene')
     })
   }
@@ -2784,7 +2869,8 @@ export class GameScene extends Phaser.Scene {
     this.isStageActive = false
     this.waveSystem.stopWaves()
     destroyAllEnemyBullets(this.enemyBulletGroup)
-    this.stopAllMovingBodies()
+    // マウス追従モードは消さない（次ステージへ isKeyboardMode を正しく渡すため）
+    this.stopAllMovingBodies({ keepRelativeFollow: true })
 
     if (this.levelUpChoiceSystem.isOpen()) {
       this.levelUpChoiceSystem.hide()
@@ -2971,7 +3057,7 @@ export class GameScene extends Phaser.Scene {
   private finishClearCoinVacuum(): void {
     this.isClearCoinVacuum = false
     this.clearCoinVacuumEmptySinceMs = 0
-    this.stopAllMovingBodies()
+    this.stopAllMovingBodies({ keepRelativeFollow: true })
     this.waitingToShowStageClear = true
 
     // ②吸引完了 → ③レベルアップ → ④四角の結果 UI
@@ -2996,7 +3082,7 @@ export class GameScene extends Phaser.Scene {
     this.waitingToShowStageClear = false
     this.isStageSettled = true
     this.isStageActive = false
-    this.stopAllMovingBodies()
+    this.stopAllMovingBodies({ keepRelativeFollow: true })
     this.time.paused = true
 
     const isGameClear = isFinalStage(this.stageNumber, this.areaStageCount)
@@ -3005,9 +3091,12 @@ export class GameScene extends Phaser.Scene {
 
     // ロック解除はゲームクリア時だけ判定する（途中ステージでは解除しない）
     // ただし Shop は Stage1 クリアのゴールド取得で開くので、そのときは結果画面に出す
+    // （タイトルに Shop を出していないあいだは Shop 解放案内も出さない）
     let unlockLines: string[] = []
-    if (this.pendingShopUnlockNotify) {
+    if (TITLE_SHOW_SHOP_AND_SEAL && this.pendingShopUnlockNotify) {
       unlockLines = formatShopUnlockNotificationLines()
+      this.pendingShopUnlockNotify = false
+    } else if (this.pendingShopUnlockNotify) {
       this.pendingShopUnlockNotify = false
     }
     if (isGameClear) {
@@ -3025,8 +3114,9 @@ export class GameScene extends Phaser.Scene {
       const isFirstTimeAreaClear = markAreaCleared(this.areaId)
       if (isFirstTimeAreaClear) {
         const areaUnlockLines = formatAreaUnlockNotificationLines(this.areaId)
-        // エリア解放を先に見せて、そのあとスキル解放を続ける
-        unlockLines = areaUnlockLines.concat(unlockLines)
+        const maxHpBonusLines = formatAreaClearMaxHpBonusLines(this.areaId)
+        // エリア解放 → Max HP ボーナス → スキル解放の順で見せる
+        unlockLines = areaUnlockLines.concat(maxHpBonusLines).concat(unlockLines)
       }
       this.hudSystem.refreshUnlockStatus()
     }
@@ -3037,7 +3127,7 @@ export class GameScene extends Phaser.Scene {
         this.stageNumber,
         () => {
           this.time.paused = false
-          this.gameAudioSystem.stopBgm()
+          this.gameAudioSystem.stopAllSounds()
           this.scene.start('TitleScene')
         },
         unlockLines,

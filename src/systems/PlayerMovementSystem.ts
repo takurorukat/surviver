@@ -91,7 +91,8 @@ export function createMovementKeys(scene: Phaser.Scene): MovementKeys {
 export function createInitialMovementState(isKeyboardMode: boolean): MovementState {
   return {
     isKeyboardMode,
-    allowMouseFollow: false,
+    // マウス追従で次ステージへ引き継いだときは、クリックなしで追従を続ける
+    allowMouseFollow: !isKeyboardMode,
     isRelativeFollowActive: false,
     relativeOriginX: 0,
     relativeOriginY: 0,

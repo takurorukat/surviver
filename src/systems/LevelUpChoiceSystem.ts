@@ -26,11 +26,19 @@ import {
   calculateAttackRange,
   calculateMoveSpeed,
   calculateCoinMagnetRadius,
+  calculateBlastLevelFromPowerAndRange,
+  calculateRicochetLevelFromPowerSpeedAndPickup,
+  PIERCE_AUTO_SYNC_MIN_LEVEL,
+  PIERCE_LEVEL_START,
+  BLAST_LEVEL_START,
+  RICOCHET_LEVEL_START,
   LEVEL_UP_CHOICES_SHOWN,
   LEVEL_UP_OVERLAY_COLOR,
   LEVEL_UP_OVERLAY_ALPHA,
   LEVEL_UP_PANEL_WIDTH,
   LEVEL_UP_PANEL_HEIGHT,
+  LEVEL_UP_PANEL_HEIGHT_WITH_COMBO,
+  LEVEL_UP_PANEL_HEIGHT_PER_EXTRA_COMBO,
   LEVEL_UP_PANEL_GAP,
   LEVEL_UP_PANEL_COLOR,
   LEVEL_UP_PANEL_HOVER_COLOR,
@@ -41,6 +49,13 @@ import {
   LEVEL_UP_TITLE_COLOR,
   LEVEL_UP_CHOICE_TITLE_COLOR,
   LEVEL_UP_CHOICE_DESC_COLOR,
+  LEVEL_UP_CHOICE_COMBO_COLOR,
+  LEVEL_UP_CHOICE_COMBO_PLUS_FONT_SIZE,
+  LEVEL_UP_CHOICE_COMBO_NAME_FONT_SIZE,
+  LEVEL_UP_CHOICE_COMBO_ICON_SIZE,
+  LEVEL_UP_CHOICE_COMBO_ICON_BORDER,
+  LEVEL_UP_CHOICE_COMBO_ICON_GAP,
+  LEVEL_UP_CHOICE_COMBO_BLOCK_GAP,
   LEVEL_UP_UI_DEPTH,
   LEVEL_UP_CHOICE_ICON_SIZE,
   LEVEL_UP_CHOICE_ICON_BORDER,
@@ -50,6 +65,8 @@ import {
   UNLOCK_ICON_RANGE_COLOR,
   UNLOCK_ICON_MOVE_COLOR,
   UNLOCK_ICON_MAGNET_COLOR,
+  UNLOCK_ICON_PIERCE_COLOR,
+  UNLOCK_ICON_BLAST_COLOR,
   UNLOCK_ICON_RICOCHET_COLOR,
   UNLOCK_ICON_XP_BONUS_COLOR,
   UNLOCK_ICON_POWER_LETTER,
@@ -57,6 +74,8 @@ import {
   UNLOCK_ICON_RANGE_LETTER,
   UNLOCK_ICON_MOVE_LETTER,
   UNLOCK_ICON_MAGNET_LETTER,
+  UNLOCK_ICON_PIERCE_LETTER,
+  UNLOCK_ICON_BLAST_LETTER,
   UNLOCK_ICON_RICOCHET_LETTER,
   UNLOCK_ICON_XP_BONUS_LETTER,
   UNLOCK_ICON_LETTER_COLOR,
@@ -146,6 +165,143 @@ const GOLD_FALLBACK_CHOICE: LevelUpChoice = {
   id: 'gold',
   title: 'Gold',
   description: 'Gain 1 Gold',
+}
+
+/** 複合スキル予告の計算に使う現在ステータス */
+export type LevelUpComboPreviewStats = {
+  attackDamage: number
+  fireRateLevel: number
+  rangeLevel: number
+  moveLevel: number
+  magnetLevel: number
+  pierceLevel: number
+  blastLevel: number
+  ricochetLevel: number
+}
+
+/**
+ * この選択肢を取ったあとの Power / Speed など。
+ * Python: 各レベルに +1 したコピーを返すイメージ。
+ */
+function previewBaseLevelsAfterChoice(
+  choiceId: LevelUpChoiceId,
+  stats: LevelUpComboPreviewStats,
+): {
+  power: number
+  speed: number
+  range: number
+  move: number
+  magnet: number
+} {
+  let power = stats.attackDamage
+  let speed = stats.fireRateLevel
+  let range = stats.rangeLevel
+  let move = stats.moveLevel
+  let magnet = stats.magnetLevel
+
+  if (choiceId === 'damage') {
+    power = power + DAMAGE_BONUS_PER_LEVEL_UP
+  }
+  if (choiceId === 'fireRate') {
+    speed = speed + 1
+  }
+  if (choiceId === 'range') {
+    range = range + 1
+  }
+  if (choiceId === 'move') {
+    move = move + 1
+  }
+  if (choiceId === 'magnet') {
+    magnet = magnet + 1
+  }
+
+  return { power, speed, range, move, magnet }
+}
+
+/** Move+Speed から Pierce 目標レベル（同期と同じ式） */
+function calculatePierceLevelFromMoveAndSpeed(
+  moveLevel: number,
+  speedLevel: number,
+): number {
+  const lowerLevel = Math.min(moveLevel, speedLevel)
+  if (lowerLevel < PIERCE_AUTO_SYNC_MIN_LEVEL) {
+    return PIERCE_LEVEL_START
+  }
+  return lowerLevel
+}
+
+/**
+ * 選択肢を取ると複合スキルが付く／上がるときの予告データ。
+ */
+type ComboBonusPreview = {
+  skillName: string
+  letter: string
+  color: number
+}
+
+/**
+ * 選択肢を取ると複合スキルが付く／上がるときの予告一覧。
+ */
+function buildComboBonusPreviewsForChoice(
+  choiceId: LevelUpChoiceId,
+  stats: LevelUpComboPreviewStats,
+): ComboBonusPreview[] {
+  if (
+    choiceId !== 'damage' &&
+    choiceId !== 'fireRate' &&
+    choiceId !== 'range' &&
+    choiceId !== 'move' &&
+    choiceId !== 'magnet'
+  ) {
+    return []
+  }
+
+  const next = previewBaseLevelsAfterChoice(choiceId, stats)
+  const previews: ComboBonusPreview[] = []
+
+  const pierceTarget = calculatePierceLevelFromMoveAndSpeed(next.move, next.speed)
+  if (pierceTarget > stats.pierceLevel) {
+    previews.push({
+      skillName: 'Pierce',
+      letter: UNLOCK_ICON_PIERCE_LETTER,
+      color: UNLOCK_ICON_PIERCE_COLOR,
+    })
+  }
+
+  const blastTarget = calculateBlastLevelFromPowerAndRange(next.power, next.range)
+  if (blastTarget > stats.blastLevel && blastTarget > BLAST_LEVEL_START) {
+    previews.push({
+      skillName: 'Blast',
+      letter: UNLOCK_ICON_BLAST_LETTER,
+      color: UNLOCK_ICON_BLAST_COLOR,
+    })
+  }
+
+  const ricochetTarget = calculateRicochetLevelFromPowerSpeedAndPickup(
+    next.power,
+    next.speed,
+    next.magnet,
+  )
+  if (ricochetTarget > stats.ricochetLevel && ricochetTarget > RICOCHET_LEVEL_START) {
+    previews.push({
+      skillName: 'Ricochet',
+      letter: UNLOCK_ICON_RICOCHET_LETTER,
+      color: UNLOCK_ICON_RICOCHET_COLOR,
+    })
+  }
+
+  return previews
+}
+
+/** 複合スキル予告のパネル高さ。件数に応じて伸ばす。 */
+function getPanelHeightForComboCount(comboCount: number): number {
+  if (comboCount <= 0) {
+    return LEVEL_UP_PANEL_HEIGHT
+  }
+  return (
+    LEVEL_UP_PANEL_HEIGHT_WITH_COMBO +
+    Math.max(0, comboCount - 1) * LEVEL_UP_PANEL_HEIGHT_PER_EXTRA_COMBO
+  )
 }
 
 // 1 枚の選択肢パネル（見た目コンテナと当たり判定を分ける）
@@ -245,7 +401,7 @@ function pickRandomLevelUpChoices(
   const picked: LevelUpChoice[] = []
   const pickCount = Math.min(count, poolCopy.length)
 
-  // Ruins の HP など、必ず候補へ含めたいものを先に1枚入れる
+  // Dungeon の HP など、必ず候補へ含めたいものを先に1枚入れる
   if (requiredChoiceId !== undefined) {
     for (let index = 0; index < poolCopy.length; index++) {
       if (poolCopy[index].id === requiredChoiceId) {
@@ -278,6 +434,7 @@ export class LevelUpChoiceSystem {
   private hintText: Phaser.GameObjects.Text | null = null
   private panels: ChoicePanel[] = []
   private shownChoices: LevelUpChoice[] = []
+  private comboPreviewStats: LevelUpComboPreviewStats | null = null
   private isVisible = false
   // キーボード／マウス共通の選択インデックス（0 始まり）
   private selectedIndex = 0
@@ -333,6 +490,7 @@ export class LevelUpChoiceSystem {
     onChoice: (choiceId: LevelUpChoiceId) => void,
     requiredChoiceId?: LevelUpChoiceId,
     maxedChoiceIds: LevelUpChoiceId[] = [],
+    comboPreviewStats: LevelUpComboPreviewStats | null = null,
   ): void {
     if (this.isVisible) {
       return
@@ -340,6 +498,7 @@ export class LevelUpChoiceSystem {
 
     this.isVisible = true
     this.onChoiceSelected = onChoice
+    this.comboPreviewStats = comboPreviewStats
     this.shownChoices = pickRandomLevelUpChoices(
       LEVEL_UP_CHOICES_SHOWN,
       requiredChoiceId,
@@ -364,6 +523,7 @@ export class LevelUpChoiceSystem {
     this.isVisible = false
     this.isKeyboardEnabled = true
     this.onChoiceSelected = null
+    this.comboPreviewStats = null
     this.teardownKeyboard()
     this.scene.input.setDefaultCursor('default')
 
@@ -504,7 +664,7 @@ export class LevelUpChoiceSystem {
   private createHintText(): void {
     this.hintText = this.scene.add.text(
       GAME_WIDTH / 2,
-      GAME_HEIGHT / 2 + 110,
+      GAME_HEIGHT / 2 + 160,
       'A/D · ←/→ select   SPACE · ENTER confirm',
       {
         fontFamily: FONT_FAMILY_UI,
@@ -544,19 +704,25 @@ export class LevelUpChoiceSystem {
     x: number,
     y: number,
   ): ChoicePanel {
+    const comboPreviews =
+      this.comboPreviewStats === null
+        ? []
+        : buildComboBonusPreviewsForChoice(choice.id, this.comboPreviewStats)
+    const hasComboPreviews = comboPreviews.length > 0
+    const panelHeight = getPanelHeightForComboCount(comboPreviews.length)
     const hitWidth = LEVEL_UP_PANEL_WIDTH + 4
-    const hitHeight = LEVEL_UP_PANEL_HEIGHT + 4
+    const hitHeight = panelHeight + 4
 
     const border = this.scene.add.rectangle(0, 0, hitWidth, hitHeight, LEVEL_UP_PANEL_BORDER_COLOR)
     const background = this.scene.add.rectangle(
       0,
       0,
       LEVEL_UP_PANEL_WIDTH,
-      LEVEL_UP_PANEL_HEIGHT,
+      panelHeight,
       LEVEL_UP_PANEL_COLOR,
     )
 
-    const titleRowY = -16
+    const titleRowY = hasComboPreviews ? -panelHeight / 2 + 22 : -16
     const iconStyle = getLevelUpChoiceIconStyle(choice.id)
     const titleMaxWidth =
       iconStyle === null
@@ -614,7 +780,8 @@ export class LevelUpChoiceSystem {
 
     visualChildren.push(titleText)
 
-    const descText = this.scene.add.text(0, 18, choice.description, {
+    const descY = hasComboPreviews ? titleRowY + 24 : 18
+    const descText = this.scene.add.text(0, descY, choice.description, {
       fontFamily: FONT_FAMILY_UI,
       fontSize: '14px',
       color: LEVEL_UP_CHOICE_DESC_COLOR,
@@ -623,10 +790,89 @@ export class LevelUpChoiceSystem {
     descText.setOrigin(0.5)
     fitTextInBounds(descText, {
       maxWidth: LEVEL_UP_PANEL_WIDTH - 20,
-      maxHeight: LEVEL_UP_PANEL_HEIGHT / 2 - 6,
+      maxHeight: hasComboPreviews ? 24 : LEVEL_UP_PANEL_HEIGHT / 2 - 6,
       wrap: true,
     })
     visualChildren.push(descText)
+
+    // 複合スキル予告: 「＋」改行 → アイコン＋大きなスキル名
+    if (hasComboPreviews) {
+      let blockTopY = descY + 22
+      for (let index = 0; index < comboPreviews.length; index++) {
+        const preview = comboPreviews[index]
+        const plusText = this.scene.add.text(0, blockTopY, '+', {
+          fontFamily: FONT_FAMILY_HEADING,
+          fontSize: LEVEL_UP_CHOICE_COMBO_PLUS_FONT_SIZE,
+          color: LEVEL_UP_CHOICE_COMBO_COLOR,
+          fontStyle: 'bold',
+        })
+        plusText.setOrigin(0.5)
+        visualChildren.push(plusText)
+
+        const nameRowY = blockTopY + 26
+        const nameLabel = preview.skillName
+        const nameText = this.scene.add.text(0, nameRowY, nameLabel, {
+          fontFamily: FONT_FAMILY_HEADING,
+          fontSize: LEVEL_UP_CHOICE_COMBO_NAME_FONT_SIZE,
+          color: LEVEL_UP_CHOICE_COMBO_COLOR,
+          fontStyle: 'bold',
+        })
+        nameText.setOrigin(0.5)
+        shrinkTextToFitWidth(nameText, LEVEL_UP_PANEL_WIDTH - 56)
+
+        const nameWidth = nameText.width * nameText.scaleX
+        const iconHit =
+          LEVEL_UP_CHOICE_COMBO_ICON_SIZE + LEVEL_UP_CHOICE_COMBO_ICON_BORDER * 2
+        const rowWidth =
+          iconHit + LEVEL_UP_CHOICE_COMBO_ICON_GAP + nameWidth
+        const iconCenterX = -rowWidth / 2 + iconHit / 2
+        const nameCenterX =
+          iconCenterX +
+          iconHit / 2 +
+          LEVEL_UP_CHOICE_COMBO_ICON_GAP +
+          nameWidth / 2
+
+        const comboIconBorder = this.scene.add.rectangle(
+          iconCenterX,
+          nameRowY,
+          iconHit,
+          iconHit,
+          preview.color,
+        )
+        const comboIconFill = this.scene.add.rectangle(
+          iconCenterX,
+          nameRowY,
+          LEVEL_UP_CHOICE_COMBO_ICON_SIZE,
+          LEVEL_UP_CHOICE_COMBO_ICON_SIZE,
+          preview.color,
+        )
+        const comboIconLetter = this.scene.add.text(
+          iconCenterX,
+          nameRowY,
+          preview.letter,
+          {
+            fontFamily: FONT_FAMILY_HEADING,
+            fontSize: '14px',
+            color: UNLOCK_ICON_LETTER_COLOR,
+          },
+        )
+        comboIconLetter.setOrigin(0.5)
+        nameText.setPosition(nameCenterX, nameRowY)
+
+        visualChildren.push(
+          comboIconBorder,
+          comboIconFill,
+          comboIconLetter,
+          nameText,
+        )
+
+        blockTopY =
+          nameRowY +
+          LEVEL_UP_CHOICE_COMBO_ICON_SIZE / 2 +
+          LEVEL_UP_CHOICE_COMBO_BLOCK_GAP +
+          10
+      }
+    }
 
     // 見た目だけ動かすコンテナ
     const visualContainer = this.scene.add.container(x, y, visualChildren)

@@ -20,6 +20,7 @@ export function createBgmToggleButton(
   scene: Phaser.Scene,
   audioSystem: GameAudioSystem,
   onFocus?: () => void,
+  canToggle?: () => boolean,
 ): BgmToggleButtonView {
   const centerX = GAME_WIDTH - 30
   const centerY = GAME_HEIGHT - 30
@@ -79,6 +80,9 @@ export function createBgmToggleButton(
   }
 
   const toggle = (): void => {
+    if (canToggle !== undefined && !canToggle()) {
+      return
+    }
     scene.sound.unlock()
     audioSystem.unlock()
     const nextEnabled = !audioSystem.getBgmEnabled()

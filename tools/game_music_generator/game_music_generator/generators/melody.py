@@ -13,6 +13,9 @@ from ..harmony import (
 )
 from ..models import NoteEvent
 from ..motifs import (
+    DUNGEON_HUM_LANDING_PITCH,
+    DUNGEON_HUM_MOTIF,
+    DUNGEON_HUM_MOTIF_HIGH,
     FOREST_HUM_LANDING_PITCH,
     FOREST_HUM_MOTIF,
     FOREST_HUM_MOTIF_HIGH,
@@ -28,7 +31,7 @@ class MelodyGenerator:
       - 音域を狭く保つ
       - マイナー進行ならマイナースケールを使う
       - 最後はトニックへ解決
-      - タイトル／Forest は鼻歌由来の固定モチーフを使う
+      - タイトル／Forest／Dungeon は鼻歌由来の固定モチーフを使う
     """
 
     def generate(
@@ -59,6 +62,16 @@ class MelodyGenerator:
                 FOREST_HUM_MOTIF_HIGH,
                 landing_pitch=FOREST_HUM_LANDING_PITCH,
                 velocity_range=(78, 96),
+            )
+        if style == "dungeon":
+            return self._generate_fixed_motif_melody(
+                rng,
+                bars,
+                beats_per_bar,
+                DUNGEON_HUM_MOTIF,
+                DUNGEON_HUM_MOTIF_HIGH,
+                landing_pitch=DUNGEON_HUM_LANDING_PITCH,
+                velocity_range=(68, 90),
             )
         return self._generate_motif_melody(
             rng, key, progression, bars, beats_per_bar, magical=False

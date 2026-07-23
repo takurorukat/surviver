@@ -26,7 +26,6 @@ import {
   SHOP_UNAFFORDABLE_COLOR,
   SHOP_OPEN_TWEEN_MS,
   SHOP_PURCHASE_PULSE_MS,
-  PLAYER_HP,
   INITIAL_PRIMARY_SKILL_LEVEL_CAP,
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
@@ -34,6 +33,7 @@ import {
 import {
   getGold,
   getShopUpgrades,
+  getPurchasedMaxHp,
   getShopUpgradePrice,
   purchaseShopUpgrade,
   getPurchasedPowerCap,
@@ -428,7 +428,8 @@ export class ShopSystem {
       const price = getShopUpgradePrice(card.def.id)
       let currentValue = INITIAL_PRIMARY_SKILL_LEVEL_CAP + purchases
       if (card.def.id === 'maxHp') {
-        currentValue = PLAYER_HP + purchases
+        // ショップ購入分 + エリアクリアボーナス込みの開始 HP
+        currentValue = getPurchasedMaxHp()
       } else if (card.def.id === 'powerCap') {
         currentValue = getPurchasedPowerCap()
       } else if (card.def.id === 'speedCap') {

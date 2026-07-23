@@ -39,6 +39,14 @@ import {
   GOLD_COIN_FRAME_SIZE,
   UI_LOCK_ICON_KEY,
   UI_LOCK_ICON_PATH,
+  TITLE_AREA_ART_PLAINS_KEY,
+  TITLE_AREA_ART_PLAINS_PATH,
+  TITLE_AREA_ART_FOREST_KEY,
+  TITLE_AREA_ART_FOREST_PATH,
+  TITLE_AREA_ART_VOLCANO_KEY,
+  TITLE_AREA_ART_VOLCANO_PATH,
+  TITLE_AREA_ART_DUNGEON_KEY,
+  TITLE_AREA_ART_DUNGEON_PATH,
   PLAYER_WALK_SPRITE_KEY,
   PLAYER_WALK_SPRITE_PATH,
   PLAYER_WALK_FRAME_SIZE,
@@ -118,7 +126,7 @@ export class PreloadScene extends Phaser.Scene {
     this.load.audio(FOREST_BGM_KEY, FOREST_BGM_PATH)
     // Volcano 戦闘 BGM（Ninja Adventure Asset Pack: The Cave）
     this.load.audio(VOLCANO_BGM_KEY, VOLCANO_BGM_PATH)
-    // Ruins 戦闘 BGM（Ninja Adventure Asset Pack: Dark Castle）
+    // Dungeon 戦闘 BGM（Ninja Adventure Asset Pack: Dark Castle）
     this.load.audio(RUINS_BGM_KEY, RUINS_BGM_PATH)
     // エリア最終ステージクリア BGM（Ninja Adventure Asset Pack: Temple）
     this.load.audio(AREA_CLEAR_BGM_KEY, AREA_CLEAR_BGM_PATH)
@@ -153,6 +161,11 @@ export class PreloadScene extends Phaser.Scene {
     })
     // タイトルなどのロック表示用南京錠（白スプライトを tint で色付け）
     this.load.image(UI_LOCK_ICON_KEY, UI_LOCK_ICON_PATH)
+    // タイトルのエリア選択パネル用イラスト
+    this.load.image(TITLE_AREA_ART_PLAINS_KEY, TITLE_AREA_ART_PLAINS_PATH)
+    this.load.image(TITLE_AREA_ART_FOREST_KEY, TITLE_AREA_ART_FOREST_PATH)
+    this.load.image(TITLE_AREA_ART_VOLCANO_KEY, TITLE_AREA_ART_VOLCANO_PATH)
+    this.load.image(TITLE_AREA_ART_DUNGEON_KEY, TITLE_AREA_ART_DUNGEON_PATH)
     // プレイヤーの向き用スプライトシート（正面・横・背中の3コマ。歩行なし）
     this.load.spritesheet(PLAYER_WALK_SPRITE_KEY, PLAYER_WALK_SPRITE_PATH, {
       frameWidth: PLAYER_WALK_FRAME_SIZE,

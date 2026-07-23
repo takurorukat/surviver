@@ -18,6 +18,7 @@ import {
   INITIAL_PIERCE_BLAST_SKILL_LEVEL_CAP,
   INITIAL_XP_BONUS_SKILL_LEVEL_CAP,
   PLAINS_CLEAR_POWER_SPEED_LEVEL_CAP,
+  FOREST_CLEAR_POWER_SPEED_LEVEL_CAP,
   ACHIEVEMENT_ID_PLAINS_CLEAR,
   ACHIEVEMENT_ID_UNTOUCHED,
   ACHIEVEMENT_ID_PURE_POWER,
@@ -423,6 +424,58 @@ export function markAreaCleared(areaId: string): boolean {
   return true
 }
 
+/** デバッグ用: タイトルからエリア進行を一括で上書きする */
+export type DebugClearedProgressLevel = 'plains' | 'forest' | 'volcano' | 'ruins'
+
+export function applyDebugClearedProgress(level: DebugClearedProgressLevel): void {
+  const data = loadGameSaveData()
+
+  // 選んだ段階までのクリア済みエリア（それより先は消す）
+  let clearedAreaIds: string[] = ['plains']
+  if (level === 'forest' || level === 'volcano' || level === 'ruins') {
+    clearedAreaIds = ['plains', 'forest']
+  }
+  if (level === 'volcano' || level === 'ruins') {
+    clearedAreaIds = ['plains', 'forest', 'volcano']
+  }
+  if (level === 'ruins') {
+    clearedAreaIds = ['plains', 'forest', 'volcano', 'ruins']
+  }
+  data.clearedAreaIds = clearedAreaIds
+
+  // クリア実績も段階に合わせて付け外し（Move 解放などがズレないように）
+  const clearAchievementIds = [
+    ACHIEVEMENT_ID_PLAINS_CLEAR,
+    ACHIEVEMENT_ID_FOREST_CLEAR,
+    ACHIEVEMENT_ID_VOLCANO_CLEAR,
+  ]
+  const keptAchievements: string[] = []
+  for (let index = 0; index < data.unlockedAchievementIds.length; index++) {
+    const achievementId = data.unlockedAchievementIds[index]
+    let isClearAchievement = false
+    for (let clearIndex = 0; clearIndex < clearAchievementIds.length; clearIndex++) {
+      if (achievementId === clearAchievementIds[clearIndex]) {
+        isClearAchievement = true
+        break
+      }
+    }
+    if (!isClearAchievement) {
+      keptAchievements.push(achievementId)
+    }
+  }
+
+  keptAchievements.push(ACHIEVEMENT_ID_PLAINS_CLEAR)
+  if (level === 'forest' || level === 'volcano' || level === 'ruins') {
+    keptAchievements.push(ACHIEVEMENT_ID_FOREST_CLEAR)
+  }
+  if (level === 'volcano' || level === 'ruins') {
+    keptAchievements.push(ACHIEVEMENT_ID_VOLCANO_CLEAR)
+  }
+  data.unlockedAchievementIds = keptAchievements
+
+  saveGameSaveData(data)
+}
+
 // タイトルでそのエリアを開始できるか
 export function isAreaPlayable(area: StageAreaDef): boolean {
   if (area.comingSoon) {
@@ -609,11 +662,52 @@ export function purchaseShopUpgrade(upgradeId: ShopUpgradeId): ShopPurchaseResul
 }
 
 export function getPurchasedMaxHp(): number {
-  return PLAYER_HP + getShopUpgrades().maxHp
+  return PLAYER_HP + getShopUpgrades().maxHp + getAreaClearMaxHpBonus()
 }
 
-/** Plains クリア後は Power / Speed の基礎上限が 5。それ以外は 3。 */
+/**
+ * エリア初クリアごとの Max HP ボーナス。
+ * Plains / Forest / Volcano / Earth Dungeon をクリアするたびに +1。
+ */
+export function getAreaClearMaxHpBonus(): number {
+  let bonus = 0
+  if (hasClearedArea('plains')) {
+    bonus = bonus + 1
+  }
+  if (hasClearedArea('forest')) {
+    bonus = bonus + 1
+  }
+  if (hasClearedArea('volcano')) {
+    bonus = bonus + 1
+  }
+  if (hasClearedArea('ruins')) {
+    bonus = bonus + 1
+  }
+  return bonus
+}
+
+/** そのエリア初クリアで Max HP +1 が付くか */
+export function doesAreaClearGrantMaxHpBonus(areaId: string): boolean {
+  if (areaId === 'plains') {
+    return true
+  }
+  if (areaId === 'forest') {
+    return true
+  }
+  if (areaId === 'volcano') {
+    return true
+  }
+  if (areaId === 'ruins') {
+    return true
+  }
+  return false
+}
+
+/** Power / Speed の基礎上限。Plains クリアで 5、Forest クリアで 7。 */
 function getPowerSpeedBaseCap(): number {
+  if (hasClearedArea('forest')) {
+    return FOREST_CLEAR_POWER_SPEED_LEVEL_CAP
+  }
   if (hasClearedArea('plains')) {
     return PLAINS_CLEAR_POWER_SPEED_LEVEL_CAP
   }

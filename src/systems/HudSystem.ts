@@ -5,7 +5,7 @@
 //
 // 役割:
 //   - HP マスバー、残り時間、XP バー、レベル／ステージ表示
-//   - 右側の POWER / SPEED / … とスキルツリー（Blast←Power+Range など）
+//   - 右側の POWER / SPEED / … とスキルツリー（左＝基本、右＝合成）
 //   - ステータス上昇時の一瞬パルス、XP 演出の飛び先座標
 //
 // 呼び出し元:
@@ -50,10 +50,13 @@ import {
   UNLOCK_ICON_GAP,
   UNLOCK_ICON_BORDER_SIZE,
   SKILL_TREE_ROW_GAP,
-  SKILL_TREE_EXTRA_ROW_GAP,
+  SKILL_TREE_COMBO_COL,
   SKILL_TREE_LINE_COLOR,
   SKILL_TREE_LINE_ALPHA,
   SKILL_TREE_LINE_THICKNESS,
+  SKILL_TREE_LINE_ACTIVE_COLOR,
+  SKILL_TREE_LINE_ACTIVE_ALPHA,
+  SKILL_TREE_LINE_ACTIVE_THICKNESS,
   SKILL_TREE_LINE_DEPTH_OFFSET,
   UNLOCK_ICON_POWER_COLOR,
   UNLOCK_ICON_SPEED_COLOR,
@@ -163,7 +166,7 @@ const UNLOCK_STATUS_HEADER_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
 
 const UNLOCK_ICON_LETTER_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
   fontFamily: FONT_FAMILY_UI,
-  fontSize: '13px',
+  fontSize: '9px',
   color: UNLOCK_ICON_LETTER_COLOR,
   fontStyle: 'bold',
 }
@@ -224,6 +227,7 @@ type PlayerStatLine = {
 }
 
 type UnlockStatusIcon = {
+  slotId: string
   skillId: string
   skillLabel: string
   skillDescription: string
@@ -249,35 +253,38 @@ type UnlockSkillTooltip = {
   lockText: Phaser.GameObjects.Text
 }
 
-// スキルツリーのマス目（上段コンボ → 下段素材 → その他）
-// col は 0〜3。Blast/Pierce は素材2つの真ん中（0.5 / 2.5）
+// 左列＝基本スキル、右列＝合成スキル。各スキルは1つだけ
+// row は縦位置（合成は素材の中間に置く）
 type SkillTreeSlot = {
+  slotId: string
   skillId: string
   row: number
   col: number
 }
 
 const SKILL_TREE_SLOTS: SkillTreeSlot[] = [
-  { skillId: 'blast', row: 0, col: 0.5 },
-  { skillId: 'ricochet', row: 0, col: 1.5 },
-  { skillId: 'pierce', row: 0, col: 2.5 },
-  { skillId: 'damage', row: 1, col: 0 },
-  { skillId: 'range', row: 1, col: 1 },
-  { skillId: 'fireRate', row: 1, col: 2 },
-  { skillId: 'move', row: 1, col: 3 },
-  { skillId: 'magnet', row: 2, col: 0 },
-  { skillId: 'xpBonus', row: 2, col: 1 },
+  // 左列: 基本
+  { slotId: 'damage', skillId: 'damage', row: 0, col: 0 },
+  { slotId: 'range', skillId: 'range', row: 1, col: 0 },
+  { slotId: 'fireRate', skillId: 'fireRate', row: 2, col: 0 },
+  { slotId: 'move', skillId: 'move', row: 3, col: 0 },
+  { slotId: 'magnet', skillId: 'magnet', row: 4, col: 0 },
+  { slotId: 'xpBonus', skillId: 'xpBonus', row: 5, col: 0 },
+  // 右列: 合成（素材のあいだに配置）
+  { slotId: 'blast', skillId: 'blast', row: 0.5, col: SKILL_TREE_COMBO_COL },
+  { slotId: 'pierce', skillId: 'pierce', row: 2.5, col: SKILL_TREE_COMBO_COL },
+  { slotId: 'ricochet', skillId: 'ricochet', row: 3.5, col: SKILL_TREE_COMBO_COL },
 ]
 
-// 上のコンボスキル ← 下の素材スキル（線でつなぐ）
-const SKILL_TREE_LINKS: { parentId: string; childId: string }[] = [
-  { parentId: 'blast', childId: 'damage' },
-  { parentId: 'blast', childId: 'range' },
-  { parentId: 'ricochet', childId: 'damage' },
-  { parentId: 'ricochet', childId: 'fireRate' },
-  { parentId: 'ricochet', childId: 'magnet' },
-  { parentId: 'pierce', childId: 'fireRate' },
-  { parentId: 'pierce', childId: 'move' },
+// 基本 → 合成（左から右へ線）
+const SKILL_TREE_LINKS: { fromSlotId: string; toSlotId: string }[] = [
+  { fromSlotId: 'damage', toSlotId: 'blast' },
+  { fromSlotId: 'range', toSlotId: 'blast' },
+  { fromSlotId: 'fireRate', toSlotId: 'pierce' },
+  { fromSlotId: 'move', toSlotId: 'pierce' },
+  { fromSlotId: 'magnet', toSlotId: 'ricochet' },
+  { fromSlotId: 'damage', toSlotId: 'ricochet' },
+  { fromSlotId: 'fireRate', toSlotId: 'ricochet' },
 ]
 
 // 画面上部の HP・タイマー・XP バーを表示する
@@ -472,6 +479,8 @@ export class HudSystem {
 
     // スキルツリーの Blast / Pierce / Move も同じ条件でグレーを更新
     this.syncSkillTreeComboIconLooks()
+    // レベル変化に合わせて線の太さも更新
+    this.layoutUnlockStatusIcons()
   }
 
   /**
@@ -680,7 +689,7 @@ export class HudSystem {
     })
   }
 
-  // スキルツリー配置: 上段 Blast/Ricochet/Pierce、中段 Power/Range/Speed/Move、下段 Pickup/XP
+  // スキルツリー配置: 左＝基本スキル縦列、右＝合成スキル
   private layoutUnlockStatusIcons(): void {
     if (this.unlockStatusHeaderText === null) {
       return
@@ -694,42 +703,41 @@ export class HudSystem {
     this.unlockStatusHeaderText.setPosition(this.unlockPanelX, nextY)
     nextY = nextY + this.unlockStatusHeaderText.height + 6
 
-    const stepX = UNLOCK_ICON_SIZE + UNLOCK_ICON_GAP
-    const row0Y = nextY + UNLOCK_ICON_SIZE / 2
-    const row1Y = row0Y + UNLOCK_ICON_SIZE + SKILL_TREE_ROW_GAP
-    const row2Y = row1Y + UNLOCK_ICON_SIZE + SKILL_TREE_EXTRA_ROW_GAP
-    const rowCentersY = [row0Y, row1Y, row2Y]
+    // 列のあいだを少し広めにして線が見やすいようにする
+    const stepX = UNLOCK_ICON_SIZE + UNLOCK_ICON_GAP + 6
+    const stepY = UNLOCK_ICON_SIZE + SKILL_TREE_ROW_GAP
 
-    const iconBySkillId = new Map<string, UnlockStatusIcon>()
+    const iconBySlotId = new Map<string, UnlockStatusIcon>()
     for (let index = 0; index < this.unlockStatusIcons.length; index++) {
-      iconBySkillId.set(this.unlockStatusIcons[index].skillId, this.unlockStatusIcons[index])
+      iconBySlotId.set(this.unlockStatusIcons[index].slotId, this.unlockStatusIcons[index])
     }
 
     for (let slotIndex = 0; slotIndex < SKILL_TREE_SLOTS.length; slotIndex++) {
       const slot = SKILL_TREE_SLOTS[slotIndex]
-      const icon = iconBySkillId.get(slot.skillId)
+      const icon = iconBySlotId.get(slot.slotId)
       if (icon === undefined) {
         continue
       }
 
       const iconX = this.unlockPanelX + UNLOCK_ICON_SIZE / 2 + slot.col * stepX
-      const iconY = rowCentersY[slot.row]
+      const iconY = nextY + UNLOCK_ICON_SIZE / 2 + slot.row * stepY
       icon.border.setPosition(iconX, iconY)
       icon.fill.setPosition(iconX, iconY)
       icon.letterText.setPosition(iconX, iconY)
       icon.frostVeil.setPosition(iconX, iconY)
-      icon.frostGlintA.setPosition(iconX - 4, iconY - 3)
-      icon.frostGlintB.setPosition(iconX + 3, iconY + 4)
+      icon.frostGlintA.setPosition(iconX - 3, iconY - 2)
+      icon.frostGlintB.setPosition(iconX + 2, iconY + 3)
     }
 
-    this.redrawSkillTreeLines(iconBySkillId)
+    this.redrawSkillTreeLines(iconBySlotId)
   }
 
   /**
-   * Power+Range→Blast / Pickup+Power+Speed→Ricochet / Speed+Move→Pierce のつなぎ線を描く。
+   * 素材の右端 → 結果の左端へ横線を描く。
+   * レベルアップ済みスキルにつながる線は太くする。
    */
   private redrawSkillTreeLines(
-    iconBySkillId: Map<string, UnlockStatusIcon>,
+    iconBySlotId: Map<string, UnlockStatusIcon>,
   ): void {
     if (this.skillTreeLinesGraphics === null) {
       return
@@ -737,31 +745,78 @@ export class HudSystem {
 
     const graphics = this.skillTreeLinesGraphics
     graphics.clear()
-    graphics.lineStyle(
-      SKILL_TREE_LINE_THICKNESS,
-      SKILL_TREE_LINE_COLOR,
-      SKILL_TREE_LINE_ALPHA,
-    )
 
     const half = UNLOCK_ICON_SIZE / 2
     for (let index = 0; index < SKILL_TREE_LINKS.length; index++) {
       const link = SKILL_TREE_LINKS[index]
-      const parentIcon = iconBySkillId.get(link.parentId)
-      const childIcon = iconBySkillId.get(link.childId)
-      if (parentIcon === undefined || childIcon === undefined) {
+      const fromIcon = iconBySlotId.get(link.fromSlotId)
+      const toIcon = iconBySlotId.get(link.toSlotId)
+      if (fromIcon === undefined || toIcon === undefined) {
         continue
       }
 
-      // 上のコンボの下端 → 下の素材の上端
-      const startX = parentIcon.border.x
-      const startY = parentIcon.border.y + half
-      const endX = childIcon.border.x
-      const endY = childIcon.border.y - half
+      const isActive =
+        this.isSkillTreeNodeProgressed(fromIcon.skillId) ||
+        this.isSkillTreeNodeProgressed(toIcon.skillId)
+      if (isActive) {
+        graphics.lineStyle(
+          SKILL_TREE_LINE_ACTIVE_THICKNESS,
+          SKILL_TREE_LINE_ACTIVE_COLOR,
+          SKILL_TREE_LINE_ACTIVE_ALPHA,
+        )
+      } else {
+        graphics.lineStyle(
+          SKILL_TREE_LINE_THICKNESS,
+          SKILL_TREE_LINE_COLOR,
+          SKILL_TREE_LINE_ALPHA,
+        )
+      }
+
+      // 左の素材 → 右の結果
+      const startX = fromIcon.border.x + half
+      const startY = fromIcon.border.y
+      const endX = toIcon.border.x - half
+      const endY = toIcon.border.y
       graphics.beginPath()
       graphics.moveTo(startX, startY)
       graphics.lineTo(endX, endY)
       graphics.strokePath()
     }
+  }
+
+  /**
+   * 今ランで上がった／付いたスキルか。
+   * 基本スキルは Lv2 以上、コンボ／XP は 1 以上。
+   */
+  private isSkillTreeNodeProgressed(skillId: string): boolean {
+    if (skillId === 'blast') {
+      return this.currentStatValues.blast > 0
+    }
+    if (skillId === 'pierce') {
+      return this.currentStatValues.penetrate > 0
+    }
+    if (skillId === 'ricochet') {
+      return this.currentStatValues.ricochet > 0
+    }
+    if (skillId === 'damage') {
+      return this.currentStatValues.power > 1
+    }
+    if (skillId === 'fireRate') {
+      return this.currentStatValues.speed > 1
+    }
+    if (skillId === 'range') {
+      return this.currentStatValues.range > 1
+    }
+    if (skillId === 'move') {
+      return this.currentStatValues.move > 1
+    }
+    if (skillId === 'magnet') {
+      return this.currentStatValues.magnet > 1
+    }
+    if (skillId === 'xpBonus') {
+      return this.currentStatValues.xpBonus > 0
+    }
+    return false
   }
 
   /**
@@ -1103,6 +1158,7 @@ export class HudSystem {
       frostGlintB.setVisible(false)
 
       const unlockIcon: UnlockStatusIcon = {
+        slotId: slot.slotId,
         skillId: row.skillId,
         skillLabel: row.skillLabel,
         skillDescription: row.skillDescription,

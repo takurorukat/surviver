@@ -29,6 +29,11 @@ class MidiWriter:
             melody = pretty_midi.Instrument(program=73, name="Melody")  # Flute
             chords = pretty_midi.Instrument(program=12, name="Chords")  # Marimba
             bass = pretty_midi.Instrument(program=32, name="Bass")  # Acoustic Bass
+        elif arrangement.theme_id == "dungeon":
+            # Earth Dungeon: 地下っぽい低めの音色
+            melody = pretty_midi.Instrument(program=42, name="Melody")  # Cello
+            chords = pretty_midi.Instrument(program=52, name="Chords")  # Choir Aahs
+            bass = pretty_midi.Instrument(program=34, name="Bass")  # Pick Bass
         else:
             melody = pretty_midi.Instrument(program=73, name="Melody")  # Flute
             chords = pretty_midi.Instrument(program=48, name="Chords")  # Strings

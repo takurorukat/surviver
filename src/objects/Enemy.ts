@@ -224,6 +224,7 @@ import {
   shouldSpawnRangedEnemy,
   isForestFinalStage,
   isVolcanoFinalStage,
+  shouldScatterVolcanoEnemySpawns,
   type StageAreaId,
 } from '../GameConstants'
 import { setupCircleHitbox } from '../utils/setupCircleHitbox'
@@ -1779,8 +1780,9 @@ export function startEnemyPackSpawnWithWarning(
 ): SpawnWarningTimers {
   const center = getRandomInsideSpawnPosition(playerPosition)
   let positions = buildPackPositionsAroundCenter(center.x, center.y, packSize)
-  // Volcano 最終ステージは固まりではなく、画面内のランダム位置へ散らして出す
-  if (isVolcanoFinalStage(areaId, stageNumber, totalStages)) {
+  // Volcano Stage2 以降は固まりではなく、画面内のランダム位置へ散らして出す
+  // （跳弾が生きる。Stage1 は従来どおり群れ）
+  if (shouldScatterVolcanoEnemySpawns(areaId, stageNumber)) {
     positions = []
     for (let index = 0; index < packSize; index++) {
       positions.push(getRandomInsideSpawnPosition(playerPosition))

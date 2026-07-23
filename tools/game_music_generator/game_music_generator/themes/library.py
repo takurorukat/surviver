@@ -81,13 +81,15 @@ THEME_LIBRARY: dict[str, ThemeConfig] = {
     ),
     "dungeon": ThemeConfig(
         theme_id="dungeon",
-        display_name="Dungeon",
-        key="A",
-        tempo_bpm=90,
+        display_name="Earth Dungeon",
+        # 現行洞窟アレンジ（D minor・低音寄り）をベースに、
+        # 鼻歌「どうくつ」の上昇メロディをモチーフ化
+        key="D",
+        tempo_bpm=114,
         progressions=(
-            ("i", "VII", "VI", "V"),
-            ("i", "iv", "VII", "i"),
             ("i", "VI", "III", "VII"),
+            ("i", "iv", "VI", "V"),
+            ("i", "VII", "iv", "VI"),
         ),
     ),
     "town": ThemeConfig(
@@ -147,13 +149,15 @@ THEME_LIBRARY: dict[str, ThemeConfig] = {
     ),
     "volcano": ThemeConfig(
         theme_id="volcano",
-        display_name="Volcano",
-        key="C",
-        tempo_bpm=128,
+        display_name="Fire Volcano",
+        # 現行 volcano_bgm（約 B minor / 120BPM）を参考にしつつ、
+        # 同じ曲に聞こえないようキーと進行をずらす
+        key="E",
+        tempo_bpm=124,
         progressions=(
-            ("i", "VI", "VII", "i"),
-            ("i", "iv", "VII", "VI"),
-            ("i", "VII", "iv", "V"),
+            ("i", "VII", "VI", "III"),
+            ("i", "iv", "VI", "V"),
+            ("i", "VI", "iv", "VII"),
         ),
     ),
 }
@@ -161,6 +165,9 @@ THEME_LIBRARY: dict[str, ThemeConfig] = {
 
 def get_theme(theme_id: str) -> ThemeConfig:
     key = theme_id.strip().lower()
+    # ゲーム内 area id（ruins）でも呼べるようにする
+    if key == "ruins":
+        key = "dungeon"
     if key not in THEME_LIBRARY:
         known = ", ".join(sorted(THEME_LIBRARY.keys()))
         raise KeyError(f"Unknown theme '{theme_id}'. Known: {known}")

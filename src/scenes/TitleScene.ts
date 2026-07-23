@@ -4,6 +4,7 @@ import {
   GAME_HEIGHT,
   TOP_BAR_HEIGHT,
   STAGE_AREAS,
+  getTitleAreaArtTextureKey,
   TITLE_AREA_PANEL_COLUMNS,
   TITLE_AREA_VISIBLE_COUNT,
   TITLE_AREA_PANEL_WIDTH,
@@ -16,6 +17,22 @@ import {
   TITLE_AREA_PANEL_SELECTED_BORDER_COLOR,
   TITLE_AREA_PANEL_HOVER_COLOR,
   TITLE_AREA_LOCKED_PANEL_COLOR,
+  TITLE_AREA_PANEL_FILL_ALPHA_PLAYABLE,
+  TITLE_AREA_PANEL_FILL_ALPHA_LOCKED,
+  TITLE_AREA_PANEL_FILL_ALPHA_HIDDEN,
+  TITLE_AREA_ART_ALPHA,
+  TITLE_AREA_HOVER_SCALE,
+  TITLE_AREA_HOVER_ART_ZOOM,
+  TITLE_AREA_HOVER_ART_ALPHA,
+  TITLE_AREA_HOVER_LIFT_Y,
+  TITLE_AREA_HOVER_TEXT_LIFT_Y,
+  TITLE_AREA_HOVER_PLAINS_STAGES_TOP_PADDING,
+  TITLE_AREA_HOVER_OVERLAY_ALPHA,
+  TITLE_AREA_HOVER_TWEEN_MS,
+  TITLE_AREA_HOVER_DEPTH,
+  TITLE_AREA_NAME_STROKE_COLOR,
+  TITLE_AREA_NAME_STROKE_THICKNESS,
+  TITLE_AREA_STAGES_STROKE_THICKNESS,
   TITLE_AREA_NAME_COLOR,
   TITLE_AREA_SUB_COLOR,
   TITLE_AREA_LOCKED_NAME_COLOR,
@@ -27,6 +44,8 @@ import {
   TITLE_AREA_NAME_FONT_SIZE,
   TITLE_AREA_STAGES_FONT_SIZE,
   TITLE_AREA_CONDITION_COLOR,
+  TITLE_SHOW_SHOP_AND_SEAL,
+  TITLE_SHOW_DEBUG_PROGRESS,
   TITLE_SHOP_PANEL_WIDTH,
   TITLE_SHOP_PANEL_HEIGHT,
   TITLE_SHOP_PANEL_CENTER_Y,
@@ -70,6 +89,10 @@ import {
   type BgmToggleButtonView,
 } from '../systems/BgmToggleButtonSystem'
 import {
+  createDebugProgressButton,
+  type DebugProgressButtonView,
+} from '../systems/DebugProgressButtonSystem'
+import {
   createOrientationGuide,
   type OrientationGuideView,
 } from '../systems/OrientationGuideSystem'
@@ -88,11 +111,23 @@ import {
 
 type AreaPanelView = {
   area: StageAreaDef
+  centerX: number
+  centerY: number
+  nameBaseY: number
+  stagesBaseY: number
   border: Phaser.GameObjects.Rectangle
   background: Phaser.GameObjects.Rectangle
+  artImage: Phaser.GameObjects.Image | null
+  artMaskGraphics: Phaser.GameObjects.Graphics | null
+  artBaseScaleX: number
+  artBaseScaleY: number
   nameText: Phaser.GameObjects.Text
   stagesText: Phaser.GameObjects.Text
   lockIcon: LockIconView
+  isHovered: boolean
+  hoverTween: Phaser.Tweens.Tween | null
+  /** ホバー演出の進行度 0〜1（tween 用） */
+  hoverProgress: number
 }
 
 type ActionPreviewView = {
@@ -139,6 +174,7 @@ export class TitleScene extends Phaser.Scene {
   private shopUnlockTipObjects: Phaser.GameObjects.GameObject[] = []
   private topBarView: TopBarView | null = null
   private bgmToggleButton: BgmToggleButtonView | null = null
+  private debugProgressButton: DebugProgressButtonView | null = null
   private orientationGuide: OrientationGuideView | null = null
 
   constructor() {
@@ -153,8 +189,8 @@ export class TitleScene extends Phaser.Scene {
 
     this.titleAudioSystem = new GameAudioSystem(this)
     this.titleAudioSystem.prepare()
-    // 戦闘 BGM が残っていても、タイトルでは必ず止める（死亡後の鳴り続け対策）
-    this.titleAudioSystem.stopBgm()
+    // 戦闘 BGM・ゲームオーバー SE など、前シーンの音をすべて止めてからタイトル曲だけ流す
+    this.titleAudioSystem.stopAllSounds()
     if (this.titleAudioSystem.getBgmEnabled()) {
       this.titleAudioSystem.startTitleBgm()
     }
@@ -284,8 +320,10 @@ export class TitleScene extends Phaser.Scene {
     // 途中再開はしない（旧セーブに残っていても消す）
     clearRunProgress()
     this.createAreaPanels()
-    this.shopPreviewView = this.createShopPreviewPanel()
-    this.sealPreviewView = this.createSealPreviewPanel()
+    if (TITLE_SHOW_SHOP_AND_SEAL) {
+      this.shopPreviewView = this.createShopPreviewPanel()
+      this.sealPreviewView = this.createSealPreviewPanel()
+    }
 
     // Shop 枠のすぐ下に、開始／解除条件の案内を置く
     this.conditionText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 56, '', {
@@ -318,12 +356,33 @@ export class TitleScene extends Phaser.Scene {
       this.selectMenuItem(this.getBgmSelectionIndex())
     })
 
+    if (TITLE_SHOW_DEBUG_PROGRESS) {
+      this.debugProgressButton = createDebugProgressButton(
+        this,
+        () => {
+          this.refreshSelectionVisual()
+          if (this.topBarView !== null) {
+            this.topBarView.refreshAchievementProgress()
+          }
+        },
+        () => {
+          if (
+            this.confirmDialogSystem.isOpen() ||
+            this.shopSystem.isOpen() ||
+            this.sealSkillSystem.isOpen()
+          ) {
+            return
+          }
+          this.selectMenuItem(this.getDebugSelectionIndex())
+        },
+      )
+    }
 
     this.setupKeyboard()
     this.refreshSelectionVisual()
 
     // 初めて Shop が開いたあと、タイトルに戻ったときだけ吹き出し案内を出す
-    if (shouldShowShopUnlockTip()) {
+    if (TITLE_SHOW_SHOP_AND_SEAL && shouldShowShopUnlockTip()) {
       this.showShopUnlockTip()
     }
 
@@ -343,6 +402,10 @@ export class TitleScene extends Phaser.Scene {
   }
 
   shutdown(): void {
+    if (this.debugProgressButton !== null) {
+      this.debugProgressButton.destroy()
+      this.debugProgressButton = null
+    }
     if (this.orientationGuide !== null) {
       this.orientationGuide.destroy()
       this.orientationGuide = null
@@ -354,8 +417,16 @@ export class TitleScene extends Phaser.Scene {
     this.bgmToggleButton?.refresh()
   }
 
-  // 選択番号: エリア → Shop → Seal Skills → 実績 → Settings → BGM
+  // 選択番号: エリア → (Shop → Seal Skills) → Gold → 実績 → Settings → BGM
+  // Shop / Seal は TITLE_SHOW_SHOP_AND_SEAL が false のとき番号に含めない
   // 縦移動では実績を飛ばし、実績は Settings から左右キーだけ
+  private getShopSealMenuOffset(): number {
+    if (TITLE_SHOW_SHOP_AND_SEAL) {
+      return 2
+    }
+    return 0
+  }
+
   private getShopSelectionIndex(): number {
     return this.panelViews.length
   }
@@ -365,29 +436,50 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private getAchievementSelectionIndex(): number {
-    return this.panelViews.length + 3
+    return this.panelViews.length + this.getShopSealMenuOffset() + 1
   }
 
   private getSettingsSelectionIndex(): number {
-    return this.panelViews.length + 4
+    return this.panelViews.length + this.getShopSealMenuOffset() + 2
   }
 
   private getBgmSelectionIndex(): number {
-    return this.panelViews.length + 5
+    return this.panelViews.length + this.getShopSealMenuOffset() + 3
   }
 
+  // BGM の左隣（TITLE_SHOW_DEBUG_PROGRESS のときだけ使う）
+  private getDebugSelectionIndex(): number {
+    return this.getBgmSelectionIndex() + 1
+  }
 
   private getGoldSelectionIndex(): number {
     // 上部バー左端寄り: Gold → Achievements → Settings
-    return this.panelViews.length + 2
+    return this.panelViews.length + this.getShopSealMenuOffset()
   }
 
   private isShopSelected(): boolean {
+    if (!TITLE_SHOW_SHOP_AND_SEAL) {
+      return false
+    }
     return this.selectedIndex === this.getShopSelectionIndex()
   }
 
   private isSealSelected(): boolean {
+    if (!TITLE_SHOW_SHOP_AND_SEAL) {
+      return false
+    }
     return this.selectedIndex === this.getSealSelectionIndex()
+  }
+
+  private isBgmSelected(): boolean {
+    return this.selectedIndex === this.getBgmSelectionIndex()
+  }
+
+  private isDebugSelected(): boolean {
+    if (!TITLE_SHOW_DEBUG_PROGRESS || this.debugProgressButton === null) {
+      return false
+    }
+    return this.selectedIndex === this.getDebugSelectionIndex()
   }
 
   // ショップで Seal Slot を1つ以上買うと、タイトルから Seal Skills を開ける
@@ -437,11 +529,6 @@ export class TitleScene extends Phaser.Scene {
   private isSettingsSelected(): boolean {
     return this.selectedIndex === this.getSettingsSelectionIndex()
   }
-
-  private isBgmSelected(): boolean {
-    return this.selectedIndex === this.getBgmSelectionIndex()
-  }
-
 
   private createAreaPanels(): void {
     const columns = TITLE_AREA_PANEL_COLUMNS
@@ -661,6 +748,11 @@ export class TitleScene extends Phaser.Scene {
     const revealed = isAreaRevealed(area)
     const fillColor = playable ? TITLE_AREA_PANEL_COLOR : TITLE_AREA_LOCKED_PANEL_COLOR
     const nameColor = playable ? TITLE_AREA_NAME_COLOR : TITLE_AREA_LOCKED_NAME_COLOR
+    const fillAlpha = revealed
+      ? playable
+        ? TITLE_AREA_PANEL_FILL_ALPHA_PLAYABLE
+        : TITLE_AREA_PANEL_FILL_ALPHA_LOCKED
+      : TITLE_AREA_PANEL_FILL_ALPHA_HIDDEN
 
     const border = this.add.rectangle(
       centerX,
@@ -670,12 +762,34 @@ export class TitleScene extends Phaser.Scene {
       TITLE_AREA_PANEL_BORDER_COLOR,
     )
 
+    // エリア絵（パネル内にカバー表示。文字の下に薄く見える）
+    let artImage: Phaser.GameObjects.Image | null = null
+    let artMaskGraphics: Phaser.GameObjects.Graphics | null = null
+    const artKey = getTitleAreaArtTextureKey(area.id)
+    if (artKey !== null && this.textures.exists(artKey)) {
+      artImage = this.add.image(centerX, centerY, artKey)
+      artImage.setAlpha(TITLE_AREA_ART_ALPHA)
+      this.fitAreaArtToPanel(artImage, centerX, centerY)
+      artMaskGraphics = this.make.graphics({ x: 0, y: 0 })
+      artMaskGraphics.fillStyle(0xffffff)
+      artMaskGraphics.fillRect(
+        centerX - TITLE_AREA_PANEL_WIDTH / 2,
+        centerY - TITLE_AREA_PANEL_HEIGHT / 2,
+        TITLE_AREA_PANEL_WIDTH,
+        TITLE_AREA_PANEL_HEIGHT,
+      )
+      artImage.setMask(artMaskGraphics.createGeometryMask())
+      // 名前が隠れる ? エリアでは絵を出さない（ネタバレ防止）
+      artImage.setVisible(revealed)
+    }
+
     const background = this.add.rectangle(
       centerX,
       centerY,
       TITLE_AREA_PANEL_WIDTH,
       TITLE_AREA_PANEL_HEIGHT,
       fillColor,
+      fillAlpha,
     )
 
     let nameLabel = '?'
@@ -683,6 +797,7 @@ export class TitleScene extends Phaser.Scene {
       nameLabel = area.name
     }
     const nameCenterY = centerY + TITLE_AREA_NAME_OFFSET_Y
+    const stagesCenterY = centerY + TITLE_AREA_STAGES_OFFSET_Y
     const nameText = this.add.text(centerX, nameCenterY, nameLabel, {
       fontFamily: FONT_FAMILY_UI,
       fontSize: TITLE_AREA_NAME_FONT_SIZE,
@@ -690,12 +805,13 @@ export class TitleScene extends Phaser.Scene {
       fontStyle: 'bold',
     })
     nameText.setOrigin(0.5)
+    nameText.setStroke(TITLE_AREA_NAME_STROKE_COLOR, TITLE_AREA_NAME_STROKE_THICKNESS)
     shrinkTextToFitWidth(nameText, TITLE_AREA_PANEL_WIDTH - 48)
 
     const stagesLabel = revealed ? `${area.stageCount} Stages` : '???'
     const stagesText = this.add.text(
       centerX,
-      centerY + TITLE_AREA_STAGES_OFFSET_Y,
+      stagesCenterY,
       stagesLabel,
       {
         fontFamily: FONT_FAMILY_UI,
@@ -704,6 +820,7 @@ export class TitleScene extends Phaser.Scene {
       },
     )
     stagesText.setOrigin(0.5)
+    stagesText.setStroke(TITLE_AREA_NAME_STROKE_COLOR, TITLE_AREA_STAGES_STROKE_THICKNESS)
     shrinkTextToFitWidth(stagesText, TITLE_AREA_PANEL_WIDTH - 48)
 
     const lockIcon = createLockIcon(
@@ -721,6 +838,26 @@ export class TitleScene extends Phaser.Scene {
       TITLE_LOCK_ICON_GAP,
       revealed && !playable,
     )
+
+    const panelView: AreaPanelView = {
+      area,
+      centerX,
+      centerY,
+      nameBaseY: nameCenterY,
+      stagesBaseY: stagesCenterY,
+      border,
+      background,
+      artImage,
+      artMaskGraphics,
+      artBaseScaleX: artImage !== null ? artImage.scaleX : 1,
+      artBaseScaleY: artImage !== null ? artImage.scaleY : 1,
+      nameText,
+      stagesText,
+      lockIcon,
+      isHovered: false,
+      hoverTween: null,
+      hoverProgress: 0,
+    }
 
     background.setInteractive({ useHandCursor: revealed })
     background.on('pointerover', () => {
@@ -756,14 +893,197 @@ export class TitleScene extends Phaser.Scene {
       }
     })
 
-    return {
-      area,
-      border,
-      background,
-      nameText,
-      stagesText,
-      lockIcon,
+    return panelView
+  }
+
+  /**
+   * エリア絵をパネル全体にカバー表示する（はみ出しはマスクで切る）。
+   * Python: scale = max(panel_w/src_w, panel_h/src_h) に相当
+   */
+  private fitAreaArtToPanel(
+    artImage: Phaser.GameObjects.Image,
+    centerX: number,
+    centerY: number,
+  ): void {
+    const source = artImage.texture.getSourceImage() as HTMLImageElement | HTMLCanvasElement
+    const sourceWidth = source.width
+    const sourceHeight = source.height
+    if (sourceWidth <= 0 || sourceHeight <= 0) {
+      return
     }
+    const scale = Math.max(
+      TITLE_AREA_PANEL_WIDTH / sourceWidth,
+      TITLE_AREA_PANEL_HEIGHT / sourceHeight,
+    )
+    artImage.setDisplaySize(sourceWidth * scale, sourceHeight * scale)
+    artImage.setPosition(centerX, centerY)
+  }
+
+  /** ホバー進行中の tween を止める */
+  private stopAreaPanelHoverTween(panel: AreaPanelView): void {
+    if (panel.hoverTween !== null) {
+      panel.hoverTween.stop()
+      panel.hoverTween = null
+    }
+  }
+
+  /**
+   * 選択中パネルを浮かせ・絵をズームする（マウス／カーソルキー共通）。
+   * Python: progress 0→1 で scale / lift / art_zoom を補間するイメージ
+   */
+  private playAreaPanelHoverIn(panel: AreaPanelView): void {
+    if (panel.isHovered) {
+      return
+    }
+    panel.isHovered = true
+    this.stopAreaPanelHoverTween(panel)
+    panel.hoverTween = this.tweens.add({
+      targets: panel,
+      hoverProgress: 1,
+      duration: TITLE_AREA_HOVER_TWEEN_MS,
+      ease: 'Back.Out',
+      onUpdate: () => {
+        this.applyAreaPanelHoverVisual(panel)
+      },
+    })
+  }
+
+  /** 非選択パネルを元の大きさ・位置へ戻す */
+  private playAreaPanelHoverOut(panel: AreaPanelView): void {
+    if (!panel.isHovered && panel.hoverProgress <= 0) {
+      return
+    }
+    panel.isHovered = false
+    this.stopAreaPanelHoverTween(panel)
+    panel.hoverTween = this.tweens.add({
+      targets: panel,
+      hoverProgress: 0,
+      duration: TITLE_AREA_HOVER_TWEEN_MS,
+      ease: 'Quad.Out',
+      onUpdate: () => {
+        this.applyAreaPanelHoverVisual(panel)
+      },
+      onComplete: () => {
+        this.applyAreaPanelHoverVisual(panel)
+        panel.hoverTween = null
+      },
+    })
+  }
+
+  /** プレイ可能な選択中エリアだけ浮き演出（ロック中は枠だけ） */
+  private syncAreaPanelRaiseFromSelection(): void {
+    for (let index = 0; index < this.panelViews.length; index++) {
+      const panel = this.panelViews[index]
+      const canRaise =
+        index === this.selectedIndex && isAreaPlayable(panel.area)
+      if (canRaise) {
+        this.playAreaPanelHoverIn(panel)
+      } else {
+        this.playAreaPanelHoverOut(panel)
+      }
+    }
+  }
+
+  /** メニューを開くときなど、ホバー浮きをすぐ消す */
+  private clearAllAreaPanelHovers(): void {
+    for (const panel of this.panelViews) {
+      this.stopAreaPanelHoverTween(panel)
+      panel.isHovered = false
+      panel.hoverProgress = 0
+      this.applyAreaPanelHoverVisual(panel)
+    }
+  }
+
+  /** hoverProgress に合わせてスケール・位置・マスク・深度・グレー重ねを反映する */
+  private applyAreaPanelHoverVisual(panel: AreaPanelView): void {
+    const t = panel.hoverProgress
+    const panelScale = 1 + (TITLE_AREA_HOVER_SCALE - 1) * t
+    const liftY = TITLE_AREA_HOVER_LIFT_Y * t
+    const textLiftY = TITLE_AREA_HOVER_TEXT_LIFT_Y * t
+    const artZoom = 1 + (TITLE_AREA_HOVER_ART_ZOOM - 1) * t
+    const centerY = panel.centerY + liftY
+    const depthBoost = Math.round(TITLE_AREA_HOVER_DEPTH * t)
+
+    panel.border.setPosition(panel.centerX, centerY)
+    panel.border.setScale(panelScale)
+    panel.border.setDepth(depthBoost)
+
+    panel.background.setPosition(panel.centerX, centerY)
+    panel.background.setScale(panelScale)
+    panel.background.setDepth(depthBoost + 2)
+    // グレー重ねを tween で薄くして絵を見せる
+    // Python: overlay = rest_alpha * (1 - t) + hover_alpha * t に相当
+    const restOverlayAlpha = this.getAreaPanelRestOverlayAlpha(panel)
+    const overlayAlpha =
+      restOverlayAlpha + (TITLE_AREA_HOVER_OVERLAY_ALPHA - restOverlayAlpha) * t
+    panel.background.setFillStyle(panel.background.fillColor, overlayAlpha)
+
+    // 名前はロック有無で X が違うので、Y とスケールだけ動かす（さらに上へ）
+    panel.nameText.y = panel.nameBaseY + liftY + textLiftY
+    panel.nameText.setScale(panelScale)
+    panel.nameText.setDepth(depthBoost + 3)
+
+    // 通常は名前と同じだけ上げる。Plains だけ目に重なるので上端ギリギリまで上げる
+    let stagesY = panel.stagesBaseY + liftY + textLiftY
+    if (panel.area.id === 'plains') {
+      const panelTopY =
+        panel.centerY + liftY - (TITLE_AREA_PANEL_HEIGHT * panelScale) / 2
+      const plainsStagesY = panelTopY + TITLE_AREA_HOVER_PLAINS_STAGES_TOP_PADDING
+      stagesY = stagesY + (plainsStagesY - stagesY) * t
+    }
+    panel.stagesText.setPosition(panel.centerX, stagesY)
+    panel.stagesText.setScale(panelScale)
+    panel.stagesText.setDepth(depthBoost + 3)
+
+    // ロックアイコンは名前に合わせて上へ
+    panel.lockIcon.container.y = panel.nameBaseY + liftY + textLiftY
+    panel.lockIcon.container.setScale(panelScale)
+    panel.lockIcon.container.setDepth(depthBoost + 4)
+
+    if (panel.artImage !== null) {
+      panel.artImage.setPosition(panel.centerX, centerY)
+      panel.artImage.setScale(
+        panel.artBaseScaleX * panelScale * artZoom,
+        panel.artBaseScaleY * panelScale * artZoom,
+      )
+      const artAlpha =
+        TITLE_AREA_ART_ALPHA + (TITLE_AREA_HOVER_ART_ALPHA - TITLE_AREA_ART_ALPHA) * t
+      panel.artImage.setAlpha(artAlpha)
+      panel.artImage.setDepth(depthBoost + 1)
+      this.redrawAreaArtMask(panel, panelScale, liftY)
+    }
+  }
+
+  /** 非選択時のグレー重ねの不透明度 */
+  private getAreaPanelRestOverlayAlpha(panel: AreaPanelView): number {
+    if (!isAreaRevealed(panel.area)) {
+      return TITLE_AREA_PANEL_FILL_ALPHA_HIDDEN
+    }
+    if (isAreaPlayable(panel.area)) {
+      return TITLE_AREA_PANEL_FILL_ALPHA_PLAYABLE
+    }
+    return TITLE_AREA_PANEL_FILL_ALPHA_LOCKED
+  }
+
+  /** ホバーでパネルが動いても絵が枠内に収まるようマスクを描き直す */
+  private redrawAreaArtMask(
+    panel: AreaPanelView,
+    panelScale: number,
+    liftY: number,
+  ): void {
+    if (panel.artMaskGraphics === null) {
+      return
+    }
+    const width = TITLE_AREA_PANEL_WIDTH * panelScale
+    const height = TITLE_AREA_PANEL_HEIGHT * panelScale
+    panel.artMaskGraphics.clear()
+    panel.artMaskGraphics.fillStyle(0xffffff)
+    panel.artMaskGraphics.fillRect(
+      panel.centerX - width / 2,
+      panel.centerY + liftY - height / 2,
+      width,
+      height,
+    )
   }
 
   private setupKeyboard(): void {
@@ -854,6 +1174,9 @@ export class TitleScene extends Phaser.Scene {
 
   // 役割: 上部バー（Gold ↔ 実績 ↔ 歯車）の左右移動
   private moveTopBarHorizontal(direction: number): void {
+    if (this.debugProgressButton !== null && this.debugProgressButton.isMenuOpen()) {
+      return
+    }
     if (this.confirmDialogSystem.isOpen()) {
       return
     }
@@ -899,6 +1222,24 @@ export class TitleScene extends Phaser.Scene {
       return
     }
 
+    // 右下: Debug ←→ BGM（Debug は BGM の左）
+    if (this.isBgmSelected()) {
+      if (
+        direction < 0 &&
+        TITLE_SHOW_DEBUG_PROGRESS &&
+        this.debugProgressButton !== null
+      ) {
+        this.selectMenuItem(this.getDebugSelectionIndex())
+      }
+      return
+    }
+    if (this.isDebugSelected()) {
+      if (direction > 0) {
+        this.selectMenuItem(this.getBgmSelectionIndex())
+      }
+      return
+    }
+
     // エリアグリッド内: 同じ行の左右移動
     if (this.selectedIndex >= 0 && this.selectedIndex < this.panelViews.length) {
       this.moveAreaGridHorizontal(direction)
@@ -926,6 +1267,9 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private moveSelection(direction: number): void {
+    if (this.debugProgressButton !== null && this.debugProgressButton.isMenuOpen()) {
+      return
+    }
     if (this.confirmDialogSystem.isOpen()) {
       return
     }
@@ -955,11 +1299,13 @@ export class TitleScene extends Phaser.Scene {
       return
     }
 
-    if (this.isBgmSelected()) {
+    if (this.isBgmSelected() || this.isDebugSelected()) {
       if (direction > 0) {
         this.selectMenuItem(this.getSettingsSelectionIndex())
-      } else {
+      } else if (TITLE_SHOW_SHOP_AND_SEAL) {
         this.selectMenuItem(this.getShopSelectionIndex())
+      } else {
+        this.selectMenuItem(this.findLastSelectableAreaIndex())
       }
       return
     }
@@ -1013,8 +1359,12 @@ export class TitleScene extends Phaser.Scene {
       this.selectMenuItem(this.getSettingsSelectionIndex())
       return
     }
-    // 下に選べるエリアがない → Shop
-    this.selectMenuItem(this.getShopSelectionIndex())
+    // 下に選べるエリアがない → Shop（非表示時は BGM）
+    if (TITLE_SHOW_SHOP_AND_SEAL) {
+      this.selectMenuItem(this.getShopSelectionIndex())
+      return
+    }
+    this.selectMenuItem(this.getBgmSelectionIndex())
   }
 
   private refreshSelectionVisual(): void {
@@ -1035,8 +1385,9 @@ export class TitleScene extends Phaser.Scene {
       const isSelected = index === this.selectedIndex
 
       // Clear Save 直後にも即時反映されるよう、文字の内容と色を毎回更新する
-      const nameCenterX = panel.background.x
-      const nameCenterY = panel.nameText.y
+      // ホバー中でも基準位置でレイアウトし、最後に浮き演出をかけ直す
+      const nameCenterX = panel.centerX
+      const nameCenterY = panel.nameBaseY
       if (!revealed) {
         panel.nameText.setText('?')
         panel.stagesText.setText('???')
@@ -1082,6 +1433,10 @@ export class TitleScene extends Phaser.Scene {
         setLockIconColor(panel.lockIcon, TITLE_LOCK_ICON_COLOR)
       }
 
+      if (panel.artImage !== null) {
+        panel.artImage.setVisible(revealed)
+      }
+
       // ? はクリック不可。名前が出たら（グレー含む）選択可能
       if (selectable) {
         panel.background.setInteractive({ useHandCursor: true })
@@ -1095,16 +1450,35 @@ export class TitleScene extends Phaser.Scene {
         panel.border.setFillStyle(TITLE_AREA_PANEL_BORDER_COLOR)
       }
 
-      if (playable) {
+      if (!revealed) {
+        panel.background.setFillStyle(
+          TITLE_AREA_LOCKED_PANEL_COLOR,
+          TITLE_AREA_PANEL_FILL_ALPHA_HIDDEN,
+        )
+      } else if (playable) {
         if (isSelected) {
-          panel.background.setFillStyle(TITLE_AREA_PANEL_HOVER_COLOR)
+          panel.background.setFillStyle(
+            TITLE_AREA_PANEL_HOVER_COLOR,
+            TITLE_AREA_PANEL_FILL_ALPHA_PLAYABLE,
+          )
         } else {
-          panel.background.setFillStyle(TITLE_AREA_PANEL_COLOR)
+          panel.background.setFillStyle(
+            TITLE_AREA_PANEL_COLOR,
+            TITLE_AREA_PANEL_FILL_ALPHA_PLAYABLE,
+          )
         }
       } else {
-        panel.background.setFillStyle(TITLE_AREA_LOCKED_PANEL_COLOR)
+        panel.background.setFillStyle(
+          TITLE_AREA_LOCKED_PANEL_COLOR,
+          TITLE_AREA_PANEL_FILL_ALPHA_LOCKED,
+        )
       }
+
+      this.applyAreaPanelHoverVisual(panel)
     }
+
+    // マウスでもキーでも、選択中エリアだけ浮き・ズーム
+    this.syncAreaPanelRaiseFromSelection()
 
     if (this.topBarView !== null) {
       this.topBarView.setGearSelected(this.isSettingsSelected())
@@ -1112,6 +1486,7 @@ export class TitleScene extends Phaser.Scene {
       this.topBarView.setGoldSelected(this.isGoldSelected())
     }
     this.bgmToggleButton?.setSelected(this.isBgmSelected())
+    this.debugProgressButton?.setSelected(this.isDebugSelected())
 
     if (this.shopPreviewView !== null) {
       const shopUnlocked = this.isShopMenuUnlocked()
@@ -1301,7 +1676,11 @@ export class TitleScene extends Phaser.Scene {
     }
 
     if (this.isGoldSelected()) {
-      this.applyConditionText('Gold — spend in the Shop', TITLE_AREA_SUB_COLOR)
+      if (TITLE_SHOW_SHOP_AND_SEAL) {
+        this.applyConditionText('Gold — spend in the Shop', TITLE_AREA_SUB_COLOR)
+      } else {
+        this.applyConditionText('Gold earned from clearing stages', TITLE_AREA_SUB_COLOR)
+      }
       return
     }
 
@@ -1314,8 +1693,23 @@ export class TitleScene extends Phaser.Scene {
     }
 
     if (this.isBgmSelected()) {
+      if (TITLE_SHOW_DEBUG_PROGRESS) {
+        this.applyConditionText(
+          'SPACE / ENTER to switch BGM ON / OFF  ·  ← Debug',
+          TITLE_AREA_SUB_COLOR,
+        )
+      } else {
+        this.applyConditionText(
+          'SPACE / ENTER to switch BGM ON / OFF',
+          TITLE_AREA_SUB_COLOR,
+        )
+      }
+      return
+    }
+
+    if (this.isDebugSelected()) {
       this.applyConditionText(
-        'SPACE / ENTER to switch BGM ON / OFF',
+        'SPACE / ENTER: open  ·  → BGM  ·  menu: W/S + SPACE',
         TITLE_AREA_SUB_COLOR,
       )
       return
@@ -1362,6 +1756,7 @@ export class TitleScene extends Phaser.Scene {
       return
     }
     this.titleAudioSystem.playShopPurchase()
+    this.clearAllAreaPanelHovers()
     this.shopSystem.open()
   }
 
@@ -1498,6 +1893,7 @@ export class TitleScene extends Phaser.Scene {
   // 役割: シールスキル画面を開き、購入と同じ決定音を鳴らす
   private openSealSkillsMenu(): void {
     this.titleAudioSystem.playShopPurchase()
+    this.clearAllAreaPanelHovers()
     this.sealSkillSystem.open()
   }
 
@@ -1517,6 +1913,10 @@ export class TitleScene extends Phaser.Scene {
     if (this.consumeShopUnlockTipInput()) {
       return
     }
+    if (this.debugProgressButton !== null && this.debugProgressButton.isMenuOpen()) {
+      this.debugProgressButton.closeMenu()
+      return
+    }
     if (this.confirmDialogSystem.isOpen()) {
       return
     }
@@ -1533,6 +1933,9 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private confirmSelection(): void {
+    if (this.debugProgressButton !== null && this.debugProgressButton.isMenuOpen()) {
+      return
+    }
     if (this.confirmDialogSystem.isOpen()) {
       return
     }
@@ -1589,6 +1992,10 @@ export class TitleScene extends Phaser.Scene {
       return
     }
 
+    if (this.isDebugSelected()) {
+      this.debugProgressButton?.openMenu()
+      return
+    }
 
     const panel = this.panelViews[this.selectedIndex]
     if (panel === undefined) {

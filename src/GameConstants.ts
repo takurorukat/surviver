@@ -216,13 +216,16 @@ export const STAGE_AREA_PLAINS_ID: StageAreaId = 'plains'
 
 /** 結果画面: 次エリア解放の括弧内文言 */
 export const AREA_UNLOCK_NOTIFICATION_REASON = 'New Area'
+/** 結果画面: エリア初クリアの Max HP +1 */
+export const AREA_CLEAR_MAX_HP_BONUS_LABEL = 'Max HP +1'
+export const AREA_CLEAR_MAX_HP_BONUS_REASON = 'Area Clear Bonus'
 /** 結果画面: スキル解放の括弧内文言（UNLOCKED: Pierce の下に重複しないよう） */
 export const SKILL_UNLOCK_NOTIFICATION_REASON = 'New Skill'
 
 export const STAGE_AREAS: StageAreaDef[] = [
   {
     id: 'plains',
-    name: 'Plains',
+    name: 'Windy Plains',
     stageCount: 3,
     unlockRequiresClearedAreaId: null,
     unlockCondition: '',
@@ -231,30 +234,30 @@ export const STAGE_AREAS: StageAreaDef[] = [
   },
   {
     id: 'forest',
-    name: 'Forest',
+    name: 'Water Forest',
     stageCount: 5,
     unlockRequiresClearedAreaId: 'plains',
-    unlockCondition: 'Clear Plains to unlock',
+    unlockCondition: 'Clear Windy Plains to unlock',
     // 最初から名前は見える（未解放はグレー）
     hiddenUntilAreaPlayableId: null,
     comingSoon: false,
   },
   {
     id: 'volcano',
-    name: 'Volcano',
+    name: 'Fire Volcano',
     stageCount: 5,
     unlockRequiresClearedAreaId: 'forest',
-    unlockCondition: 'Clear Forest to unlock',
-    // Forest が開放されるまで ?
+    unlockCondition: 'Clear Water Forest to unlock',
+    // Water Forest が開放されるまで ?
     hiddenUntilAreaPlayableId: 'forest',
     comingSoon: false,
   },
   {
     id: 'ruins',
-    name: 'Ruins',
+    name: 'Earth Dungeon',
     stageCount: 5,
     unlockRequiresClearedAreaId: 'volcano',
-    unlockCondition: 'Clear Volcano to unlock',
+    unlockCondition: 'Clear Fire Volcano to unlock',
     // Volcano が開放されるまで ?
     hiddenUntilAreaPlayableId: 'volcano',
     comingSoon: false,
@@ -264,13 +267,13 @@ export const STAGE_AREAS: StageAreaDef[] = [
     name: 'Castle',
     stageCount: 5,
     unlockRequiresClearedAreaId: 'ruins',
-    unlockCondition: 'Clear Ruins to unlock',
+    unlockCondition: 'Clear Earth Dungeon to unlock',
     hiddenUntilAreaPlayableId: 'ruins',
     comingSoon: false,
   },
   {
     id: 'dungeon',
-    name: 'Dungeon',
+    name: 'Abyss',
     stageCount: 5,
     unlockRequiresClearedAreaId: 'castle',
     unlockCondition: 'Clear Castle to unlock',
@@ -287,6 +290,23 @@ export function getAreaById(areaId: string): StageAreaDef | null {
     if (STAGE_AREAS[index].id === areaId) {
       return STAGE_AREAS[index]
     }
+  }
+  return null
+}
+
+/** タイトルのエリア選択パネル用イラストのテクスチャキー。無いエリアは null。 */
+export function getTitleAreaArtTextureKey(areaId: string): string | null {
+  if (areaId === 'plains') {
+    return TITLE_AREA_ART_PLAINS_KEY
+  }
+  if (areaId === 'forest') {
+    return TITLE_AREA_ART_FOREST_KEY
+  }
+  if (areaId === 'volcano') {
+    return TITLE_AREA_ART_VOLCANO_KEY
+  }
+  if (areaId === 'ruins') {
+    return TITLE_AREA_ART_DUNGEON_KEY
   }
   return null
 }
@@ -360,7 +380,7 @@ export function calculateStageClearGold(
 }
 
 export const TITLE_AREA_PANEL_COLUMNS = 2
-// タイトルに出すエリア数（Plains / Forest / Volcano / Ruins のみ。Castle 以降は出さない）
+// タイトルに出すエリア数（Windy Plains / Water Forest / Fire Volcano / Earth Dungeon のみ。Castle 以降は出さない）
 export const TITLE_AREA_VISIBLE_COUNT = 4
 // 2×2 グリッド用。横は広め、縦は SELECT AREA や下部の Shop を隠さない高さ
 export const TITLE_AREA_PANEL_WIDTH = 440
@@ -372,6 +392,39 @@ export const TITLE_AREA_PANEL_BORDER_COLOR = 0x475569
 export const TITLE_AREA_PANEL_SELECTED_BORDER_COLOR = 0xfde68a
 export const TITLE_AREA_PANEL_HOVER_COLOR = 0x334155
 export const TITLE_AREA_LOCKED_PANEL_COLOR = 0x111827
+// エリア絵の上に重ねるパネル色の不透明度（文字が読めるようやや濃く）
+export const TITLE_AREA_PANEL_FILL_ALPHA_PLAYABLE = 0.72
+export const TITLE_AREA_PANEL_FILL_ALPHA_LOCKED = 0.82
+export const TITLE_AREA_PANEL_FILL_ALPHA_HIDDEN = 1
+// エリア選択用イラスト（? のときは出さない）
+export const TITLE_AREA_ART_PLAINS_KEY = 'title-area-art-plains'
+export const TITLE_AREA_ART_PLAINS_PATH = 'assets/ui/area_windy_plains.jpg'
+export const TITLE_AREA_ART_FOREST_KEY = 'title-area-art-forest'
+export const TITLE_AREA_ART_FOREST_PATH = 'assets/ui/area_lake_forest.jpg'
+export const TITLE_AREA_ART_VOLCANO_KEY = 'title-area-art-volcano'
+export const TITLE_AREA_ART_VOLCANO_PATH = 'assets/ui/area_fiery_volcano.jpg'
+export const TITLE_AREA_ART_DUNGEON_KEY = 'title-area-art-dungeon'
+export const TITLE_AREA_ART_DUNGEON_PATH = 'assets/ui/area_earth_dungeon.jpg'
+export const TITLE_AREA_ART_ALPHA = 0.9
+// マウスオーバー時: パネルが少し浮き、絵がグッとズームする
+export const TITLE_AREA_HOVER_SCALE = 1.06
+export const TITLE_AREA_HOVER_ART_ZOOM = 1.18
+export const TITLE_AREA_HOVER_ART_ALPHA = 1
+export const TITLE_AREA_HOVER_LIFT_Y = -10
+/** 選択時、名前／ステージ数をさらに上へずらして絵を見せる */
+export const TITLE_AREA_HOVER_TEXT_LIFT_Y = -44
+/**
+ * Windy Plains だけ: 選択時「N Stages」をパネル上端からのこの距離まで上げる
+ * （キャラの目に重ならないようにする）
+ */
+export const TITLE_AREA_HOVER_PLAINS_STAGES_TOP_PADDING = 11
+/** 選択時、グレー重ねの不透明度（0＝絵がはっきり見える） */
+export const TITLE_AREA_HOVER_OVERLAY_ALPHA = 0
+export const TITLE_AREA_HOVER_TWEEN_MS = 160
+export const TITLE_AREA_HOVER_DEPTH = 40
+export const TITLE_AREA_NAME_STROKE_COLOR = '#000000'
+export const TITLE_AREA_NAME_STROKE_THICKNESS = 5
+export const TITLE_AREA_STAGES_STROKE_THICKNESS = 4
 export const TITLE_AREA_NAME_COLOR = '#f4f4f5'
 export const TITLE_AREA_SUB_COLOR = '#a1a1aa'
 export const TITLE_AREA_LOCKED_NAME_COLOR = '#6b7280'
@@ -393,6 +446,11 @@ export const TITLE_AREA_STAGES_OFFSET_Y = 20
 export const TITLE_AREA_NAME_FONT_SIZE = '24px'
 export const TITLE_AREA_STAGES_FONT_SIZE = '15px'
 export const TITLE_AREA_CONDITION_COLOR = '#fde68a'
+// false のあいだはタイトルから Shop / Seal Skills を隠し、
+// ショップ解放の吹き出し・結果画面の UNLOCKED: Shop も出さない
+export const TITLE_SHOW_SHOP_AND_SEAL = false
+// true のあいだタイトル右下（BGM の左）に進行デバッグボタンを出す
+export const TITLE_SHOW_DEBUG_PROGRESS = true
 // グリッド上端（1行目パネル中心）。SELECT AREA の下に隙間を残す
 export const TITLE_AREA_GRID_START_Y = TOP_BAR_HEIGHT + 136
 // タイトル下部のショップ案内枠（中身の購入UIは後続）
@@ -490,7 +548,7 @@ export const RESUME_COUNTDOWN_FADE_OUT_MS = START_COUNTDOWN_FADE_OUT_MS
 // 実際の移動速度は GameScene.currentMoveSpeed（アイテムで増減）。PLAYER_SPEED は基準・上限用。
 export const PLAYER_HP = 3
 // 基本移動速度。実際の速度は GameScene の currentMoveSpeed（アイテムで増減可能）
-export const PLAYER_SPEED = 150
+export const PLAYER_SPEED = 165 // 旧 150 の 1.1 倍
 
 // --- 相対ポインタ追従（タッチ専用）---
 // 押した位置を起点に、指の移動量 × 倍率ぶん先を目標にする（指の下にキャラが来ない）
@@ -670,8 +728,10 @@ export const BGM_PATHS = ['assets/audio/plains_bgm.ogg']
 export const BGM_VOLUME = 0.45
 export const FOREST_BGM_KEY = 'bgm-forest'
 export const FOREST_BGM_PATH = 'assets/audio/forest_bgm.ogg'
+// Fire Volcano BGM（game_music_generator の volcano テーマ）
 export const VOLCANO_BGM_KEY = 'bgm-volcano'
 export const VOLCANO_BGM_PATH = 'assets/audio/volcano_bgm.ogg'
+// Earth Dungeon BGM（game_music_generator の dungeon テーマ / area id: ruins）
 export const RUINS_BGM_KEY = 'bgm-ruins'
 export const RUINS_BGM_PATH = 'assets/audio/ruins_bgm.ogg'
 // エリアクリア用ジングル（Ninja Adventure: LevelUp2）。ループしない
@@ -995,13 +1055,14 @@ export const ENEMY_BRANCH_BLAST_DAMAGE_MULTIPLIER = 2
 // 緑スライム速度 × この倍率（0.65 = 35% 遅い）
 export const ENEMY_BRANCH_SPEED_FACTOR = 0.65
 // Forest Stage5 だけ1回あたり出現数を抑える（他ステージは通常）
-export const FOREST_STAGE5_SPAWN_COUNT_FACTOR = 0.38
+// 難易度調整: 旧 0.38 の約 1.2 倍
+export const FOREST_STAGE5_SPAWN_COUNT_FACTOR = 0.456
 export const ENEMY_BRANCH_COLOR = 0xa16207
 // 枝がカブトムシを出す間隔（少し余裕を持たせる）
 export const ENEMY_BRANCH_BEETLE_SPAWN_INTERVAL_MS = 1500
 // 枝の隣にカブトムシを出す距離
 export const ENEMY_BRANCH_BEETLE_SPAWN_OFFSET = 28 * WORLD_ENTITY_SCALE
-// Forest Stage5 の墓石（HP60・動かない・5秒ごとにカブトムシを出す）
+// Forest Stage5 の墓石（動かない・一定間隔で切り株／枝を出す）
 export const ENEMY_GRAVESTONE_BREATH_SPRITE_KEY = 'enemy-gravestone-breath'
 export const ENEMY_GRAVESTONE_BREATH_SPRITE_PATH = 'assets/sprites/enemy_gravestone_breath.png'
 export const ENEMY_GRAVESTONE_BREATH_DISPLAY_HEIGHT = 32 * WORLD_ENTITY_SCALE
@@ -1009,7 +1070,7 @@ export const ENEMY_GRAVESTONE_BREATH_OUTLINE_SCALE = ENEMY_SLIME_BREATH_OUTLINE_
 export const ENEMY_GRAVESTONE_BREATH_SCALE_Y_MAX = ENEMY_SLIME_BREATH_SCALE_Y_MAX
 export const ENEMY_GRAVESTONE_BREATH_SCALE_Y_MIN = ENEMY_SLIME_BREATH_SCALE_Y_MIN
 export const ENEMY_GRAVESTONE_BREATH_DURATION_MS = ENEMY_SLIME_BREATH_DURATION_MS
-export const ENEMY_GRAVESTONE_HP = 120
+export const ENEMY_GRAVESTONE_HP = 180 // 旧 120 の 1.5 倍
 export const ENEMY_GRAVESTONE_XP_DROP_MULTIPLIER = 10
 export const ENEMY_GRAVESTONE_COLOR = 0x6b7280
 export const ENEMY_GRAVESTONE_SPAWN_INTERVAL_MS = 4000
@@ -1190,7 +1251,8 @@ export const RANGE_MULTIPLIER = 1.25
 export const FIRE_RATE_LEVEL_START = 1
 export const RANGE_LEVEL_START = 1
 export const MOVE_LEVEL_START = 1
-export const MOVE_SPEED_BONUS_PER_LEVEL = 24
+// Move を1上げるごとに基準速度へ加算する倍率（Lv2=1.5倍, Lv3=2倍, Lv4=2.5倍）
+export const MOVE_SPEED_MULTIPLIER_STEP = 0.5
 export const MAGNET_LEVEL_START = 1
 export const COIN_MAGNET_RADIUS_BONUS_PER_LEVEL = 28 * WORLD_ENTITY_SCALE
 export const HP_BONUS_PER_LEVEL_UP = 1
@@ -1239,8 +1301,11 @@ export const RICOCHET_SEARCH_RADIUS = 260 * WORLD_ENTITY_SCALE
 export const BLAST_LEVEL_START = 0
 // ショップ未購入時のラン中レベル上限。Power/Speed/Range はショップで拡張できる。
 export const INITIAL_PRIMARY_SKILL_LEVEL_CAP = 3
-// Plains クリア後の Power / Speed 上限（Range はまだ 3 のまま。バランス確認用）
+// Plains クリア後の Power / Speed 上限（Range はまだ 3 のまま）
 export const PLAINS_CLEAR_POWER_SPEED_LEVEL_CAP = 5
+// Forest クリア後はさらに +2（5→7）
+export const FOREST_CLEAR_POWER_SPEED_LEVEL_CAP =
+  PLAINS_CLEAR_POWER_SPEED_LEVEL_CAP + 2
 // Pierce / Blast は解放直後の上限を1とし、ショップ購入で上限を増やす
 export const INITIAL_PIERCE_BLAST_SKILL_LEVEL_CAP = 1
 // XP Bonus は解放直後はLv2まで。ショップ購入で上限を増やす
@@ -1321,10 +1386,16 @@ export function calculatePierceHitDamage(
   return Math.ceil(safeOriginalDamage / 2)
 }
 
-/** Move レベルから実際の移動速度を求める。速度の保存先は currentMoveSpeed だけ。 */
+/**
+ * Move レベルから実際の移動速度を求める。
+ * Lv1（初期）= 1.0倍 / Lv2 = 1.5倍 / Lv3 = 2.0倍 / Lv4 = 2.5倍 …
+ * 速度の保存先は currentMoveSpeed だけ。
+ */
 export function calculateMoveSpeed(moveLevel: number): number {
   const safeLevel = Math.max(MOVE_LEVEL_START, moveLevel)
-  return PLAYER_SPEED + (safeLevel - MOVE_LEVEL_START) * MOVE_SPEED_BONUS_PER_LEVEL
+  const raisedCount = safeLevel - MOVE_LEVEL_START
+  const multiplier = 1 + raisedCount * MOVE_SPEED_MULTIPLIER_STEP
+  return PLAYER_SPEED * multiplier
 }
 
 /** Magnet レベルからコイン吸引半径を求める。 */
@@ -1336,7 +1407,7 @@ export function calculateCoinMagnetRadius(magnetLevel: number): number {
   )
 }
 
-/** Ruins の各ステージで目安にする最大 HP。HP候補を出し続ける判定に使う。 */
+/** Earth Dungeon（内部 id: ruins）の各ステージで目安にする最大 HP。HP候補を出し続ける判定に使う。 */
 export function getRecommendedMaxHpForRuins(stageNumber: number): number {
   const safeStage = Math.max(1, stageNumber)
   return PLAYER_HP + safeStage
@@ -1426,6 +1497,10 @@ export const LEVEL_UP_OVERLAY_COLOR = 0x000000
 export const LEVEL_UP_OVERLAY_ALPHA = 0.32
 export const LEVEL_UP_PANEL_WIDTH = 220
 export const LEVEL_UP_PANEL_HEIGHT = 90
+/** 複合スキル予告（＋ / アイコン / 名前）があるときのパネル高さ（1件分） */
+export const LEVEL_UP_PANEL_HEIGHT_WITH_COMBO = 148
+/** 複合スキル予告が2件以上のとき、1件あたり足す高さ */
+export const LEVEL_UP_PANEL_HEIGHT_PER_EXTRA_COMBO = 44
 export const LEVEL_UP_PANEL_GAP = 16
 export const LEVEL_UP_PANEL_COLOR = 0x1e293b
 export const LEVEL_UP_PANEL_HOVER_COLOR = 0x475569
@@ -1436,6 +1511,14 @@ export const LEVEL_UP_PANEL_HOVER_TWEEN_MS = 120
 export const LEVEL_UP_TITLE_COLOR = '#fde68a'
 export const LEVEL_UP_CHOICE_TITLE_COLOR = '#ffffff'
 export const LEVEL_UP_CHOICE_DESC_COLOR = '#cbd5e1'
+/** 複合スキル（Pierce / Blast / Ricochet）が付く予告の色 */
+export const LEVEL_UP_CHOICE_COMBO_COLOR = '#fde68a'
+export const LEVEL_UP_CHOICE_COMBO_PLUS_FONT_SIZE = '22px'
+export const LEVEL_UP_CHOICE_COMBO_NAME_FONT_SIZE = '20px'
+export const LEVEL_UP_CHOICE_COMBO_ICON_SIZE = 26
+export const LEVEL_UP_CHOICE_COMBO_ICON_BORDER = 2
+export const LEVEL_UP_CHOICE_COMBO_ICON_GAP = 8
+export const LEVEL_UP_CHOICE_COMBO_BLOCK_GAP = 8
 export const LEVEL_UP_UI_DEPTH = 400
 // レベルアップ枠内のスキルアイコン（スキルツリーと同じ記号・色）
 export const LEVEL_UP_CHOICE_ICON_SIZE = 22
@@ -1583,14 +1666,14 @@ export const ACHIEVEMENT_TITLE_MOVE = 'Move'
 export const ACHIEVEMENT_TITLE_MAGNET = 'Pickup'
 export const ACHIEVEMENT_TITLE_RICOCHET = 'Ricochet'
 export const ACHIEVEMENT_TITLE_XP_BONUS = 'XP Bonus'
-export const ACHIEVEMENT_CONDITION_UNTOUCHED = 'Clear Plains with no damage'
+export const ACHIEVEMENT_CONDITION_UNTOUCHED = 'Clear Windy Plains with no damage'
 export const ACHIEVEMENT_CONDITION_PURE_POWER =
-  'Clear Plains without upgrading Power'
-export const ACHIEVEMENT_CONDITION_PLAINS_CLEAR = 'Clear Plains'
-export const ACHIEVEMENT_CONDITION_FOREST_CLEAR = 'Clear Forest'
-export const ACHIEVEMENT_CONDITION_FOREST_UNTOUCHED = 'Clear Forest with no damage'
-export const ACHIEVEMENT_CONDITION_VOLCANO_CLEAR = 'Clear Volcano'
-export const ACHIEVEMENT_CONDITION_VOLCANO_UNTOUCHED = 'Clear Volcano with no damage'
+  'Clear Windy Plains without upgrading Power'
+export const ACHIEVEMENT_CONDITION_PLAINS_CLEAR = 'Clear Windy Plains'
+export const ACHIEVEMENT_CONDITION_FOREST_CLEAR = 'Clear Water Forest'
+export const ACHIEVEMENT_CONDITION_FOREST_UNTOUCHED = 'Clear Water Forest with no damage'
+export const ACHIEVEMENT_CONDITION_VOLCANO_CLEAR = 'Clear Fire Volcano'
+export const ACHIEVEMENT_CONDITION_VOLCANO_UNTOUCHED = 'Clear Fire Volcano with no damage'
 export const ACHIEVEMENT_CONDITION_PIERCE =
   'Raise Move and Speed (Pierce matches the lower level)'
 export const ACHIEVEMENT_CONDITION_BLAST =
@@ -1645,27 +1728,33 @@ export const UNLOCK_STATUS_TOOLTIP_BG_ALPHA = 0.92
 export const UNLOCK_STATUS_TOOLTIP_PADDING = 6
 export const UNLOCK_STATUS_RIGHT_MARGIN = 8
 // 右カラムのスキル解放アイコン（小さな正方形）
-export const UNLOCK_ICON_SIZE = 18
-export const UNLOCK_ICON_GAP = 4
+export const UNLOCK_ICON_SIZE = 13
+export const UNLOCK_ICON_GAP = 5
 export const UNLOCK_ICON_BORDER_SIZE = 2
-// スキルツリー: 上段 Blast/Pierce ← 下段 Power/Range/Speed/Move
-export const SKILL_TREE_ROW_GAP = 16
-export const SKILL_TREE_EXTRA_ROW_GAP = 12
+// スキルツリー: 左列＝基本スキル、右列＝合成スキル（線でつなぐ）
+export const SKILL_TREE_ROW_GAP = 6
+/** 基本列(0)と合成列のあいだの空き列（線の見通し用） */
+export const SKILL_TREE_COMBO_COL = 2
 export const SKILL_TREE_LINE_COLOR = 0x94a3b8
-export const SKILL_TREE_LINE_ALPHA = 0.75
-export const SKILL_TREE_LINE_THICKNESS = 1.5
+export const SKILL_TREE_LINE_ALPHA = 0.55
+export const SKILL_TREE_LINE_THICKNESS = 1.25
+/** レベルアップ済みスキルにつながる線（達成が分かるよう太く） */
+export const SKILL_TREE_LINE_ACTIVE_COLOR = 0xfde68a
+export const SKILL_TREE_LINE_ACTIVE_ALPHA = 0.95
+export const SKILL_TREE_LINE_ACTIVE_THICKNESS = 3
 export const SKILL_TREE_LINE_DEPTH_OFFSET = -1
 // 最初から使える基本スキル（Power / Speed / Range）
 export const UNLOCK_ICON_POWER_COLOR = 0xef4444
 export const UNLOCK_ICON_SPEED_COLOR = 0xf97316
 export const UNLOCK_ICON_RANGE_COLOR = 0x3b82f6
-export const UNLOCK_ICON_PIERCE_COLOR = 0x38bdf8
+// 元素イメージに揃える: 風（Move/Pierce）・水（Pickup）・炎（XP Bonus）・爆破は琥珀
+export const UNLOCK_ICON_PIERCE_COLOR = 0x67e8f9
 export const UNLOCK_ICON_BLAST_COLOR = 0xfbbf24
 export const UNLOCK_ICON_RICOCHET_COLOR = 0xc084fc
-export const UNLOCK_ICON_MOVE_COLOR = 0x4ade80
-export const UNLOCK_ICON_MAGNET_COLOR = 0x2dd4bf
+export const UNLOCK_ICON_MOVE_COLOR = 0x5eead4
+export const UNLOCK_ICON_MAGNET_COLOR = 0x38bdf8
 export const UNLOCK_ICON_HP_COLOR = 0xfb7185
-export const UNLOCK_ICON_XP_BONUS_COLOR = 0xfacc15
+export const UNLOCK_ICON_XP_BONUS_COLOR = 0xf97316
 export const UNLOCK_ICON_LOCKED_FILL_COLOR = 0x374151
 export const UNLOCK_ICON_LOCKED_BORDER_COLOR = 0x6b7280
 export const UNLOCK_ICON_LETTER_COLOR = '#0f172a'
@@ -1678,10 +1767,10 @@ export const UNLOCK_ICON_RANGE_LETTER = '◎' // Range = 射程円
 export const UNLOCK_ICON_PIERCE_LETTER = '➤' // 貫通 = 突き抜ける矢
 export const UNLOCK_ICON_BLAST_LETTER = '✸' // 爆破 = 破裂する星
 export const UNLOCK_ICON_RICOCHET_LETTER = '↯' // 跳弾 = 折れ曲がる軌道
-export const UNLOCK_ICON_MOVE_LETTER = '»' // 移動速度 = 前へ進む二重矢印
-export const UNLOCK_ICON_MAGNET_LETTER = '¤' // コイン回収 = 通貨記号
+export const UNLOCK_ICON_MOVE_LETTER = '〰' // Move = 風のうねり
+export const UNLOCK_ICON_MAGNET_LETTER = '≋' // Pickup = 水面の波（流れ・吸引）
 export const UNLOCK_ICON_HP_LETTER = '♥' // HP = ハート
-export const UNLOCK_ICON_XP_BONUS_LETTER = '✦' // XPボーナス = キラキラ
+export const UNLOCK_ICON_XP_BONUS_LETTER = '❖' // XP Bonus = 炎の結晶（Volcano）
 // シール中: スキル固有色の上に薄い氷を張る（全スキル同じ青にはしない）
 // 幕は白に近い半透明。下のスキル色が透けて見える
 export const UNLOCK_ICON_SEAL_FROST_COLOR = 0xf8fafc
@@ -1948,6 +2037,17 @@ export function isVolcanoFinalStage(
   totalStages: number,
 ): boolean {
   return areaId === 'volcano' && isFinalStage(stageNumber, totalStages)
+}
+
+/**
+ * Volcano Stage2 以降は群れではなく各地に散らして出す。
+ * （跳弾 Ricochet が効きやすくなる）
+ */
+export function shouldScatterVolcanoEnemySpawns(
+  areaId: StageAreaId,
+  stageNumber: number,
+): boolean {
+  return areaId === 'volcano' && stageNumber >= 2
 }
 
 /**

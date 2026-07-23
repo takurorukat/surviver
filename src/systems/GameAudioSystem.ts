@@ -52,6 +52,14 @@ let preferredBattleBgmKey = BGM_KEY
 // （再生開始は AudioContext の resume 待ちで非同期になるため、
 //   stopBgm → シーン遷移 のあとに古い予約が発火して鳴り続けるバグがあった）
 let bgmCommandSequence = 0
+// 効果音も同様に、stopAll 後の遅延再生を捨てる
+let sfxCommandSequence = 0
+// 再生中の効果音（ゲームオーバーなど長いSEをタイトルで止めるため）
+type ActiveSfxPlayback = {
+  source: AudioBufferSourceNode
+  gainNode: GainNode
+}
+let activeSfxList: ActiveSfxPlayback[] = []
 
 function loadBgmEnabledPreference(): boolean {
   try {
@@ -180,6 +188,35 @@ function stopSharedBgm(): void {
   }
 
   sharedBgm = null
+}
+
+/** 再生中の効果音をすべて止める */
+function stopAllActiveSfx(): void {
+  for (let index = 0; index < activeSfxList.length; index++) {
+    const playback = activeSfxList[index]
+    try {
+      playback.source.stop()
+    } catch (_error) {
+      // 既に停止済み
+    }
+    try {
+      playback.source.disconnect()
+      playback.gainNode.disconnect()
+    } catch (_error) {
+      // 既に切断済み
+    }
+  }
+  activeSfxList = []
+}
+
+function removeActiveSfx(source: AudioBufferSourceNode): void {
+  const nextList: ActiveSfxPlayback[] = []
+  for (let index = 0; index < activeSfxList.length; index++) {
+    if (activeSfxList[index].source !== source) {
+      nextList.push(activeSfxList[index])
+    }
+  }
+  activeSfxList = nextList
 }
 
 export class GameAudioSystem {
@@ -394,6 +431,21 @@ export class GameAudioSystem {
     // 進行中の再生予約もすべて無効化してから止める
     bgmCommandSequence = bgmCommandSequence + 1
     stopSharedBgm()
+  }
+
+  /**
+   * BGM と効果音をすべて止める。
+   * タイトルへ戻るときなど、前シーンの音を残さないために使う。
+   */
+  stopAllSounds(): void {
+    this.stopBgm()
+    sfxCommandSequence = sfxCommandSequence + 1
+    stopAllActiveSfx()
+    try {
+      this.scene.sound.stopAll()
+    } catch (_error) {
+      // Phaser Sound が無い／失敗しても続行
+    }
   }
 
   private startNativeBgm(
@@ -672,7 +724,14 @@ export class GameAudioSystem {
       return
     }
 
+    // stopAllSounds 後に届く古い予約を捨てるための番号
+    const commandSeq = sfxCommandSequence
+
     const playNow = (): void => {
+      if (commandSeq !== sfxCommandSequence) {
+        return
+      }
+
       const audioBuffer = asAudioBuffer(this.scene.cache.audio.get(soundKey))
       if (audioBuffer === null) {
         return
@@ -685,6 +744,10 @@ export class GameAudioSystem {
         source.buffer = audioBuffer
         source.connect(gainNode)
         gainNode.connect(audioContext.destination)
+        source.onended = () => {
+          removeActiveSfx(source)
+        }
+        activeSfxList.push({ source, gainNode })
         source.start(0)
       } catch (_error) {
         // 再生失敗時は無視（ゲームは続行）
