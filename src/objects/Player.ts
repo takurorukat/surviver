@@ -22,8 +22,15 @@ import {
   PLAYER_SPEED,
   PLAYER_WALK_SPRITE_KEY,
   PLAYER_WALK_FRAME_SIZE,
-  PLAYER_WALK_FRAME_RATE,
   PLAYER_WALK_DISPLAY_SIZE,
+  PLAYER_WALK_DISPLAY_SCALE_X,
+  PLAYER_FACING_FRAME_DOWN,
+  PLAYER_FACING_FRAME_SIDE,
+  PLAYER_FACING_FRAME_UP,
+  PLAYER_BREATH_OUTLINE_SCALE,
+  PLAYER_BREATH_SCALE_Y_MAX,
+  PLAYER_BREATH_SCALE_Y_MIN,
+  PLAYER_BREATH_DURATION_MS,
 } from '../GameConstants'
 import { setupCircleHitbox } from '../utils/setupCircleHitbox'
 import { configureArcadeBodyForConstantSpeed } from '../utils/arcadePhysicsHelpers'
@@ -75,94 +82,176 @@ export function createPlayer(scene: Phaser.Scene): Phaser.GameObjects.Rectangle 
   return player
 }
 
-// 歩行アニメの向き（スプライトシートの列に対応）
-type WalkDirection = 'down' | 'up' | 'left' | 'right'
+// 向き（歩行コマは使わず、静止絵1枚ずつ）
+// side = 右向き横顔。左移動時は flipX で反転する（敵と同じ）
+type FacingDirection = 'down' | 'up' | 'side'
 
-// シートは4×4で、列 = 向き。フレーム番号は行方向に 0,1,2,3 / 4,5,6,7 ... と並ぶので、
-// ある向きのアニメは「列番号, 列番号+4, 列番号+8, 列番号+12」の4コマになる。
-const WALK_COLUMN_BY_DIRECTION: Record<WalkDirection, number> = {
-  down: 0,
-  up: 1,
-  left: 2,
-  right: 3,
+const FACING_FRAME_BY_DIRECTION: Record<FacingDirection, number> = {
+  down: PLAYER_FACING_FRAME_DOWN,
+  side: PLAYER_FACING_FRAME_SIDE,
+  up: PLAYER_FACING_FRAME_UP,
 }
 
-function getWalkAnimationKey(direction: WalkDirection): string {
-  return `player-walk-${direction}`
+/** プレイヤー見た目（本体 + 黒枠 + 呼吸）。物理は Rectangle 側。 */
+export type PlayerWalkVisual = {
+  body: Phaser.GameObjects.Image
+  outline: Phaser.GameObjects.Image
+  // 縦の基準倍率（呼吸の scaleY に使う）
+  baseScaleY: number
+  // 横の基準倍率（頭身補正で baseScaleY より大きい）
+  baseScaleX: number
+  outlineScaleMultiplier: number
+  breathTween: Phaser.Tweens.Tween | null
 }
 
-/** 4方向ぶんの歩行アニメーションを一度だけ登録する。 */
-function ensureWalkAnimations(scene: Phaser.Scene): void {
-  const directions: WalkDirection[] = ['down', 'up', 'left', 'right']
-  for (let index = 0; index < directions.length; index++) {
-    const direction = directions[index]
-    const animationKey = getWalkAnimationKey(direction)
-    if (scene.anims.exists(animationKey)) {
-      continue
-    }
-    const column = WALK_COLUMN_BY_DIRECTION[direction]
-    scene.anims.create({
-      key: animationKey,
-      frames: scene.anims.generateFrameNumbers(PLAYER_WALK_SPRITE_KEY, {
-        frames: [column, column + 4, column + 8, column + 12],
-      }),
-      frameRate: PLAYER_WALK_FRAME_RATE,
-      repeat: -1,
-    })
+/** 枠を本体の見た目中心に合わせ、同じ比率で少し大きくする。 */
+function syncPlayerOutlineToBody(visual: PlayerWalkVisual): void {
+  const body = visual.body
+  const centerX = body.x
+  // 本体は足元原点なので、中心は「足元から displayHeight/2 だけ上」
+  const centerY = body.y - body.displayHeight / 2
+  visual.outline.setPosition(centerX, centerY)
+  visual.outline.setScale(
+    body.scaleX * visual.outlineScaleMultiplier,
+    body.scaleY * visual.outlineScaleMultiplier,
+  )
+  visual.outline.setFrame(body.frame.name)
+  visual.outline.setFlipX(body.flipX)
+}
+
+function startPlayerBreathing(scene: Phaser.Scene, visual: PlayerWalkVisual): void {
+  // 体積感: Yが伸びるとき X を少し減らす（平均1付近を保つ）
+  // Python: scale_x = base_x * (2 - scale_y) に相当
+  const bodyScaleXAtMax = visual.baseScaleX * (2 - PLAYER_BREATH_SCALE_Y_MAX)
+  const bodyScaleXAtMin = visual.baseScaleX * (2 - PLAYER_BREATH_SCALE_Y_MIN)
+  const bodyScaleYAtMax = visual.baseScaleY * PLAYER_BREATH_SCALE_Y_MAX
+  const bodyScaleYAtMin = visual.baseScaleY * PLAYER_BREATH_SCALE_Y_MIN
+
+  visual.body.setScale(bodyScaleXAtMin, bodyScaleYAtMin)
+  syncPlayerOutlineToBody(visual)
+
+  visual.breathTween = scene.tweens.add({
+    targets: visual.body,
+    scaleX: bodyScaleXAtMax,
+    scaleY: bodyScaleYAtMax,
+    duration: PLAYER_BREATH_DURATION_MS,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.InOut',
+    onUpdate: () => {
+      syncPlayerOutlineToBody(visual)
+    },
+  })
+}
+
+function applyFacingToVisual(
+  visual: PlayerWalkVisual,
+  direction: FacingDirection,
+  faceRight: boolean,
+): void {
+  const body = visual.body
+  body.setFrame(FACING_FRAME_BY_DIRECTION[direction])
+  // 横顔シートは右向き。左へ行くときだけ反転
+  if (direction === 'side') {
+    body.setFlipX(!faceRight)
+  } else {
+    body.setFlipX(false)
   }
+  body.setData('facingDirection', direction)
+  body.setData('faceRight', faceRight)
+  syncPlayerOutlineToBody(visual)
 }
 
 /**
- * プレイヤーの見た目用スプライトを作る（物理は今まで通り Rectangle 側）。
- * 毎フレーム updatePlayerWalkSprite で位置と向きを追従させる。
+ * プレイヤーの見た目を作る（物理は今まで通り Rectangle 側）。
+ * 歩行アニメは使わず、正面／横顔／背中の静止絵＋黒枠＋呼吸（敵と同じ方式）。
  */
 export function createPlayerWalkSprite(
   scene: Phaser.Scene,
   player: Phaser.GameObjects.Rectangle,
-): Phaser.GameObjects.Sprite {
-  ensureWalkAnimations(scene)
+): PlayerWalkVisual {
+  const baseScaleY = PLAYER_WALK_DISPLAY_SIZE / PLAYER_WALK_FRAME_SIZE
+  const baseScaleX = baseScaleY * PLAYER_WALK_DISPLAY_SCALE_X
+  const feetY = player.y + PLAYER_HEIGHT / 2
 
-  const sprite = scene.add.sprite(player.x, player.y, PLAYER_WALK_SPRITE_KEY, 0)
-  // コマ内の余白ぶんを補うため、当たり判定より少し大きく表示する
-  sprite.setScale(PLAYER_WALK_DISPLAY_SIZE / PLAYER_WALK_FRAME_SIZE)
-  sprite.setDepth(player.depth)
-  sprite.setData('walkDirection', 'down')
-  return sprite
+  // 枠は中心基準で拡大 → 上下左右の太さが均等になる
+  const outline = scene.add.image(
+    player.x,
+    player.y,
+    PLAYER_WALK_SPRITE_KEY,
+    PLAYER_FACING_FRAME_DOWN,
+  )
+  outline.setOrigin(0.5, 0.5)
+  outline.setTint(0x000000)
+  outline.setScale(
+    baseScaleX * PLAYER_BREATH_OUTLINE_SCALE,
+    baseScaleY * PLAYER_BREATH_OUTLINE_SCALE,
+  )
+  outline.setDepth(player.depth)
+
+  // 本体は足元基準。伸び縮みしても下端が動かない
+  const body = scene.add.image(
+    player.x,
+    feetY,
+    PLAYER_WALK_SPRITE_KEY,
+    PLAYER_FACING_FRAME_DOWN,
+  )
+  body.setOrigin(0.5, 1)
+  body.setScale(baseScaleX, baseScaleY)
+  body.setDepth(player.depth + 1)
+  body.setData('facingDirection', 'down')
+  body.setData('faceRight', true)
+
+  const visual: PlayerWalkVisual = {
+    body,
+    outline,
+    baseScaleX,
+    baseScaleY,
+    outlineScaleMultiplier: PLAYER_BREATH_OUTLINE_SCALE,
+    breathTween: null,
+  }
+  syncPlayerOutlineToBody(visual)
+  startPlayerBreathing(scene, visual)
+  return visual
 }
 
 /**
- * プレイヤーの速度に合わせて、スプライトの位置・向き・再生状態を更新する。
+ * プレイヤーの速度に合わせて、見た目の位置・向きを更新する。
+ * 歩行コマは切り替えない。向きの静止絵と左右反転だけ変える。
  * GameScene.update から毎フレーム呼ぶ。
- * 止まっているときはアニメを止めて、最後に向いていた方向の立ち絵にする。
  */
 export function updatePlayerWalkSprite(
-  sprite: Phaser.GameObjects.Sprite,
+  visual: PlayerWalkVisual,
   player: Phaser.GameObjects.Rectangle,
   body: Phaser.Physics.Arcade.Body,
 ): void {
-  sprite.setPosition(player.x, player.y)
+  const sprite = visual.body
+  // 物理中心 → 足元（当たり判定の下端）
+  const feetY = player.y + PLAYER_HEIGHT / 2
+  sprite.setPosition(player.x, feetY)
   // 無敵中の点滅（Rectangle の alpha 変化）をそのまま反映する
   sprite.setAlpha(player.alpha)
+  visual.outline.setAlpha(player.alpha)
 
   const velocityX = body.velocity.x
   const velocityY = body.velocity.y
   const isMoving = Math.abs(velocityX) > 1 || Math.abs(velocityY) > 1
 
   if (!isMoving) {
-    const lastDirection = sprite.getData('walkDirection') as WalkDirection
-    sprite.anims.stop()
-    sprite.setFrame(WALK_COLUMN_BY_DIRECTION[lastDirection])
+    // 停止中も最後の向きを維持（絵は変えず枠だけ同期）
+    syncPlayerOutlineToBody(visual)
     return
   }
 
   // 速度の大きい軸を向きとして採用する
-  let direction: WalkDirection
+  let direction: FacingDirection
+  let faceRight = sprite.getData('faceRight') as boolean
   if (Math.abs(velocityX) >= Math.abs(velocityY)) {
-    direction = velocityX >= 0 ? 'right' : 'left'
+    direction = 'side'
+    faceRight = velocityX >= 0
   } else {
     direction = velocityY >= 0 ? 'down' : 'up'
   }
 
-  sprite.setData('walkDirection', direction)
-  sprite.anims.play(getWalkAnimationKey(direction), true)
+  applyFacingToVisual(visual, direction, faceRight)
 }

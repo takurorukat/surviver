@@ -46,6 +46,7 @@ import {
   TITLE_ACTION_PANEL_GAP,
   TITLE_SEAL_TITLE_TEXT,
   TITLE_SEAL_DESC_TEXT,
+  GAME_TITLE,
   type StageAreaDef,
   type StageAreaId,
   FONT_FAMILY_HEADING,
@@ -264,12 +265,13 @@ export class TitleScene extends Phaser.Scene {
     // 6エリアを1画面に収めるため、ヘッダーはやや詰める
     const contentTop = TOP_BAR_HEIGHT + 28
 
-    const titleText = this.add.text(GAME_WIDTH / 2, contentTop, 'Survivor Stage', {
+    const titleText = this.add.text(GAME_WIDTH / 2, contentTop, GAME_TITLE, {
       fontFamily: FONT_FAMILY_HEADING,
       fontSize: '28px',
       color: '#ffffff',
     })
     titleText.setOrigin(0.5)
+    shrinkTextToFitWidth(titleText, GAME_WIDTH - 64)
 
     const selectLabel = this.add.text(GAME_WIDTH / 2, contentTop + 34, 'SELECT AREA', {
       fontFamily: FONT_FAMILY_UI,
@@ -277,6 +279,7 @@ export class TitleScene extends Phaser.Scene {
       color: '#a1a1aa',
     })
     selectLabel.setOrigin(0.5)
+    shrinkTextToFitWidth(selectLabel, GAME_WIDTH - 64)
 
     // 途中再開はしない（旧セーブに残っていても消す）
     clearRunProgress()
@@ -303,6 +306,7 @@ export class TitleScene extends Phaser.Scene {
       },
     )
     hintText.setOrigin(0.5)
+    shrinkTextToFitWidth(hintText, GAME_WIDTH - 64)
     this.bgmToggleButton = createBgmToggleButton(this, this.titleAudioSystem, () => {
       if (
         this.confirmDialogSystem.isOpen() ||
@@ -686,6 +690,7 @@ export class TitleScene extends Phaser.Scene {
       fontStyle: 'bold',
     })
     nameText.setOrigin(0.5)
+    shrinkTextToFitWidth(nameText, TITLE_AREA_PANEL_WIDTH - 48)
 
     const stagesLabel = revealed ? `${area.stageCount} Stages` : '???'
     const stagesText = this.add.text(
@@ -699,6 +704,7 @@ export class TitleScene extends Phaser.Scene {
       },
     )
     stagesText.setOrigin(0.5)
+    shrinkTextToFitWidth(stagesText, TITLE_AREA_PANEL_WIDTH - 48)
 
     const lockIcon = createLockIcon(
       this,
@@ -1194,6 +1200,10 @@ export class TitleScene extends Phaser.Scene {
         if (this.sealPreviewView.descText !== undefined) {
           this.sealPreviewView.descText.setColor(TITLE_SHOP_DESC_COLOR)
           this.sealPreviewView.descText.setText(TITLE_SEAL_DESC_TEXT)
+          shrinkTextToFitWidth(
+            this.sealPreviewView.descText,
+            TITLE_SHOP_PANEL_WIDTH - 16,
+          )
         }
         if (this.sealPreviewView.titleText !== undefined) {
           layoutLockIconWithCenteredText(
@@ -1214,6 +1224,10 @@ export class TitleScene extends Phaser.Scene {
         if (this.sealPreviewView.descText !== undefined) {
           this.sealPreviewView.descText.setColor(TITLE_AREA_LOCKED_NAME_COLOR)
           this.sealPreviewView.descText.setText('Buy Seal Slot in Shop')
+          shrinkTextToFitWidth(
+            this.sealPreviewView.descText,
+            TITLE_SHOP_PANEL_WIDTH - 16,
+          )
         }
         if (this.sealPreviewView.titleText !== undefined) {
           layoutLockIconWithCenteredText(
@@ -1238,85 +1252,107 @@ export class TitleScene extends Phaser.Scene {
     }
 
     if (this.confirmDialogSystem.isOpen()) {
-      this.conditionText.setText('')
+      this.applyConditionText('', TITLE_AREA_CONDITION_COLOR)
       return
     }
 
     if (this.shopSystem.isOpen()) {
-      this.conditionText.setText('')
+      this.applyConditionText('', TITLE_AREA_CONDITION_COLOR)
       return
     }
     if (this.sealSkillSystem.isOpen()) {
-      this.conditionText.setText('')
+      this.applyConditionText('', TITLE_AREA_CONDITION_COLOR)
       return
     }
 
     if (this.isShopSelected()) {
       if (this.isShopMenuUnlocked()) {
-        this.conditionText.setText('Click / SPACE / ENTER to open Shop')
-        this.conditionText.setColor(TITLE_SHOP_TITLE_COLOR)
+        this.applyConditionText(
+          'Click / SPACE / ENTER to open Shop',
+          TITLE_SHOP_TITLE_COLOR,
+        )
       } else {
-        this.conditionText.setText(TITLE_SHOP_UNLOCK_CONDITION)
-        this.conditionText.setColor(TITLE_AREA_LOCKED_NAME_COLOR)
+        this.applyConditionText(
+          TITLE_SHOP_UNLOCK_CONDITION,
+          TITLE_AREA_LOCKED_NAME_COLOR,
+        )
       }
       return
     }
 
     if (this.isSealSelected()) {
       if (this.isSealSkillsUnlocked()) {
-        this.conditionText.setText('Choose skills to hide from level-up choices')
-        this.conditionText.setColor(TITLE_SHOP_TITLE_COLOR)
+        this.applyConditionText(
+          'Choose skills to hide from level-up choices',
+          TITLE_SHOP_TITLE_COLOR,
+        )
       } else {
-        this.conditionText.setText('Buy Seal Slot in Shop')
-        this.conditionText.setColor(TITLE_AREA_LOCKED_NAME_COLOR)
+        this.applyConditionText('Buy Seal Slot in Shop', TITLE_AREA_LOCKED_NAME_COLOR)
       }
       return
     }
 
     if (this.isAchievementsSelected()) {
-      this.conditionText.setText('SPACE / ENTER to open Achievements')
-      this.conditionText.setColor(TITLE_AREA_SUB_COLOR)
+      this.applyConditionText(
+        'SPACE / ENTER to open Achievements',
+        TITLE_AREA_SUB_COLOR,
+      )
       return
     }
 
     if (this.isGoldSelected()) {
-      this.conditionText.setText('Gold — spend in the Shop')
-      this.conditionText.setColor(TITLE_AREA_SUB_COLOR)
+      this.applyConditionText('Gold — spend in the Shop', TITLE_AREA_SUB_COLOR)
       return
     }
 
     if (this.isSettingsSelected()) {
-      this.conditionText.setText('← / A: Gold · Achievements  ·  SPACE: Settings')
-      this.conditionText.setColor(TITLE_AREA_SUB_COLOR)
+      this.applyConditionText(
+        '← / A: Gold · Achievements  ·  SPACE: Settings',
+        TITLE_AREA_SUB_COLOR,
+      )
       return
     }
 
     if (this.isBgmSelected()) {
-      this.conditionText.setText('SPACE / ENTER to switch BGM ON / OFF')
-      this.conditionText.setColor(TITLE_AREA_SUB_COLOR)
+      this.applyConditionText(
+        'SPACE / ENTER to switch BGM ON / OFF',
+        TITLE_AREA_SUB_COLOR,
+      )
       return
     }
 
     const panel = this.panelViews[this.selectedIndex]
     if (panel === undefined) {
-      this.conditionText.setText('')
+      this.applyConditionText('', TITLE_AREA_CONDITION_COLOR)
       return
     }
 
     if (isAreaPlayable(panel.area)) {
-      this.conditionText.setText('Click / SPACE / ENTER to start')
-      this.conditionText.setColor(TITLE_AREA_SUB_COLOR)
+      this.applyConditionText(
+        'Click / SPACE / ENTER to start',
+        TITLE_AREA_SUB_COLOR,
+      )
       return
     }
 
     if (!isAreaRevealed(panel.area)) {
-      this.conditionText.setText('Unknown area')
-      this.conditionText.setColor(TITLE_AREA_CONDITION_COLOR)
+      this.applyConditionText('Unknown area', TITLE_AREA_CONDITION_COLOR)
       return
     }
 
-    this.conditionText.setText(panel.area.unlockCondition)
-    this.conditionText.setColor(TITLE_AREA_CONDITION_COLOR)
+    this.applyConditionText(panel.area.unlockCondition, TITLE_AREA_CONDITION_COLOR)
+  }
+
+  /** 条件文をセットし、画面幅に収まるよう縮小する（多言語化向け）。 */
+  private applyConditionText(message: string, color: string): void {
+    if (this.conditionText === null) {
+      return
+    }
+    this.conditionText.setText(message)
+    this.conditionText.setColor(color)
+    if (message !== '') {
+      shrinkTextToFitWidth(this.conditionText, GAME_WIDTH - 64)
+    }
   }
 
   // 役割: ショップを開き、購入と同じ決定音を鳴らす

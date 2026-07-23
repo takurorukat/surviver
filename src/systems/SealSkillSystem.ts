@@ -46,9 +46,7 @@ const SEALABLE_SKILLS: SealableSkillDef[] = [
   { id: 'range', title: 'Range' },
   { id: 'move', title: 'Move' },
   { id: 'magnet', title: 'Pickup' },
-  { id: 'pierce', title: 'Pierce' },
-  { id: 'blast', title: 'Blast' },
-  { id: 'ricochet', title: 'Ricochet' },
+  // Pierce / Blast / Ricochet はレベルアップ候補に出ないのでシール対象外
   { id: 'xpBonus', title: 'XP Bonus' },
 ]
 
@@ -315,9 +313,6 @@ export class SealSkillSystem {
     if (
       def.id === 'move' ||
       def.id === 'magnet' ||
-      def.id === 'pierce' ||
-      def.id === 'blast' ||
-      def.id === 'ricochet' ||
       def.id === 'xpBonus'
     ) {
       return isSkillUnlocked(def.id)

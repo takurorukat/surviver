@@ -5,7 +5,7 @@
 //
 // 役割:
 //   - HP マスバー、残り時間、XP バー、レベル／ステージ表示
-//   - 右側の POWER / SPEED / … と実績ロック状態
+//   - 右側の POWER / SPEED / … とスキルツリー（Blast←Power+Range など）
 //   - ステータス上昇時の一瞬パルス、XP 演出の飛び先座標
 //
 // 呼び出し元:
@@ -49,6 +49,12 @@ import {
   UNLOCK_ICON_SIZE,
   UNLOCK_ICON_GAP,
   UNLOCK_ICON_BORDER_SIZE,
+  SKILL_TREE_ROW_GAP,
+  SKILL_TREE_EXTRA_ROW_GAP,
+  SKILL_TREE_LINE_COLOR,
+  SKILL_TREE_LINE_ALPHA,
+  SKILL_TREE_LINE_THICKNESS,
+  SKILL_TREE_LINE_DEPTH_OFFSET,
   UNLOCK_ICON_POWER_COLOR,
   UNLOCK_ICON_SPEED_COLOR,
   UNLOCK_ICON_RANGE_COLOR,
@@ -93,11 +99,13 @@ import {
   UNLOCK_STATUS_TOOLTIP_TITLE_COLOR,
   UNLOCK_STATUS_TOOLTIP_DESC_COLOR,
   UNLOCK_STATUS_TOOLTIP_LOCK_COLOR,
+  UNLOCK_STATUS_RIGHT_MARGIN,
   calculatePlayerStatAlpha,
   getCumulativeXpForLevel,
   FONT_FAMILY_UI,
 } from '../GameConstants'
 import { formatRemainingSeconds } from '../utils/formatElapsedTime'
+import { shrinkTextToFitWidth } from '../utils/fitTextToWidth'
 import { getUnlockStatusRows, isSkillUnlocked } from './AchievementSystem'
 import { getSealedSkillIds } from './UnlockSaveSystem'
 import { createTopBar, type TopBarView } from './TopBarSystem'
@@ -241,6 +249,37 @@ type UnlockSkillTooltip = {
   lockText: Phaser.GameObjects.Text
 }
 
+// スキルツリーのマス目（上段コンボ → 下段素材 → その他）
+// col は 0〜3。Blast/Pierce は素材2つの真ん中（0.5 / 2.5）
+type SkillTreeSlot = {
+  skillId: string
+  row: number
+  col: number
+}
+
+const SKILL_TREE_SLOTS: SkillTreeSlot[] = [
+  { skillId: 'blast', row: 0, col: 0.5 },
+  { skillId: 'ricochet', row: 0, col: 1.5 },
+  { skillId: 'pierce', row: 0, col: 2.5 },
+  { skillId: 'damage', row: 1, col: 0 },
+  { skillId: 'range', row: 1, col: 1 },
+  { skillId: 'fireRate', row: 1, col: 2 },
+  { skillId: 'move', row: 1, col: 3 },
+  { skillId: 'magnet', row: 2, col: 0 },
+  { skillId: 'xpBonus', row: 2, col: 1 },
+]
+
+// 上のコンボスキル ← 下の素材スキル（線でつなぐ）
+const SKILL_TREE_LINKS: { parentId: string; childId: string }[] = [
+  { parentId: 'blast', childId: 'damage' },
+  { parentId: 'blast', childId: 'range' },
+  { parentId: 'ricochet', childId: 'damage' },
+  { parentId: 'ricochet', childId: 'fireRate' },
+  { parentId: 'ricochet', childId: 'magnet' },
+  { parentId: 'pierce', childId: 'fireRate' },
+  { parentId: 'pierce', childId: 'move' },
+]
+
 // 画面上部の HP・タイマー・XP バーを表示する
 // Python: HudView クラスに相当
 export class HudSystem {
@@ -262,6 +301,7 @@ export class HudSystem {
   private playerStatLines: PlayerStatLine[] = []
   private unlockStatusHeaderText: Phaser.GameObjects.Text | null = null
   private unlockStatusIcons: UnlockStatusIcon[] = []
+  private skillTreeLinesGraphics: Phaser.GameObjects.Graphics | null = null
   private unlockSkillTooltip: UnlockSkillTooltip | null = null
   // ステータス上昇パルス中の tween（キーごと）
   private playerStatPulseTweens = new Map<PlayerStatKey, Phaser.Tweens.Tween>()
@@ -379,13 +419,22 @@ export class HudSystem {
       } else {
         line.text.setText(formatStatLine(line.label, value))
       }
+      // 右カラム幅に収める（翻訳で長くなってもはみ出さない）
+      const statsX =
+        PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH + PLAYER_STATS_GAP_FROM_PLAY_AREA
+      const statsMaxWidth = Math.max(
+        48,
+        GAME_WIDTH - statsX - UNLOCK_STATUS_RIGHT_MARGIN,
+      )
+      shrinkTextToFitWidth(line.text, statsMaxWidth)
 
       // フラッシュ中は alpha を上書きしない（tween を邪魔しない）
       if (this.playerStatPulseTweens.has(line.key)) {
         continue
       }
 
-      // 未解放の貫通・爆破はグレーアウト
+      // 未解放／未取得のスキルはグレーアウト
+      // Move は実績解放まで。Pierce / Blast は今ランで付くまで（値 0）
       if (line.key === 'move' && !isSkillUnlocked('move')) {
         line.text.setColor(UNLOCK_STATUS_LOCKED_COLOR)
         line.text.setAlpha(UNLOCK_STATUS_LOCKED_ALPHA)
@@ -401,17 +450,17 @@ export class HudSystem {
         line.text.setAlpha(UNLOCK_STATUS_LOCKED_ALPHA)
         continue
       }
-      if (line.key === 'penetrate' && !isSkillUnlocked('pierce')) {
+      if (line.key === 'penetrate' && value <= 0) {
         line.text.setColor(UNLOCK_STATUS_LOCKED_COLOR)
         line.text.setAlpha(UNLOCK_STATUS_LOCKED_ALPHA)
         continue
       }
-      if (line.key === 'blast' && !isSkillUnlocked('blast')) {
+      if (line.key === 'blast' && value <= 0) {
         line.text.setColor(UNLOCK_STATUS_LOCKED_COLOR)
         line.text.setAlpha(UNLOCK_STATUS_LOCKED_ALPHA)
         continue
       }
-      if (line.key === 'ricochet' && !isSkillUnlocked('ricochet')) {
+      if (line.key === 'ricochet' && value <= 0) {
         line.text.setColor(UNLOCK_STATUS_LOCKED_COLOR)
         line.text.setAlpha(UNLOCK_STATUS_LOCKED_ALPHA)
         continue
@@ -420,6 +469,9 @@ export class HudSystem {
       line.text.setColor(PLAYER_STATS_COLOR)
       line.text.setAlpha(calculatePlayerStatAlpha(value))
     }
+
+    // スキルツリーの Blast / Pierce / Move も同じ条件でグレーを更新
+    this.syncSkillTreeComboIconLooks()
   }
 
   /**
@@ -428,11 +480,16 @@ export class HudSystem {
    */
   refreshUnlockStatus(): void {
     const rows = getUnlockStatusRows()
-    // LevelUpChoiceId の配列を、比較しやすい文字列配列として扱う
     const sealedSkillIds: string[] = getSealedSkillIds()
+    // skillId で対応付ける（ツリー配置順と rows の順が違ってもよい）
+    const rowBySkillId = new Map<string, (typeof rows)[number]>()
+    for (let index = 0; index < rows.length; index++) {
+      rowBySkillId.set(rows[index].skillId, rows[index])
+    }
+
     for (let index = 0; index < this.unlockStatusIcons.length; index++) {
       const icon = this.unlockStatusIcons[index]
-      const row = rows[index]
+      const row = rowBySkillId.get(icon.skillId)
       if (row === undefined) {
         continue
       }
@@ -440,7 +497,7 @@ export class HudSystem {
       icon.skillLabel = row.skillLabel
       icon.skillDescription = row.skillDescription
       icon.unlockCondition = row.unlockCondition
-      icon.isUnlocked = row.isUnlocked
+      icon.isUnlocked = this.resolveSkillTreeIconUnlocked(icon.skillId, row.isUnlocked)
       icon.isSealed = sealedSkillIds.includes(row.skillId)
       this.applyUnlockIconLook(icon)
     }
@@ -448,6 +505,59 @@ export class HudSystem {
     this.layoutUnlockStatusIcons()
     this.refreshAchievementProgress()
     this.hideUnlockSkillTooltip()
+  }
+
+  /**
+   * スキルツリーの色付き／グレーを決める。
+   * - Move: 実績で解放されるまでグレー
+   * - Blast / Pierce / Ricochet: 今ランで合成により付くまでグレー（レベル 0）
+   * - その他: 実績の解放状態
+   */
+  private resolveSkillTreeIconUnlocked(
+    skillId: string,
+    achievementUnlocked: boolean,
+  ): boolean {
+    if (skillId === 'blast') {
+      return this.currentStatValues.blast > 0
+    }
+    if (skillId === 'pierce') {
+      return this.currentStatValues.penetrate > 0
+    }
+    if (skillId === 'ricochet') {
+      return this.currentStatValues.ricochet > 0
+    }
+    if (skillId === 'move') {
+      return isSkillUnlocked('move')
+    }
+    return achievementUnlocked
+  }
+
+  /** ステータス更新後に、ツリー上の合成スキル / Move だけ見た目を合わせる。 */
+  private syncSkillTreeComboIconLooks(): void {
+    const rows = getUnlockStatusRows()
+    const rowBySkillId = new Map<string, (typeof rows)[number]>()
+    for (let index = 0; index < rows.length; index++) {
+      rowBySkillId.set(rows[index].skillId, rows[index])
+    }
+
+    for (let index = 0; index < this.unlockStatusIcons.length; index++) {
+      const icon = this.unlockStatusIcons[index]
+      if (
+        icon.skillId !== 'blast' &&
+        icon.skillId !== 'pierce' &&
+        icon.skillId !== 'ricochet' &&
+        icon.skillId !== 'move'
+      ) {
+        continue
+      }
+      const row = rowBySkillId.get(icon.skillId)
+      const achievementUnlocked = row !== undefined ? row.isUnlocked : false
+      icon.isUnlocked = this.resolveSkillTreeIconUnlocked(
+        icon.skillId,
+        achievementUnlocked,
+      )
+      this.applyUnlockIconLook(icon)
+    }
   }
 
   // アイコンの色・文字をロック／解放に合わせる
@@ -570,7 +680,7 @@ export class HudSystem {
     })
   }
 
-  // 見出しの下に3個ずつ並べる（ロックスキルが増えても右端からはみ出さない）
+  // スキルツリー配置: 上段 Blast/Ricochet/Pierce、中段 Power/Range/Speed/Move、下段 Pickup/XP
   private layoutUnlockStatusIcons(): void {
     if (this.unlockStatusHeaderText === null) {
       return
@@ -584,24 +694,73 @@ export class HudSystem {
     this.unlockStatusHeaderText.setPosition(this.unlockPanelX, nextY)
     nextY = nextY + this.unlockStatusHeaderText.height + 6
 
+    const stepX = UNLOCK_ICON_SIZE + UNLOCK_ICON_GAP
+    const row0Y = nextY + UNLOCK_ICON_SIZE / 2
+    const row1Y = row0Y + UNLOCK_ICON_SIZE + SKILL_TREE_ROW_GAP
+    const row2Y = row1Y + UNLOCK_ICON_SIZE + SKILL_TREE_EXTRA_ROW_GAP
+    const rowCentersY = [row0Y, row1Y, row2Y]
+
+    const iconBySkillId = new Map<string, UnlockStatusIcon>()
     for (let index = 0; index < this.unlockStatusIcons.length; index++) {
-      const icon = this.unlockStatusIcons[index]
-      const column = index % 3
-      const row = Math.floor(index / 3)
-      const iconX =
-        this.unlockPanelX +
-        UNLOCK_ICON_SIZE / 2 +
-        column * (UNLOCK_ICON_SIZE + UNLOCK_ICON_GAP)
-      const iconY =
-        nextY +
-        UNLOCK_ICON_SIZE / 2 +
-        row * (UNLOCK_ICON_SIZE + UNLOCK_ICON_GAP)
+      iconBySkillId.set(this.unlockStatusIcons[index].skillId, this.unlockStatusIcons[index])
+    }
+
+    for (let slotIndex = 0; slotIndex < SKILL_TREE_SLOTS.length; slotIndex++) {
+      const slot = SKILL_TREE_SLOTS[slotIndex]
+      const icon = iconBySkillId.get(slot.skillId)
+      if (icon === undefined) {
+        continue
+      }
+
+      const iconX = this.unlockPanelX + UNLOCK_ICON_SIZE / 2 + slot.col * stepX
+      const iconY = rowCentersY[slot.row]
       icon.border.setPosition(iconX, iconY)
       icon.fill.setPosition(iconX, iconY)
       icon.letterText.setPosition(iconX, iconY)
       icon.frostVeil.setPosition(iconX, iconY)
       icon.frostGlintA.setPosition(iconX - 4, iconY - 3)
       icon.frostGlintB.setPosition(iconX + 3, iconY + 4)
+    }
+
+    this.redrawSkillTreeLines(iconBySkillId)
+  }
+
+  /**
+   * Power+Range→Blast / Pickup+Power+Speed→Ricochet / Speed+Move→Pierce のつなぎ線を描く。
+   */
+  private redrawSkillTreeLines(
+    iconBySkillId: Map<string, UnlockStatusIcon>,
+  ): void {
+    if (this.skillTreeLinesGraphics === null) {
+      return
+    }
+
+    const graphics = this.skillTreeLinesGraphics
+    graphics.clear()
+    graphics.lineStyle(
+      SKILL_TREE_LINE_THICKNESS,
+      SKILL_TREE_LINE_COLOR,
+      SKILL_TREE_LINE_ALPHA,
+    )
+
+    const half = UNLOCK_ICON_SIZE / 2
+    for (let index = 0; index < SKILL_TREE_LINKS.length; index++) {
+      const link = SKILL_TREE_LINKS[index]
+      const parentIcon = iconBySkillId.get(link.parentId)
+      const childIcon = iconBySkillId.get(link.childId)
+      if (parentIcon === undefined || childIcon === undefined) {
+        continue
+      }
+
+      // 上のコンボの下端 → 下の素材の上端
+      const startX = parentIcon.border.x
+      const startY = parentIcon.border.y + half
+      const endX = childIcon.border.x
+      const endY = childIcon.border.y - half
+      graphics.beginPath()
+      graphics.moveTo(startX, startY)
+      graphics.lineTo(endX, endY)
+      graphics.strokePath()
     }
   }
 
@@ -825,7 +984,7 @@ export class HudSystem {
     }
   }
 
-  /** ステータス下の SKILLS 見出しと小さな正方形アイコン。 */
+  /** ステータス下の SKILL TREE 見出しとツリー配置のアイコン。 */
   private createUnlockStatusText(): void {
     const playAreaRight = PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH
     this.unlockPanelX = playAreaRight + PLAYER_STATS_GAP_FROM_PLAY_AREA
@@ -842,13 +1001,30 @@ export class HudSystem {
     )
     this.unlockStatusHeaderText.setOrigin(0, 0)
     this.unlockStatusHeaderText.setScrollFactor(0)
+    shrinkTextToFitWidth(
+      this.unlockStatusHeaderText,
+      Math.max(48, GAME_WIDTH - this.unlockPanelX - UNLOCK_STATUS_RIGHT_MARGIN),
+    )
+
+    this.skillTreeLinesGraphics = this.scene.add.graphics()
+    this.skillTreeLinesGraphics.setScrollFactor(0)
 
     this.createUnlockSkillTooltip()
 
     const rows = getUnlockStatusRows()
-    this.unlockStatusIcons = []
+    const rowBySkillId = new Map<string, (typeof rows)[number]>()
     for (let index = 0; index < rows.length; index++) {
-      const row = rows[index]
+      rowBySkillId.set(rows[index].skillId, rows[index])
+    }
+
+    this.unlockStatusIcons = []
+    for (let slotIndex = 0; slotIndex < SKILL_TREE_SLOTS.length; slotIndex++) {
+      const slot = SKILL_TREE_SLOTS[slotIndex]
+      const row = rowBySkillId.get(slot.skillId)
+      if (row === undefined) {
+        continue
+      }
+
       let letter = UNLOCK_ICON_BLAST_LETTER
       if (row.skillId === 'damage') {
         letter = UNLOCK_ICON_POWER_LETTER
@@ -877,7 +1053,6 @@ export class HudSystem {
         UNLOCK_ICON_LOCKED_BORDER_COLOR,
       )
       border.setScrollFactor(0)
-      // マウスオーバーで説明を出すための当たり判定
       border.setInteractive({ useHandCursor: true })
 
       const fill = this.scene.add.rectangle(
@@ -893,7 +1068,6 @@ export class HudSystem {
       letterText.setOrigin(0.5)
       letterText.setScrollFactor(0)
 
-      // シール中の青白い凍り幕（アイコン全体をうっすら覆う）
       const frostVeil = this.scene.add.rectangle(
         0,
         0,
@@ -906,7 +1080,6 @@ export class HudSystem {
       frostVeil.setScrollFactor(0)
       frostVeil.setVisible(false)
 
-      // 時々きらめく小さな氷のかけら（通常は非表示）
       const frostGlintA = this.scene.add.rectangle(
         0,
         0,
@@ -1104,6 +1277,9 @@ export class HudSystem {
     }
     if (this.unlockStatusHeaderText !== null) {
       this.unlockStatusHeaderText.setDepth(hudDepth)
+    }
+    if (this.skillTreeLinesGraphics !== null) {
+      this.skillTreeLinesGraphics.setDepth(hudDepth + SKILL_TREE_LINE_DEPTH_OFFSET)
     }
     for (let index = 0; index < this.unlockStatusIcons.length; index++) {
       const icon = this.unlockStatusIcons[index]

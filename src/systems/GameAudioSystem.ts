@@ -94,20 +94,7 @@ export function isBgmEnabled(): boolean {
 }
 
 const TONE_CONFIGS: ToneConfig[] = [
-  {
-    key: SFX_KEY_ENEMY_HIT,
-    frequency: 420,
-    durationSeconds: 0.07,
-    volume: 0.28,
-    noiseAmount: 0.45,
-  },
-  {
-    key: SFX_KEY_ENEMY_DEFEAT,
-    frequency: 160,
-    durationSeconds: 0.16,
-    volume: 0.34,
-    noiseAmount: 0.85,
-  },
+  // 敵撃破・ヒットは外部 OGG（Preload）を使う
   { key: SFX_KEY_COIN_PICKUP, frequency: 880, durationSeconds: 0.08, volume: 0.2 },
   { key: SFX_KEY_PLAYER_HURT, frequency: 140, durationSeconds: 0.15, volume: 0.3 },
 ]
@@ -493,6 +480,147 @@ export class GameAudioSystem {
 
   playEnemyHit(): void {
     this.playSound(SFX_KEY_ENEMY_HIT)
+  }
+
+  /**
+   * エネルギー弾（パワーオーブ）のヒット音。
+   * 外部アセットは使わず、Web Audio の正弦波でその場で鳴らす（Phaser 定番の短い peew）。
+   */
+  playEnergyOrbHit(): void {
+    this.unlock()
+    this.prepare()
+
+    const audioContext = getAudioContext(this.scene)
+    if (audioContext === null) {
+      return
+    }
+
+    const playNow = (): void => {
+      try {
+        const now = audioContext.currentTime
+        // 高い「ピ」から下がる短いトーン
+        const oscillator = audioContext.createOscillator()
+        oscillator.type = 'sine'
+        oscillator.frequency.setValueAtTime(980, now)
+        oscillator.frequency.exponentialRampToValueAtTime(240, now + 0.09)
+
+        const toneGain = audioContext.createGain()
+        toneGain.gain.setValueAtTime(0.0001, now)
+        toneGain.gain.exponentialRampToValueAtTime(0.18, now + 0.008)
+        toneGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11)
+
+        oscillator.connect(toneGain)
+        toneGain.connect(audioContext.destination)
+        oscillator.start(now)
+        oscillator.stop(now + 0.12)
+
+        // ごく短いノイズで「弾ける」感を足す
+        const noiseDuration = 0.04
+        const noiseBuffer = audioContext.createBuffer(
+          1,
+          Math.floor(audioContext.sampleRate * noiseDuration),
+          audioContext.sampleRate,
+        )
+        const noiseData = noiseBuffer.getChannelData(0)
+        for (let index = 0; index < noiseData.length; index++) {
+          const fade = 1 - index / noiseData.length
+          noiseData[index] = (Math.random() * 2 - 1) * fade
+        }
+        const noiseSource = audioContext.createBufferSource()
+        noiseSource.buffer = noiseBuffer
+        const noiseGain = audioContext.createGain()
+        noiseGain.gain.setValueAtTime(0.08, now)
+        noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + noiseDuration)
+        noiseSource.connect(noiseGain)
+        noiseGain.connect(audioContext.destination)
+        noiseSource.start(now)
+      } catch (_error) {
+        // 再生失敗時は無視
+      }
+    }
+
+    this.whenAudioReady(playNow)
+  }
+
+  /**
+   * 水魔法弾のヒット音。
+   * ガラス／氷が少し割れるような高めのトーン＋短い水のノイズ。
+   */
+  playWaterOrbHit(): void {
+    this.unlock()
+    this.prepare()
+
+    const audioContext = getAudioContext(this.scene)
+    if (audioContext === null) {
+      return
+    }
+
+    const playNow = (): void => {
+      try {
+        const now = audioContext.currentTime
+
+        // 氷っぽい高めの「キン」→下がる
+        const iceTone = audioContext.createOscillator()
+        iceTone.type = 'triangle'
+        iceTone.frequency.setValueAtTime(1400, now)
+        iceTone.frequency.exponentialRampToValueAtTime(420, now + 0.14)
+
+        const iceGain = audioContext.createGain()
+        iceGain.gain.setValueAtTime(0.0001, now)
+        iceGain.gain.exponentialRampToValueAtTime(0.14, now + 0.01)
+        iceGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16)
+
+        iceTone.connect(iceGain)
+        iceGain.connect(audioContext.destination)
+        iceTone.start(now)
+        iceTone.stop(now + 0.17)
+
+        // 少し低い副音で厚みを出す
+        const softTone = audioContext.createOscillator()
+        softTone.type = 'sine'
+        softTone.frequency.setValueAtTime(660, now)
+        softTone.frequency.exponentialRampToValueAtTime(180, now + 0.12)
+
+        const softGain = audioContext.createGain()
+        softGain.gain.setValueAtTime(0.0001, now)
+        softGain.gain.exponentialRampToValueAtTime(0.09, now + 0.012)
+        softGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14)
+
+        softTone.connect(softGain)
+        softGain.connect(audioContext.destination)
+        softTone.start(now)
+        softTone.stop(now + 0.15)
+
+        // 短い水しぶきノイズ（高域寄り）
+        const noiseDuration = 0.07
+        const noiseBuffer = audioContext.createBuffer(
+          1,
+          Math.floor(audioContext.sampleRate * noiseDuration),
+          audioContext.sampleRate,
+        )
+        const noiseData = noiseBuffer.getChannelData(0)
+        for (let index = 0; index < noiseData.length; index++) {
+          const fade = 1 - index / noiseData.length
+          noiseData[index] = (Math.random() * 2 - 1) * fade * fade
+        }
+        const noiseSource = audioContext.createBufferSource()
+        noiseSource.buffer = noiseBuffer
+        const noiseFilter = audioContext.createBiquadFilter()
+        noiseFilter.type = 'highpass'
+        noiseFilter.frequency.setValueAtTime(900, now)
+        const noiseGain = audioContext.createGain()
+        noiseGain.gain.setValueAtTime(0.07, now)
+        noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + noiseDuration)
+        noiseSource.connect(noiseFilter)
+        noiseFilter.connect(noiseGain)
+        noiseGain.connect(audioContext.destination)
+        noiseSource.start(now)
+      } catch (_error) {
+        // 再生失敗時は無視
+      }
+    }
+
+    this.whenAudioReady(playNow)
   }
 
   playEnemyBlocked(): void {

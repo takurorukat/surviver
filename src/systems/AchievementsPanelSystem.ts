@@ -39,6 +39,7 @@ import {
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
 } from '../GameConstants'
+import { shrinkTextToFitWidth, fitTextInBounds } from '../utils/fitTextToWidth'
 import { ALL_ACHIEVEMENTS, type UnlockableSkillId } from './AchievementSystem'
 import {
   getLifetimeStats,
@@ -233,6 +234,11 @@ export function createAchievementsPanelController(
     statsText.setOrigin(0, 0)
     statsText.setScrollFactor(0)
     statsText.setDepth(PANEL_DEPTH + 1)
+    fitTextInBounds(statsText, {
+      maxWidth: GAME_WIDTH - SCREEN_PAD * 2,
+      maxHeight: STATS_LINE_HEIGHT,
+      wrap: true,
+    })
     screenObjects.push(statsText)
     cursorY = cursorY + STATS_LINE_HEIGHT
 
@@ -357,6 +363,8 @@ export function createAchievementsPanelController(
     titleText.setOrigin(0, 0)
     titleText.setScrollFactor(0)
     titleText.setDepth(PANEL_DEPTH + 1)
+    const rowTextMaxWidth = columnWidth - (textLeft - rowLeft) - 8
+    shrinkTextToFitWidth(titleText, rowTextMaxWidth)
 
     const detailText = scene.add.text(textLeft, rowTopY + 26, def.condition, {
       fontFamily: FONT_FAMILY_UI,
@@ -366,21 +374,26 @@ export function createAchievementsPanelController(
     detailText.setOrigin(0, 0)
     detailText.setScrollFactor(0)
     detailText.setDepth(PANEL_DEPTH + 1)
+    shrinkTextToFitWidth(detailText, rowTextMaxWidth)
 
     let effectLine = ''
     if (def.skillId !== undefined) {
       effectLine = SKILL_EFFECT_DESCS[def.skillId]
     }
-    const effectMaxWidth = columnWidth - (textLeft - rowLeft) - 8
+    const effectMaxWidth = rowTextMaxWidth
     const effectText = scene.add.text(textLeft, rowTopY + 46, effectLine, {
       fontFamily: FONT_FAMILY_UI,
       fontSize: '11px',
       color: effectColor,
-      wordWrap: { width: effectMaxWidth },
     })
     effectText.setOrigin(0, 0)
     effectText.setScrollFactor(0)
     effectText.setDepth(PANEL_DEPTH + 1)
+    fitTextInBounds(effectText, {
+      maxWidth: effectMaxWidth,
+      maxHeight: 18,
+      wrap: true,
+    })
 
     screenObjects.push(titleText, detailText, effectText)
   }
@@ -423,6 +436,7 @@ export function createAchievementsPanelController(
     hint.setOrigin(0.5)
     hint.setScrollFactor(0)
     hint.setDepth(PANEL_DEPTH + 1)
+    shrinkTextToFitWidth(hint, GAME_WIDTH - SCREEN_PAD * 2)
     screenObjects.push(hint)
   }
 

@@ -14,6 +14,10 @@ import {
   TITLE_BGM_PATH,
   SFX_KEY_ENEMY_BLOCKED,
   SFX_PATH_ENEMY_BLOCKED,
+  SFX_KEY_ENEMY_HIT,
+  SFX_PATH_ENEMY_HIT,
+  SFX_KEY_ENEMY_DEFEAT,
+  SFX_PATH_ENEMY_DEFEAT,
   SFX_KEY_PLAYER_FIRE,
   SFX_PATH_PLAYER_FIRE,
   SFX_KEY_GAME_OVER,
@@ -120,6 +124,10 @@ export class PreloadScene extends Phaser.Scene {
     this.load.audio(AREA_CLEAR_BGM_KEY, AREA_CLEAR_BGM_PATH)
     // タイトル BGM（Ninja Adventure Asset Pack: Adventure Begin）
     this.load.audio(TITLE_BGM_KEY, TITLE_BGM_PATH)
+    // 風魔法ヒット（切り付けのザシュっ）
+    this.load.audio(SFX_KEY_ENEMY_HIT, SFX_PATH_ENEMY_HIT)
+    // 敵撃破（短い・ふわっと消える自作音）
+    this.load.audio(SFX_KEY_ENEMY_DEFEAT, SFX_PATH_ENEMY_DEFEAT)
     // 盾・装甲で攻撃を防いだ音（Voice4.wav を OGG 化）
     this.load.audio(SFX_KEY_ENEMY_BLOCKED, SFX_PATH_ENEMY_BLOCKED)
     // プレイヤー弾の発射音（Ninja Adventure Asset Pack: Launch.wav を OGG 化）
@@ -145,7 +153,7 @@ export class PreloadScene extends Phaser.Scene {
     })
     // タイトルなどのロック表示用南京錠（白スプライトを tint で色付け）
     this.load.image(UI_LOCK_ICON_KEY, UI_LOCK_ICON_PATH)
-    // プレイヤーの歩行スプライトシート（4×4 = 16コマ）
+    // プレイヤーの向き用スプライトシート（正面・横・背中の3コマ。歩行なし）
     this.load.spritesheet(PLAYER_WALK_SPRITE_KEY, PLAYER_WALK_SPRITE_PATH, {
       frameWidth: PLAYER_WALK_FRAME_SIZE,
       frameHeight: PLAYER_WALK_FRAME_SIZE,

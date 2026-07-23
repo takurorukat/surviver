@@ -14,6 +14,7 @@
 //   - GameConstants.ts … 文字サイズ・色・各フェーズの時間
 //
 // 注意: バナーは見た目だけ。敵の追加スポーンは WaveSystem 側。
+// レベルアップ中は time.paused = true なので delayedCall は使わない。
 // ============================================================
 
 import Phaser from 'phaser'
@@ -45,44 +46,40 @@ export function playFinalWaveBanner(scene: Phaser.Scene): void {
   })
   bannerText.setOrigin(0.5)
   bannerText.setDepth(FINAL_WAVE_BANNER_DEPTH)
-  // 最初は小さく・透明 → POP で一気に大きくする
   bannerText.setScale(0.3)
   bannerText.setAlpha(0)
 
-  // 1) ポップイン（やや大きく出る）
-  scene.tweens.add({
-    targets: bannerText,
-    alpha: 1,
-    scaleX: 1.2,
-    scaleY: 1.2,
-    duration: FINAL_WAVE_BANNER_POP_MS,
-    ease: 'Back.Out',
-    onComplete: () => {
-      // 2) 少し縮めて通常サイズに落ち着く
-      scene.tweens.add({
+  // StartCountdown / Pierce 取得と同じ tweens.chain（time.paused 中も動く）
+  scene.tweens.chain({
+    tweens: [
+      {
+        targets: bannerText,
+        alpha: 1,
+        scaleX: 1.2,
+        scaleY: 1.2,
+        duration: FINAL_WAVE_BANNER_POP_MS,
+        ease: 'Back.Out',
+      },
+      {
         targets: bannerText,
         scaleX: 1,
         scaleY: 1,
         duration: 120,
         ease: 'Sine.Out',
-        onComplete: () => {
-          // 3) しばらく表示してからフェードアウト
-          scene.time.delayedCall(FINAL_WAVE_BANNER_HOLD_MS, () => {
-            scene.tweens.add({
-              targets: bannerText,
-              alpha: 0,
-              scaleX: 1.1,
-              scaleY: 1.1,
-              y: bannerText.y - 20,
-              duration: FINAL_WAVE_BANNER_FADE_MS,
-              ease: 'Sine.In',
-              onComplete: () => {
-                bannerText.destroy()
-              },
-            })
-          })
-        },
-      })
+      },
+      {
+        targets: bannerText,
+        alpha: 0,
+        scaleX: 1.1,
+        scaleY: 1.1,
+        y: bannerText.y - 20,
+        duration: FINAL_WAVE_BANNER_FADE_MS,
+        delay: FINAL_WAVE_BANNER_HOLD_MS,
+        ease: 'Sine.In',
+      },
+    ],
+    onComplete: () => {
+      bannerText.destroy()
     },
   })
 }

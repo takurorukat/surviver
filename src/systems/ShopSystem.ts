@@ -28,8 +28,6 @@ import {
   SHOP_PURCHASE_PULSE_MS,
   PLAYER_HP,
   INITIAL_PRIMARY_SKILL_LEVEL_CAP,
-  INITIAL_PIERCE_BLAST_SKILL_LEVEL_CAP,
-  INITIAL_XP_BONUS_SKILL_LEVEL_CAP,
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
 } from '../GameConstants'
@@ -38,10 +36,16 @@ import {
   getShopUpgrades,
   getShopUpgradePrice,
   purchaseShopUpgrade,
+  getPurchasedPowerCap,
+  getPurchasedSpeedCap,
+  getPurchasedRangeCap,
+  getPurchasedPierceCap,
+  getPurchasedBlastCap,
+  getPurchasedXpBonusCap,
   type ShopUpgradeId,
 } from './UnlockSaveSystem'
 import { isSkillUnlocked } from './AchievementSystem'
-import { shrinkTextToFitWidth } from '../utils/fitTextToWidth'
+import { shrinkTextToFitWidth, fitTextInBounds } from '../utils/fitTextToWidth'
 
 type ShopItemDef = {
   id: ShopUpgradeId
@@ -363,6 +367,11 @@ export class ShopSystem {
       wordWrap: { width: SHOP_CARD_WIDTH - 32 },
     })
     effect.setOrigin(0, 0.5)
+    fitTextInBounds(effect, {
+      maxWidth: SHOP_CARD_WIDTH - 32,
+      maxHeight: 28,
+      wrap: true,
+    })
 
     const levelText = this.scene.add.text(-SHOP_CARD_WIDTH / 2 + 16, 24, '', {
       fontFamily: FONT_FAMILY_UI,
@@ -420,15 +429,25 @@ export class ShopSystem {
       let currentValue = INITIAL_PRIMARY_SKILL_LEVEL_CAP + purchases
       if (card.def.id === 'maxHp') {
         currentValue = PLAYER_HP + purchases
+      } else if (card.def.id === 'powerCap') {
+        currentValue = getPurchasedPowerCap()
+      } else if (card.def.id === 'speedCap') {
+        currentValue = getPurchasedSpeedCap()
+      } else if (card.def.id === 'rangeCap') {
+        currentValue = getPurchasedRangeCap()
       } else if (card.def.id === 'sealSlots') {
         currentValue = purchases
-      } else if (card.def.id === 'pierceCap' || card.def.id === 'blastCap') {
-        currentValue = INITIAL_PIERCE_BLAST_SKILL_LEVEL_CAP + purchases
+      } else if (card.def.id === 'pierceCap') {
+        currentValue = getPurchasedPierceCap()
+      } else if (card.def.id === 'blastCap') {
+        currentValue = getPurchasedBlastCap()
       } else if (card.def.id === 'xpBonusCap') {
-        currentValue = INITIAL_XP_BONUS_SKILL_LEVEL_CAP + purchases
+        currentValue = getPurchasedXpBonusCap()
       }
       card.levelText.setText(`Current: ${currentValue}  →  ${currentValue + 1}`)
+      shrinkTextToFitWidth(card.levelText, SHOP_CARD_WIDTH - 32 - 90)
       card.priceText.setText(`${price} G`)
+      shrinkTextToFitWidth(card.priceText, 80)
       if (gold >= price) {
         card.priceText.setColor(SHOP_AFFORDABLE_COLOR)
       } else {

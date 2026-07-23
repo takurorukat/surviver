@@ -21,6 +21,9 @@ export const GAME_HEIGHT = 540
 export const FONT_FAMILY_HEADING = '"Press Start 2P", monospace'
 export const FONT_FAMILY_UI = '"Silkscreen", monospace'
 
+// タイトル画面・ブラウザタブのゲーム名
+export const GAME_TITLE = 'Mage Survivor'
+
 // --- HUD・プレイエリア配置 ---
 // 上部 HUD と、その下の戦闘エリア（縮小して中央寄せ）の幾何。
 // PLAY_AREA_* はスポーン範囲・弾の画面外判定・移動境界の基準になる。
@@ -175,9 +178,9 @@ export const STAGE_DURATION_SECONDS = 30
 // スポーンは制限時間の少し前まで（クリア余裕を残す）
 export const STAGE_LAST_SPAWN_SECONDS = 22
 export const STAGE_SPAWN_BURST_INTERVAL_SECONDS = 5
-// Forest 最終ステージ（Stage5）だけスポーン間隔を短くする
-export const FOREST_FINAL_STAGE_SPAWN_BURST_INTERVAL_SECONDS = 3
-export const FOREST_FINAL_STAGE_PACK_GAP_SECONDS = 0.15
+// Forest 最終ステージ（Stage5）だけスポーン間隔を短くする（少し抑えた値）
+export const FOREST_FINAL_STAGE_SPAWN_BURST_INTERVAL_SECONDS = 4.5
+export const FOREST_FINAL_STAGE_PACK_GAP_SECONDS = 0.28
 export const STAGE_INITIAL_ENEMY_BASE = 3
 export const STAGE_RECURRING_ENEMY_BASE = 5
 // ステージが進むほど出る数が増える（貫通のありがたさが出るように密度高め）
@@ -485,9 +488,9 @@ export const RESUME_COUNTDOWN_FADE_OUT_MS = START_COUNTDOWN_FADE_OUT_MS
 // --- プレイヤー本体・戦闘基礎値 ---
 // createPlayer / PlayerMovement / 被ダメ・攻撃 System が参照。
 // 実際の移動速度は GameScene.currentMoveSpeed（アイテムで増減）。PLAYER_SPEED は基準・上限用。
-export const PLAYER_HP = 2
+export const PLAYER_HP = 3
 // 基本移動速度。実際の速度は GameScene の currentMoveSpeed（アイテムで増減可能）
-export const PLAYER_SPEED = 200
+export const PLAYER_SPEED = 150
 
 // --- 相対ポインタ追従（タッチ専用）---
 // 押した位置を起点に、指の移動量 × 倍率ぶん先を目標にする（指の下にキャラが来ない）
@@ -507,7 +510,7 @@ export const PHYSICS_FIXED_STEP_SECONDS = 1 / PHYSICS_FPS
 // Arcade Physics には高速弾用の連続衝突判定（CCD）がないため、
 // Phaser 公式が推奨する「物理の刻みを細かくする」方法を使う。
 // 1描画フレーム（1/60秒）を4つの小さなステップに分けて進めることで、
-// 弾の1ステップ移動距離が 800÷240 ≈ 3.3px になり、判定を飛び越えなくなる。
+// 弾の1ステップ移動距離が PLAYER_BULLET_SPEED÷240 程度になり、判定を飛び越えにくくなる。
 // 速度は px/秒 で指定しているので、刻みを細かくしても移動速度は変わらない。
 export const PHYSICS_SUBSTEPS_PER_FRAME = 4
 export const ARCADE_PHYSICS_FPS = PHYSICS_FPS * PHYSICS_SUBSTEPS_PER_FRAME
@@ -521,15 +524,20 @@ export const PLAYER_WIDTH = 24 * WORLD_ENTITY_SCALE
 export const PLAYER_HEIGHT = 24 * WORLD_ENTITY_SCALE
 export const PLAYER_RADIUS = 12 * WORLD_ENTITY_SCALE
 export const PLAYER_COLOR = 0x4fc3f7
-// --- プレイヤー歩行スプライト（4×4 = 16コマ。列 = 向き、行 = アニメコマ）---
-// 列0 = 下向き、列1 = 上向き、列2 = 左向き、列3 = 右向き
+// --- プレイヤー見た目（静止絵3コマ。歩行アニメなし）---
+// コマ0=正面、コマ1=右向き横顔（左は flipX）、コマ2=背中
+// 動きは敵と同じ黒枠＋呼吸だけ
 export const PLAYER_WALK_SPRITE_KEY = 'player-walk'
 export const PLAYER_WALK_SPRITE_PATH = 'assets/sprites/player_walk.png'
-export const PLAYER_WALK_FRAME_SIZE = 16
-export const PLAYER_WALK_FRAME_RATE = 8
-// コマ内に透明の余白があるため、当たり判定(24px)より大きめに表示して
-// 旧テスト時の四角と同じくらいの見た目にする
-export const PLAYER_WALK_DISPLAY_SIZE = 30 * WORLD_ENTITY_SCALE
+// 3コマ横並び（384×128）。1コマは 128×128
+export const PLAYER_WALK_FRAME_SIZE = 128
+export const PLAYER_FACING_FRAME_DOWN = 0
+export const PLAYER_FACING_FRAME_SIDE = 1
+export const PLAYER_FACING_FRAME_UP = 2
+// 魔法使いスプライトが見やすいよう、当たり判定より少し大きめに表示
+export const PLAYER_WALK_DISPLAY_SIZE = 36 * WORLD_ENTITY_SCALE
+// 新スプライトはすでに丸みがあるので、横伸ばしはほぼしない
+export const PLAYER_WALK_DISPLAY_SCALE_X = 1.05
 export const PLAYER_INVINCIBLE_SECONDS = 0.8
 // 被ダメ時に敵から離す（連続接触ダメージを防ぐ）
 export const PLAYER_KNOCKBACK_SPEED = 600
@@ -539,13 +547,64 @@ export const PLAYER_ATTACK_INTERVAL_MS = 800
 export const PLAYER_ATTACK_RANGE = 150 * WORLD_ENTITY_SCALE
 
 // --- プレイヤー弾（見た目・速度・上限は objects/PlayerBullet）---
-export const PLAYER_BULLET_WIDTH = 8 * WORLD_ENTITY_SCALE
-export const PLAYER_BULLET_HEIGHT = 8 * WORLD_ENTITY_SCALE
-export const PLAYER_BULLET_COLOR = 0xfde68a
-// 遠い敵の移動にも届きやすいよう、やや速め
-export const PLAYER_BULLET_SPEED = 800
+export const PLAYER_BULLET_WIDTH = 10 * WORLD_ENTITY_SCALE
+export const PLAYER_BULLET_HEIGHT = 10 * WORLD_ENTITY_SCALE
+// 風魔法弾の本体色（水色寄り）
+export const PLAYER_BULLET_COLOR = 0x67e8f9
+// 渦の外側リング用の少し濃い色
+export const PLAYER_BULLET_SWIRL_COLOR = 0x22d3ee
+// Plains Stage1・Move未強化時の丸パワー弾（Blast と同系の琥珀）
+export const PLAYER_BULLET_POWER_ORB_COLOR = 0xfbbf24
+export const PLAYER_BULLET_POWER_ORB_CORE_COLOR = 0xfde68a
+export const PLAYER_BULLET_POWER_ORB_RIM_COLOR = 0xf59e0b
+// Pickup 強化後の水魔法弾（青〜水色）
+export const PLAYER_BULLET_WATER_ORB_COLOR = 0x38bdf8
+export const PLAYER_BULLET_WATER_ORB_CORE_COLOR = 0xe0f2fe
+export const PLAYER_BULLET_WATER_ORB_RIM_COLOR = 0x0284c7
+
+// --- エネルギー弾（パワーオーブ）のヒット演出 ---
+// 直撃の小さなポップのみ。Blast の広い円リングと二重に見えないよう、
+// 終端半径・飛び散りは Blast（BLAST_RADIUS_BASE 付近）よりかなり小さくする
+export const ENERGY_ORB_HIT_DEPTH = 58
+export const ENERGY_ORB_HIT_RING_DURATION_MS = 140
+export const ENERGY_ORB_HIT_RING_START_RADIUS = 3 * WORLD_ENTITY_SCALE
+export const ENERGY_ORB_HIT_RING_END_RADIUS = 8 * WORLD_ENTITY_SCALE
+export const ENERGY_ORB_HIT_BURST_COUNT = 4
+export const ENERGY_ORB_HIT_BURST_SIZE = 2.5 * WORLD_ENTITY_SCALE
+export const ENERGY_ORB_HIT_BURST_SPREAD = 7 * WORLD_ENTITY_SCALE
+export const ENERGY_ORB_HIT_BURST_DURATION_MS = 160
+export const ENERGY_ORB_HIT_SIZE_SCALE_PER_POWER = 0.06
+export const ENERGY_ORB_HIT_SIZE_SCALE_MAX = 1.2
+
+// --- 水魔法弾のヒット演出（水しぶき＋小さな氷の結晶）---
+export const WATER_ORB_HIT_DEPTH = 58
+export const WATER_ORB_HIT_RING_DURATION_MS = 180
+export const WATER_ORB_HIT_RING_START_RADIUS = 4 * WORLD_ENTITY_SCALE
+export const WATER_ORB_HIT_RING_END_RADIUS = 14 * WORLD_ENTITY_SCALE
+export const WATER_ORB_HIT_DROPLET_COUNT = 5
+export const WATER_ORB_HIT_DROPLET_SIZE = 3 * WORLD_ENTITY_SCALE
+export const WATER_ORB_HIT_DROPLET_SPREAD = 12 * WORLD_ENTITY_SCALE
+export const WATER_ORB_HIT_DROPLET_DURATION_MS = 220
+export const WATER_ORB_HIT_CRYSTAL_COUNT = 4
+export const WATER_ORB_HIT_CRYSTAL_SIZE = 5 * WORLD_ENTITY_SCALE
+export const WATER_ORB_HIT_CRYSTAL_SPREAD = 10 * WORLD_ENTITY_SCALE
+export const WATER_ORB_HIT_CRYSTAL_DURATION_MS = 280
+export const WATER_ORB_HIT_FROST_COLOR = 0xbae6fd
+export const WATER_ORB_HIT_ICE_COLOR = 0xf0f9ff
+export const WATER_ORB_HIT_SIZE_SCALE_PER_POWER = 0.08
+export const WATER_ORB_HIT_SIZE_SCALE_MAX = 1.35
+// パワー（ダメージ）が上がるほど弾が大きくなる。基準は PLAYER_ATTACK_DAMAGE
+export const PLAYER_BULLET_SIZE_SCALE_PER_DAMAGE = 0.18
+export const PLAYER_BULLET_MAX_SIZE_SCALE = 2.4
+// 渦が回る速さ（ラジアン／フレーム）。丸パワー弾は回さない
+export const PLAYER_BULLET_SPIN_RADIANS_PER_FRAME = 0.28
+// 弾の1ステップ移動距離が速すぎないよう、弾速は控えめにする
+// （すり抜けは物理サブステップ側で対策）
+export const PLAYER_BULLET_SPEED = 480
+// 狙った敵へ弱く曲がる割合（1フレームあたり。0=なし, 1=即追従）
+export const PLAYER_BULLET_HOMING_BLEND = 0.12
 // すり抜け防止は判定拡大ではなく物理サブステップで行う（PHYSICS_SUBSTEPS_PER_FRAME 参照）
-export const PLAYER_BULLET_RADIUS = 4 * WORLD_ENTITY_SCALE
+export const PLAYER_BULLET_RADIUS = 5 * WORLD_ENTITY_SCALE
 
 // --- コイン見た目・吸引（Coin / CoinMagnetSystem）---
 // 吸引半径・初速・上限速・加速度は吸引ルールの定数。生成時 magnetSpeed=0 必須。
@@ -575,10 +634,12 @@ export const COIN_CLEAR_VACUUM_SPEED = 780
 export const STAGE_CLEAR_VACUUM_SETTLE_MS = 350
 
 // --- 効果音 ---
-// 発射音・ゲームオーバー音・レベルアップ音・ステージクリア音・メニュー音などは外部OGG。
-// それ以外は GameAudioSystem が Web Audio で生成する。
+// 発射・ヒット・撃破・クリア音などは外部OGG。
+// コイン取得・被弾などは GameAudioSystem が Web Audio で生成する。
 export const SFX_KEY_ENEMY_DEFEAT = 'sfx-enemy-defeat'
+export const SFX_PATH_ENEMY_DEFEAT = 'assets/audio/enemy_defeat.ogg'
 export const SFX_KEY_ENEMY_HIT = 'sfx-enemy-hit'
+export const SFX_PATH_ENEMY_HIT = 'assets/audio/enemy_hit.ogg'
 export const SFX_KEY_ENEMY_BLOCKED = 'sfx-enemy-blocked'
 export const SFX_PATH_ENEMY_BLOCKED = 'assets/audio/enemy_blocked.ogg'
 export const SFX_KEY_PLAYER_FIRE = 'sfx-player-fire'
@@ -663,7 +724,8 @@ export const FINAL_WAVE_BANNER_FONT_SIZE = '52px'
 export const FINAL_WAVE_BANNER_COLOR = '#fca5a5'
 export const FINAL_WAVE_BANNER_STROKE_COLOR = '#000000'
 export const FINAL_WAVE_BANNER_STROKE_THICKNESS = 8
-export const FINAL_WAVE_BANNER_DEPTH = 425
+// レベルアップ選択肢（LEVEL_UP_UI_DEPTH=400）より奥に出し、重なって選べなくならないようにする
+export const FINAL_WAVE_BANNER_DEPTH = 380
 export const FINAL_WAVE_BANNER_POP_MS = 260
 export const FINAL_WAVE_BANNER_HOLD_MS = 900
 export const FINAL_WAVE_BANNER_FADE_MS = 320
@@ -815,6 +877,11 @@ export const ENEMY_SLIME_BREATH_SCALE_Y_MAX = 1.06
 export const ENEMY_SLIME_BREATH_SCALE_Y_MIN = 0.94
 // 呼吸の片道（伸び or 縮み）。yoyo往復なので周期はこの2倍＝0.7秒
 export const ENEMY_SLIME_BREATH_DURATION_MS = 350
+// プレイヤーも敵と同じ黒枠＋呼吸パラメータ
+export const PLAYER_BREATH_OUTLINE_SCALE = ENEMY_SLIME_BREATH_OUTLINE_SCALE
+export const PLAYER_BREATH_SCALE_Y_MAX = ENEMY_SLIME_BREATH_SCALE_Y_MAX
+export const PLAYER_BREATH_SCALE_Y_MIN = ENEMY_SLIME_BREATH_SCALE_Y_MIN
+export const PLAYER_BREATH_DURATION_MS = ENEMY_SLIME_BREATH_DURATION_MS
 // 泥スライム・キノコ・切り株・蜂も緑スライムと同じ呼吸パラメータを使う
 export const ENEMY_SLIME_MUD_BREATH_OUTLINE_SCALE = ENEMY_SLIME_BREATH_OUTLINE_SCALE
 export const ENEMY_SLIME_MUD_BREATH_SCALE_Y_MAX = ENEMY_SLIME_BREATH_SCALE_Y_MAX
@@ -928,8 +995,7 @@ export const ENEMY_BRANCH_BLAST_DAMAGE_MULTIPLIER = 2
 // 緑スライム速度 × この倍率（0.65 = 35% 遅い）
 export const ENEMY_BRANCH_SPEED_FACTOR = 0.65
 // Forest Stage5 だけ1回あたり出現数を抑える（他ステージは通常）
-// 以前 0.6 → さらにその 0.8 倍（= 0.48）
-export const FOREST_STAGE5_SPAWN_COUNT_FACTOR = 0.48
+export const FOREST_STAGE5_SPAWN_COUNT_FACTOR = 0.38
 export const ENEMY_BRANCH_COLOR = 0xa16207
 // 枝がカブトムシを出す間隔（少し余裕を持たせる）
 export const ENEMY_BRANCH_BEETLE_SPAWN_INTERVAL_MS = 1500
@@ -946,7 +1012,7 @@ export const ENEMY_GRAVESTONE_BREATH_DURATION_MS = ENEMY_SLIME_BREATH_DURATION_M
 export const ENEMY_GRAVESTONE_HP = 120
 export const ENEMY_GRAVESTONE_XP_DROP_MULTIPLIER = 10
 export const ENEMY_GRAVESTONE_COLOR = 0x6b7280
-export const ENEMY_GRAVESTONE_SPAWN_INTERVAL_MS = 3000
+export const ENEMY_GRAVESTONE_SPAWN_INTERVAL_MS = 4000
 export const ENEMY_GRAVESTONE_SPAWN_OFFSET = 28 * WORLD_ENTITY_SCALE
 // プレイヤー開始位置（中央）と重ならないよう、やや上に出す
 export const ENEMY_GRAVESTONE_SPAWN_OFFSET_Y = -96 * WORLD_ENTITY_SCALE
@@ -1128,6 +1194,37 @@ export const MOVE_SPEED_BONUS_PER_LEVEL = 24
 export const MAGNET_LEVEL_START = 1
 export const COIN_MAGNET_RADIUS_BONUS_PER_LEVEL = 28 * WORLD_ENTITY_SCALE
 export const HP_BONUS_PER_LEVEL_UP = 1
+
+/**
+ * 弾の見た目スタイルを決める。
+ * - 初期: エネルギー弾
+ * - Pickup を1以上上げたあと: 水魔法弾
+ * - Move を上げていて Pickup 未強化: 風魔法弾
+ * Pickup を上げると水が優先（風より後に解放される元素）。
+ */
+export function resolvePlayerBulletStyle(
+  moveLevel: number,
+  magnetLevel: number,
+): 'powerOrb' | 'waterOrb' | 'windVortex' {
+  if (magnetLevel > MAGNET_LEVEL_START) {
+    return 'waterOrb'
+  }
+  if (moveLevel > MOVE_LEVEL_START) {
+    return 'windVortex'
+  }
+  return 'powerOrb'
+}
+
+/**
+ * @deprecated resolvePlayerBulletStyle を使う。互換のため残す。
+ */
+export function shouldUsePowerOrbBulletStyle(
+  _areaId: string,
+  _stageNumber: number,
+  moveLevel: number,
+): boolean {
+  return moveLevel <= MOVE_LEVEL_START
+}
 // 貫通レベル（0=1体で消滅、1=2体目で消滅、2=3体目で消滅…）
 export const PIERCE_LEVEL_START = 0
 // 跳弾レベル（0=なし、1=1回、2=2回…）
@@ -1142,6 +1239,8 @@ export const RICOCHET_SEARCH_RADIUS = 260 * WORLD_ENTITY_SCALE
 export const BLAST_LEVEL_START = 0
 // ショップ未購入時のラン中レベル上限。Power/Speed/Range はショップで拡張できる。
 export const INITIAL_PRIMARY_SKILL_LEVEL_CAP = 3
+// Plains クリア後の Power / Speed 上限（Range はまだ 3 のまま。バランス確認用）
+export const PLAINS_CLEAR_POWER_SPEED_LEVEL_CAP = 5
 // Pierce / Blast は解放直後の上限を1とし、ショップ購入で上限を増やす
 export const INITIAL_PIERCE_BLAST_SKILL_LEVEL_CAP = 1
 // XP Bonus は解放直後はLv2まで。ショップ購入で上限を増やす
@@ -1181,7 +1280,6 @@ export function calculateAllEnemiesClearTimeBonusXp(
   const wholeSeconds = Math.max(0, Math.ceil(remainingSeconds))
   return safeBase * wholeSeconds
 }
-export const BLAST_DAMAGE_START = 1
 export const BLAST_RADIUS_BASE = 28 * WORLD_ENTITY_SCALE
 export const BLAST_RADIUS_GROWTH_PER_LEVEL = 12 * WORLD_ENTITY_SCALE
 export const BLAST_RING_COLOR = 0xfbbf24
@@ -1256,18 +1354,17 @@ export function calculateBlastRadius(blastLevel: number): number {
 }
 
 /**
- * 爆破ダメージ: 1,2,3… と増え、弾の本来ダメージが上限。
- * blastLevel 未取得なら 0。
+ * 爆破ダメージ: 直撃ダメージの半分（端数は切り上げ）。
+ * 例: Power2 → 周囲 1 / Power3 → 周囲 2 / Power5 → 周囲 3
+ * blastLevel 未取得なら 0。半径は calculateBlastRadius 側でレベルが効く。
  */
 export function calculateBlastDamage(blastLevel: number, bulletDamage: number): number {
   if (blastLevel <= BLAST_LEVEL_START) {
     return 0
   }
-  const scaledDamage = BLAST_DAMAGE_START + (blastLevel - 1)
-  if (scaledDamage > bulletDamage) {
-    return bulletDamage
-  }
-  return scaledDamage
+  const safeBulletDamage = Math.max(0, bulletDamage)
+  // Python: math.ceil(damage / 2) に相当
+  return Math.ceil(safeBulletDamage / 2)
 }
 
 /**
@@ -1340,6 +1437,111 @@ export const LEVEL_UP_TITLE_COLOR = '#fde68a'
 export const LEVEL_UP_CHOICE_TITLE_COLOR = '#ffffff'
 export const LEVEL_UP_CHOICE_DESC_COLOR = '#cbd5e1'
 export const LEVEL_UP_UI_DEPTH = 400
+// レベルアップ枠内のスキルアイコン（スキルツリーと同じ記号・色）
+export const LEVEL_UP_CHOICE_ICON_SIZE = 22
+export const LEVEL_UP_CHOICE_ICON_BORDER = 2
+export const LEVEL_UP_CHOICE_ICON_GAP = 8
+
+// --- Move+1 かつ Speed+1 で Pierce を自動取得したときの大きな通知 ---
+export const PIERCE_UNLOCK_BANNER_TITLE = 'PIERCE OBTAINED'
+export const PIERCE_UNLOCK_BANNER_SUBTITLE = 'Bullets pierce through enemies'
+export const PIERCE_UNLOCK_BANNER_TITLE_FONT_SIZE = '48px'
+export const PIERCE_UNLOCK_BANNER_SUBTITLE_FONT_SIZE = '20px'
+export const PIERCE_UNLOCK_BANNER_TITLE_COLOR = '#7dd3fc'
+export const PIERCE_UNLOCK_BANNER_SUBTITLE_COLOR = '#e0f2fe'
+export const PIERCE_UNLOCK_BANNER_STROKE_COLOR = '#000000'
+export const PIERCE_UNLOCK_BANNER_STROKE_THICKNESS = 8
+export const PIERCE_UNLOCK_BANNER_DEPTH = 435
+export const PIERCE_UNLOCK_BANNER_POP_MS = 280
+export const PIERCE_UNLOCK_BANNER_HOLD_MS = 1100
+export const PIERCE_UNLOCK_BANNER_FADE_MS = 320
+export const PIERCE_UNLOCK_ICON_SIZE = 72
+// Move / Speed の低い方のレベルが Pierce になる（両方 Lv2 以上のとき）
+// 例: Move2&Speed2→Pierce2 / Move3&Speed3→Pierce3
+export const PIERCE_AUTO_SYNC_MIN_LEVEL = MOVE_LEVEL_START + 1
+
+// --- Power+1 かつ Range+1 で Blast を自動取得したときの大きな通知 ---
+export const BLAST_UNLOCK_BANNER_TITLE = 'BLAST OBTAINED'
+export const BLAST_UNLOCK_BANNER_SUBTITLE = 'Damages nearby enemies on hit'
+export const BLAST_UNLOCK_BANNER_TITLE_FONT_SIZE = '48px'
+export const BLAST_UNLOCK_BANNER_SUBTITLE_FONT_SIZE = '20px'
+export const BLAST_UNLOCK_BANNER_TITLE_COLOR = '#fbbf24'
+export const BLAST_UNLOCK_BANNER_SUBTITLE_COLOR = '#fef3c7'
+export const BLAST_UNLOCK_BANNER_STROKE_COLOR = '#000000'
+export const BLAST_UNLOCK_BANNER_STROKE_THICKNESS = 8
+export const BLAST_UNLOCK_BANNER_DEPTH = 435
+export const BLAST_UNLOCK_BANNER_POP_MS = 280
+export const BLAST_UNLOCK_BANNER_HOLD_MS = 1100
+export const BLAST_UNLOCK_BANNER_FADE_MS = 320
+export const BLAST_UNLOCK_ICON_SIZE = 72
+// Power / Range の低い方 − 1 が Blast（両方 Lv2 以上のとき）
+// 例: Power2&Range2→Blast1 / Power3&Range3→Blast2
+export const BLAST_AUTO_SYNC_MIN_LEVEL = RANGE_LEVEL_START + 1
+
+/**
+ * Power と Range から Blast レベルを求める。
+ * 両方とも 2 以上のとき: Blast = 低い方 − 1
+ */
+export function calculateBlastLevelFromPowerAndRange(
+  powerLevel: number,
+  rangeLevel: number,
+): number {
+  const lowerLevel = Math.min(powerLevel, rangeLevel)
+  if (lowerLevel < BLAST_AUTO_SYNC_MIN_LEVEL) {
+    return BLAST_LEVEL_START
+  }
+  return lowerLevel - 1
+}
+
+// --- Pickup+1 かつ Power+1 かつ Speed+1 で Ricochet を自動取得 ---
+export const RICOCHET_UNLOCK_BANNER_TITLE = 'RICOCHET OBTAINED'
+export const RICOCHET_UNLOCK_BANNER_SUBTITLE = 'Bullets bounce to nearby enemies'
+export const RICOCHET_UNLOCK_BANNER_TITLE_FONT_SIZE = '48px'
+export const RICOCHET_UNLOCK_BANNER_SUBTITLE_FONT_SIZE = '20px'
+export const RICOCHET_UNLOCK_BANNER_TITLE_COLOR = '#e9d5ff'
+export const RICOCHET_UNLOCK_BANNER_SUBTITLE_COLOR = '#f3e8ff'
+export const RICOCHET_UNLOCK_BANNER_STROKE_COLOR = '#000000'
+export const RICOCHET_UNLOCK_BANNER_STROKE_THICKNESS = 8
+export const RICOCHET_UNLOCK_BANNER_DEPTH = 435
+export const RICOCHET_UNLOCK_BANNER_POP_MS = 280
+export const RICOCHET_UNLOCK_BANNER_HOLD_MS = 1100
+export const RICOCHET_UNLOCK_BANNER_FADE_MS = 320
+export const RICOCHET_UNLOCK_ICON_SIZE = 72
+// Power / Speed / Pickup の低い方 − 1 が Ricochet（3つとも Lv2 以上のとき）
+// 例: 全部2→Ricochet1 / 全部3→Ricochet2
+export const RICOCHET_AUTO_SYNC_MIN_LEVEL = FIRE_RATE_LEVEL_START + 1
+
+/**
+ * Power・Speed・Pickup から Ricochet レベルを求める。
+ * 3つとも 2 以上のとき: Ricochet = 低い方 − 1
+ */
+export function calculateRicochetLevelFromPowerSpeedAndPickup(
+  powerLevel: number,
+  speedLevel: number,
+  magnetLevel: number,
+): number {
+  const lowerLevel = Math.min(powerLevel, speedLevel, magnetLevel)
+  if (lowerLevel < RICOCHET_AUTO_SYNC_MIN_LEVEL) {
+    return RICOCHET_LEVEL_START
+  }
+  return lowerLevel - 1
+}
+
+// Blast / Pierce / Ricochet のレベル上昇時（初回 OBTAINED より控えめ）
+export const SKILL_LEVEL_UP_BANNER_TITLE_FONT_SIZE = '28px'
+export const SKILL_LEVEL_UP_BANNER_SUBTITLE_FONT_SIZE = '16px'
+export const SKILL_LEVEL_UP_BANNER_DEPTH = 430
+export const SKILL_LEVEL_UP_BANNER_POP_MS = 180
+export const SKILL_LEVEL_UP_BANNER_HOLD_MS = 700
+export const SKILL_LEVEL_UP_BANNER_FADE_MS = 220
+export const SKILL_LEVEL_UP_BANNER_ICON_SIZE = 40
+export const SKILL_LEVEL_UP_BANNER_STROKE_THICKNESS = 5
+export const BLAST_LEVEL_UP_BANNER_TITLE_PREFIX = 'BLAST Lv.'
+export const BLAST_LEVEL_UP_BANNER_SUBTITLE = 'Power + Range'
+export const PIERCE_LEVEL_UP_BANNER_TITLE_PREFIX = 'PIERCE Lv.'
+export const PIERCE_LEVEL_UP_BANNER_SUBTITLE = 'Move + Speed'
+export const RICOCHET_LEVEL_UP_BANNER_TITLE_PREFIX = 'RICOCHET Lv.'
+export const RICOCHET_LEVEL_UP_BANNER_SUBTITLE = 'Pickup + Power + Speed'
 
 // --- ステージ結果（クリア／失敗／ゲームクリア）パネル ---
 export const STAGE_RESULT_OVERLAY_COLOR = 0x000000
@@ -1368,7 +1570,11 @@ export const ACHIEVEMENT_ID_PURE_POWER = 'pure_power'
 export const ACHIEVEMENT_ID_PLAINS_CLEAR = 'plains_clear'
 export const ACHIEVEMENT_ID_FOREST_CLEAR = 'forest_clear'
 export const ACHIEVEMENT_ID_FOREST_UNTOUCHED = 'forest_untouched'
+export const ACHIEVEMENT_ID_VOLCANO_CLEAR = 'volcano_clear'
 export const ACHIEVEMENT_ID_VOLCANO_UNTOUCHED = 'volcano_untouched'
+export const ACHIEVEMENT_ID_PIERCE_UNLOCK = 'pierce_unlock'
+export const ACHIEVEMENT_ID_BLAST_UNLOCK = 'blast_unlock'
+export const ACHIEVEMENT_ID_RICOCHET_UNLOCK = 'ricochet_unlock'
 // 実績画面のスキル名（Unlock は付けない）
 export const ACHIEVEMENT_TITLE_UNTOUCHED = 'Pierce'
 export const ACHIEVEMENT_TITLE_PURE_POWER = 'Blast'
@@ -1383,7 +1589,15 @@ export const ACHIEVEMENT_CONDITION_PURE_POWER =
 export const ACHIEVEMENT_CONDITION_PLAINS_CLEAR = 'Clear Plains'
 export const ACHIEVEMENT_CONDITION_FOREST_CLEAR = 'Clear Forest'
 export const ACHIEVEMENT_CONDITION_FOREST_UNTOUCHED = 'Clear Forest with no damage'
+export const ACHIEVEMENT_CONDITION_VOLCANO_CLEAR = 'Clear Volcano'
 export const ACHIEVEMENT_CONDITION_VOLCANO_UNTOUCHED = 'Clear Volcano with no damage'
+export const ACHIEVEMENT_CONDITION_PIERCE =
+  'Raise Move and Speed (Pierce matches the lower level)'
+export const ACHIEVEMENT_CONDITION_BLAST =
+  'Raise Power and Range (Blast = lower level - 1)'
+export const ACHIEVEMENT_CONDITION_RICOCHET =
+  'Raise Pickup, Power and Speed (Ricochet = lower level - 1)'
+export const ACHIEVEMENT_TITLE_VOLCANO_UNTOUCHED = 'Volcano Untouched'
 export const UNLOCK_SKILL_LABEL_POWER = 'Power'
 export const UNLOCK_SKILL_LABEL_SPEED = 'Speed'
 export const UNLOCK_SKILL_LABEL_RANGE = 'Range'
@@ -1395,8 +1609,7 @@ export const UNLOCK_SKILL_LABEL_MOVE = 'Move'
 // 説明文は "Pickup range" なので、表示名は分かりやすい Pickup にする
 export const UNLOCK_SKILL_LABEL_MAGNET = 'Pickup'
 export const UNLOCK_SKILL_LABEL_HP = 'HP'
-export const UNLOCK_SKILL_LABEL_FOREST_REWARDS =
-  'Move / Pickup / Pierce'
+export const UNLOCK_SKILL_LABEL_FOREST_REWARDS = 'Pickup'
 export const UNLOCK_SKILL_LABEL_XP_BONUS = 'XP Bonus'
 // スキルアイコン・実績画面用の短い効果説明（+1 や level-up は書かない）
 export const UNLOCK_SKILL_DESC_POWER = 'Increases bullet damage'
@@ -1406,9 +1619,12 @@ export const UNLOCK_SKILL_DESC_MOVE = 'Increases move speed'
 export const UNLOCK_SKILL_DESC_MAGNET = 'Increases coin pickup range'
 export const UNLOCK_SKILL_DESC_HP = 'Increases max HP'
 export const UNLOCK_SKILL_DESC_XP_BONUS = 'Increases XP from coins'
-export const UNLOCK_SKILL_DESC_PIERCE = 'Bullets pierce through enemies'
-export const UNLOCK_SKILL_DESC_BLAST = 'Damages nearby enemies on hit'
-export const UNLOCK_SKILL_DESC_RICOCHET = 'Bullets bounce to nearby enemies'
+export const UNLOCK_SKILL_DESC_PIERCE =
+  'Move + Speed → Pierce (matches the lower level)'
+export const UNLOCK_SKILL_DESC_BLAST =
+  'Power + Range → Blast (Blast = lower level - 1)'
+export const UNLOCK_SKILL_DESC_RICOCHET =
+  'Pickup + Power + Speed → Ricochet (Ricochet = lower level - 1)'
 export const UNLOCK_CONDITION_TBD = 'Unlock condition: TBD'
 export const UNLOCK_STATUS_TOOLTIP_DEPTH = 450
 export const UNLOCK_STATUS_TOOLTIP_MAX_WIDTH = 200
@@ -1416,7 +1632,7 @@ export const UNLOCK_STATUS_TOOLTIP_OFFSET_X = 10
 export const UNLOCK_STATUS_TOOLTIP_TITLE_COLOR = '#ffffff'
 export const UNLOCK_STATUS_TOOLTIP_DESC_COLOR = '#cbd5e1'
 export const UNLOCK_STATUS_TOOLTIP_LOCK_COLOR = '#fca5a5'
-export const UNLOCK_STATUS_HEADER_TEXT = 'SKILLS'
+export const UNLOCK_STATUS_HEADER_TEXT = 'SKILL TREE'
 export const UNLOCK_STATUS_GAP_FROM_STATS = 10
 export const UNLOCK_STATUS_HEADER_COLOR = '#a1a1aa'
 export const UNLOCK_STATUS_LOCKED_COLOR = '#6b7280'
@@ -1429,9 +1645,16 @@ export const UNLOCK_STATUS_TOOLTIP_BG_ALPHA = 0.92
 export const UNLOCK_STATUS_TOOLTIP_PADDING = 6
 export const UNLOCK_STATUS_RIGHT_MARGIN = 8
 // 右カラムのスキル解放アイコン（小さな正方形）
-export const UNLOCK_ICON_SIZE = 20
-export const UNLOCK_ICON_GAP = 8
+export const UNLOCK_ICON_SIZE = 18
+export const UNLOCK_ICON_GAP = 4
 export const UNLOCK_ICON_BORDER_SIZE = 2
+// スキルツリー: 上段 Blast/Pierce ← 下段 Power/Range/Speed/Move
+export const SKILL_TREE_ROW_GAP = 16
+export const SKILL_TREE_EXTRA_ROW_GAP = 12
+export const SKILL_TREE_LINE_COLOR = 0x94a3b8
+export const SKILL_TREE_LINE_ALPHA = 0.75
+export const SKILL_TREE_LINE_THICKNESS = 1.5
+export const SKILL_TREE_LINE_DEPTH_OFFSET = -1
 // 最初から使える基本スキル（Power / Speed / Range）
 export const UNLOCK_ICON_POWER_COLOR = 0xef4444
 export const UNLOCK_ICON_SPEED_COLOR = 0xf97316
@@ -1509,6 +1732,31 @@ export const DAMAGE_NUMBER_PEAK_HEIGHT = 28 * WORLD_ENTITY_SCALE
 export const DAMAGE_NUMBER_SIDE_SPREAD = 18 * WORLD_ENTITY_SCALE
 export const DAMAGE_NUMBER_FALL_EXTRA = 12 * WORLD_ENTITY_SCALE
 export const DAMAGE_NUMBER_DEPTH = 60
+
+// --- 風属性の切り裂き（弾が敵に当たったときのヒット演出）---
+// 爪でひっかいたような平行線。本数・葉の数はパワー（ダメージ）で増える
+export const WIND_SLASH_COLOR = 0xa5f3fc
+export const WIND_SLASH_COLOR_INNER = 0xffffff
+export const WIND_SLASH_OUTLINE_COLOR = 0x000000
+export const WIND_SLASH_DURATION_MS = 260
+export const WIND_SLASH_LENGTH = 36 * WORLD_ENTITY_SCALE
+export const WIND_SLASH_LINE_WIDTH = 4.5 * WORLD_ENTITY_SCALE
+export const WIND_SLASH_LINE_SPACING = 7 * WORLD_ENTITY_SCALE
+export const WIND_SLASH_DEPTH = 58
+// 線の本数上限（パワー1→1本, 2→2本, 3以上→3本）
+export const WIND_SLASH_LINE_COUNT_MAX = 3
+// 葉の枚数: パワー1→2枚, 2→4枚, 3以上→6枚（= 本数 × この倍率）
+export const WIND_SLASH_LEAF_PER_LINE = 2
+export const WIND_SLASH_LEAF_COLOR = 0x86efac
+export const WIND_SLASH_LEAF_COLOR_DARK = 0x4ade80
+export const WIND_SLASH_LEAF_DURATION_MS = 420
+export const WIND_SLASH_LEAF_SPREAD = 28 * WORLD_ENTITY_SCALE
+export const WIND_SLASH_LEAF_FLOAT_UP = 18 * WORLD_ENTITY_SCALE
+export const WIND_SLASH_LEAF_SIZE = 8 * WORLD_ENTITY_SCALE
+export const WIND_SLASH_LEAF_TEXTURE_KEY = 'wind-slash-leaf'
+// パワーが1上がるごとの見た目拡大（長さ・太さ・葉の飛び）
+export const WIND_SLASH_SIZE_SCALE_PER_POWER = 0.18
+export const WIND_SLASH_SIZE_SCALE_MAX = 1.55
 
 // --- レベルアップ時の HP FULL! 表示 ---
 export const HP_FULL_TEXT = 'HP FULL!'

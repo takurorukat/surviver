@@ -353,6 +353,7 @@ export class SettingsMenuSystem {
       },
     )
     closeHint.setOrigin(0.5)
+    shrinkTextToFitWidth(closeHint, SETTINGS_MENU_WIDTH - 24)
     buttonViews.push(closeHint)
 
     this.panelContainer = this.scene.add.container(this.closedPanelX, GAME_HEIGHT / 2, buttonViews)
@@ -601,6 +602,7 @@ export class SettingsMenuSystem {
     label.setOrigin(0.5)
     label.setDepth(depth)
     label.setScrollFactor(0)
+    shrinkTextToFitWidth(label, buttonWidth - 16)
 
     background.on('pointerdown', () => {
       onClick()
@@ -641,6 +643,7 @@ export class SettingsMenuSystem {
       fontStyle: 'bold',
     })
     label.setOrigin(0.5)
+    shrinkTextToFitWidth(label, buttonWidth - 16)
 
     const buttonView: MenuButtonView = { border, background, label, onClick }
 
@@ -781,6 +784,7 @@ export class SettingsMenuSystem {
       return
     }
     this.bgmButtonLabel.setText(this.getBgmButtonText())
+    shrinkTextToFitWidth(this.bgmButtonLabel, SETTINGS_MENU_WIDTH - 32 - 16)
   }
 
   private handleBgmToggle(): void {

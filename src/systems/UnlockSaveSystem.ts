@@ -17,10 +17,17 @@ import {
   INITIAL_PRIMARY_SKILL_LEVEL_CAP,
   INITIAL_PIERCE_BLAST_SKILL_LEVEL_CAP,
   INITIAL_XP_BONUS_SKILL_LEVEL_CAP,
+  PLAINS_CLEAR_POWER_SPEED_LEVEL_CAP,
   ACHIEVEMENT_ID_PLAINS_CLEAR,
   ACHIEVEMENT_ID_UNTOUCHED,
   ACHIEVEMENT_ID_PURE_POWER,
   ACHIEVEMENT_ID_FOREST_UNTOUCHED,
+  ACHIEVEMENT_ID_VOLCANO_CLEAR,
+  ACHIEVEMENT_ID_FOREST_CLEAR,
+  ACHIEVEMENT_ID_PIERCE_UNLOCK,
+  ACHIEVEMENT_ID_BLAST_UNLOCK,
+  ACHIEVEMENT_ID_RICOCHET_UNLOCK,
+  ACHIEVEMENT_ID_VOLCANO_UNTOUCHED,
   getAreaById,
   type StageAreaDef,
 } from '../GameConstants'
@@ -182,30 +189,56 @@ function parseGameSaveData(parsed: unknown): GameSaveData {
   // unlockAchievement が既解放扱いになり結果画面の UNLOCKED が出ない。
   // 付与してよいのは「もう使われない旧 ID」のリネームだけ。
 
-  // 以前の版ですでに Plains をクリア済みなら XP Bonus 実績を付ける
+  // 以前の版ですでに Plains をクリア済みなら Plains クリア実績を付ける（現行は Move）
   if (
     clearedAreaIds.includes('plains') &&
     !unlockedAchievementIds.includes(ACHIEVEMENT_ID_PLAINS_CLEAR)
   ) {
     unlockedAchievementIds.push(ACHIEVEMENT_ID_PLAINS_CLEAR)
   }
-  // 旧 ID untouched → plains_clear（当時 Pierce／現行は XP Bonus）
+  // 旧 ID untouched → plains_clear（当時 Pierce／のち XP Bonus／現行は Move）
   if (
     unlockedAchievementIds.includes(ACHIEVEMENT_ID_UNTOUCHED) &&
     !unlockedAchievementIds.includes(ACHIEVEMENT_ID_PLAINS_CLEAR)
   ) {
     unlockedAchievementIds.push(ACHIEVEMENT_ID_PLAINS_CLEAR)
   }
-  // 旧 ID pure_power → forest_untouched（Blast）
+  // 旧 ID pure_power → forest_untouched（当時 Blast）→ blast_unlock
   if (
     unlockedAchievementIds.includes(ACHIEVEMENT_ID_PURE_POWER) &&
     !unlockedAchievementIds.includes(ACHIEVEMENT_ID_FOREST_UNTOUCHED)
   ) {
     unlockedAchievementIds.push(ACHIEVEMENT_ID_FOREST_UNTOUCHED)
   }
+  if (
+    unlockedAchievementIds.includes(ACHIEVEMENT_ID_FOREST_UNTOUCHED) &&
+    !unlockedAchievementIds.includes(ACHIEVEMENT_ID_BLAST_UNLOCK)
+  ) {
+    unlockedAchievementIds.push(ACHIEVEMENT_ID_BLAST_UNLOCK)
+  }
+  // Volcano クリア済みなら XP Bonus 実績を付ける
+  if (
+    clearedAreaIds.includes('volcano') &&
+    !unlockedAchievementIds.includes(ACHIEVEMENT_ID_VOLCANO_CLEAR)
+  ) {
+    unlockedAchievementIds.push(ACHIEVEMENT_ID_VOLCANO_CLEAR)
+  }
+  // 旧: Forest クリアで Pierce 解放 → 新実績 ID へ移行
+  if (
+    unlockedAchievementIds.includes(ACHIEVEMENT_ID_FOREST_CLEAR) &&
+    !unlockedAchievementIds.includes(ACHIEVEMENT_ID_PIERCE_UNLOCK)
+  ) {
+    unlockedAchievementIds.push(ACHIEVEMENT_ID_PIERCE_UNLOCK)
+  }
+  // 旧: Volcano ノーダメージで Ricochet 解放 → 新実績 ID へ移行
+  if (
+    unlockedAchievementIds.includes(ACHIEVEMENT_ID_VOLCANO_UNTOUCHED) &&
+    !unlockedAchievementIds.includes(ACHIEVEMENT_ID_RICOCHET_UNLOCK)
+  ) {
+    unlockedAchievementIds.push(ACHIEVEMENT_ID_RICOCHET_UNLOCK)
+  }
   // ※ かつて Forest クリアで跳弾を渡していた移行（forest_clear → volcano_untouched）は削除。
-  //   現行は Volcano ノーダメージが条件なのに、Forest クリアだけで Ricochet が
-  //   解放済み扱いになり、UNLOCKED 表示も出なくなっていた。
+  //   現行は合成スキル（Pickup+Power+Speed）なので、旧 Forest クリアだけでは付けない。
 
   const gold = Math.max(0, Math.floor(readNumber(parsed.gold, 0)))
   const shopUpgrades = parseShopUpgrades(parsed.shopUpgrades)
@@ -238,7 +271,7 @@ function parseGameSaveData(parsed: unknown): GameSaveData {
     shopUpgrades,
     // 実装から外した旧 Bomb が封印枠を消費し続けないよう除外する
     sealedSkillIds: readStringArray(parsed.sealedSkillIds).filter(
-      (skillId) => skillId !== 'groundBomb',
+      (skillId) => skillId !== 'groundBomb' && skillId !== 'ricochet',
     ),
     // 途中再開はやめたので、旧 run があっても捨てる
     run: null,
@@ -579,12 +612,20 @@ export function getPurchasedMaxHp(): number {
   return PLAYER_HP + getShopUpgrades().maxHp
 }
 
+/** Plains クリア後は Power / Speed の基礎上限が 5。それ以外は 3。 */
+function getPowerSpeedBaseCap(): number {
+  if (hasClearedArea('plains')) {
+    return PLAINS_CLEAR_POWER_SPEED_LEVEL_CAP
+  }
+  return INITIAL_PRIMARY_SKILL_LEVEL_CAP
+}
+
 export function getPurchasedPowerCap(): number {
-  return INITIAL_PRIMARY_SKILL_LEVEL_CAP + getShopUpgrades().powerCap
+  return getPowerSpeedBaseCap() + getShopUpgrades().powerCap
 }
 
 export function getPurchasedSpeedCap(): number {
-  return INITIAL_PRIMARY_SKILL_LEVEL_CAP + getShopUpgrades().speedCap
+  return getPowerSpeedBaseCap() + getShopUpgrades().speedCap
 }
 
 export function getPurchasedRangeCap(): number {

@@ -44,6 +44,7 @@ import {
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
 } from '../GameConstants'
+import { shrinkTextToFitWidth, fitTextInBounds } from '../utils/fitTextToWidth'
 
 // clear=次ステージへ / gameClear=タイトルへ / defeat=リトライ
 export type StageResultKind = 'clear' | 'gameClear' | 'defeat'
@@ -252,10 +253,7 @@ export class StageResultSystem {
 
   /** 文字がパネル幅からはみ出すときだけ、収まるサイズまで縮める。 */
   private shrinkTextToFitPanelWidth(text: Phaser.GameObjects.Text): void {
-    const maxWidth = STAGE_RESULT_PANEL_WIDTH - 24
-    if (text.width > maxWidth) {
-      text.setScale(maxWidth / text.width)
-    }
+    shrinkTextToFitWidth(text, STAGE_RESULT_PANEL_WIDTH - 24)
   }
 
   /** kind とステージ番号に応じたサブタイトルを出す。 */
@@ -280,6 +278,7 @@ export class StageResultSystem {
     })
     this.subtitleText.setOrigin(0.5)
     this.subtitleText.setDepth(STAGE_RESULT_UI_DEPTH + 3)
+    shrinkTextToFitWidth(this.subtitleText, STAGE_RESULT_PANEL_WIDTH - 24)
   }
 
   /** 実績解放メッセージ（unlockLines）をパネル中央付近に出す。空なら何もしない。 */
@@ -309,9 +308,11 @@ export class StageResultSystem {
     // 折り返して行数が増え、ボタンと重なりそうなときは縮めて収める
     const buttonTopY = this.getPanelBottomY() - 52 - 22
     const availableHeight = buttonTopY - unlockY - 8
-    if (this.unlockText.height > availableHeight) {
-      this.unlockText.setScale(availableHeight / this.unlockText.height)
-    }
+    fitTextInBounds(this.unlockText, {
+      maxWidth: STAGE_RESULT_PANEL_WIDTH - 32,
+      maxHeight: availableHeight,
+      wrap: true,
+    })
   }
 
   /** kind に応じたボタン（NEXT STAGE / TITLE）を作る。選択肢は1つなので最初から選択状態にする。 */
@@ -350,6 +351,7 @@ export class StageResultSystem {
     })
     this.buttonText.setOrigin(0.5)
     this.buttonText.setDepth(STAGE_RESULT_UI_DEPTH + 4)
+    shrinkTextToFitWidth(this.buttonText, 168)
 
     this.buttonBackground.on('pointerdown', () => {
       this.confirm()
@@ -373,6 +375,7 @@ export class StageResultSystem {
     )
     this.hintText.setOrigin(0.5)
     this.hintText.setDepth(STAGE_RESULT_UI_DEPTH + 3)
+    shrinkTextToFitWidth(this.hintText, STAGE_RESULT_PANEL_WIDTH - 24)
   }
 
   /** SPACE / ENTER キーで confirm を呼ぶようにする。 */

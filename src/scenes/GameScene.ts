@@ -37,6 +37,7 @@ import {
   calculatePierceHitDamage,
   calculateBlastRadius,
   calculateBlastDamage,
+  resolvePlayerBulletStyle,
   calculateAllEnemiesClearTimeBonusXp,
   CLEAR_TIME_BONUS_COIN_FALL_TILES,
   CLEAR_TIME_BONUS_COIN_SPREAD_RADIUS,
@@ -48,6 +49,12 @@ import {
   getAreaStageCount,
   getStageFloorColor,
   AUTO_GOLD_LEVEL_UP_CHAIN_DELAY_MS,
+  PIERCE_AUTO_SYNC_MIN_LEVEL,
+  calculateBlastLevelFromPowerAndRange,
+  calculateRicochetLevelFromPowerSpeedAndPickup,
+  ACHIEVEMENT_ID_PIERCE_UNLOCK,
+  ACHIEVEMENT_ID_BLAST_UNLOCK,
+  ACHIEVEMENT_ID_RICOCHET_UNLOCK,
   FLOOR_DARKEN_ALPHA,
   VOLCANO_FLOOR_TILE_BLOCK_INDEX,
   VOLCANO_FLOOR_RED_OVERLAY_COLOR,
@@ -77,6 +84,7 @@ import {
   createPlayer,
   createPlayerWalkSprite,
   updatePlayerWalkSprite,
+  type PlayerWalkVisual,
 } from '../objects/Player'
 import {
   createMovementKeys,
@@ -124,6 +132,7 @@ import {
   maintainPlayerBulletVelocities,
   redirectPlayerBulletToward,
   recyclePlayerBullet,
+  type PlayerBulletVisual,
 } from '../objects/PlayerBullet'
 import {
   createEnemyBulletGroup,
@@ -204,6 +213,7 @@ import {
   getPurchasedPierceCap,
   getPurchasedBlastCap,
   getPurchasedXpBonusCap,
+  unlockAchievement,
 } from '../systems/UnlockSaveSystem'
 import type { CarriedProgress } from '../types/CarriedProgress'
 import {
@@ -212,12 +222,24 @@ import {
   playAllEnemiesRewardBanner,
 } from '../systems/StageClearBannerSystem'
 import { playFinalWaveBanner } from '../systems/FinalWaveBannerSystem'
+import { playPierceUnlockBanner } from '../systems/PierceUnlockBannerSystem'
+import {
+  playBlastUnlockBanner,
+  playBlastLevelUpBanner,
+} from '../systems/BlastUnlockBannerSystem'
+import {
+  playRicochetUnlockBanner,
+  playRicochetLevelUpBanner,
+} from '../systems/RicochetUnlockBannerSystem'
 import {
   applyHitBlastAroundPoint,
   playHitBlastRing,
 } from '../systems/HitBlastSystem'
 import {
   playDamageNumber,
+  playWindSlashHit,
+  playEnergyOrbHit,
+  playWaterOrbHit,
   playEnemyBlockedShield,
   playHpFullText,
   playAutoGoldLevelUpText,
@@ -285,8 +307,8 @@ export class GameScene extends Phaser.Scene {
   private areaStageCount = 3
   private player!: Phaser.GameObjects.Rectangle
   private playerBody!: Phaser.Physics.Arcade.Body
-  // プレイヤーの見た目（歩行アニメ）。物理・当たり判定は player 側が持つ
-  private playerWalkSprite!: Phaser.GameObjects.Sprite
+  // プレイヤーの見た目（歩行＋黒枠＋呼吸）。物理・当たり判定は player 側が持つ
+  private playerWalkSprite!: PlayerWalkVisual
   private enemyGroup!: Phaser.Physics.Arcade.Group
   private coinGroup!: Phaser.Physics.Arcade.Group
   private goldCoinGroup!: Phaser.Physics.Arcade.Group
@@ -1309,13 +1331,13 @@ export class GameScene extends Phaser.Scene {
       this.enemyGroup,
       (bulletObject, enemyObject) => {
         this.handleBulletEnemyHit(
-          bulletObject as Phaser.GameObjects.Rectangle,
+          bulletObject as PlayerBulletVisual,
           enemyObject as Phaser.GameObjects.Rectangle,
         )
       },
       (bulletObject, enemyObject) => {
         return this.canPlayerBulletHitEnemy(
-          bulletObject as Phaser.GameObjects.Rectangle,
+          bulletObject as PlayerBulletVisual,
           enemyObject as Phaser.GameObjects.Rectangle,
         )
       },
@@ -1613,6 +1635,10 @@ export class GameScene extends Phaser.Scene {
   // 呼び出し元: update（isStageActive）
   // 呼び出し先: tryFireBulletAtNearestEnemy, gameAudioSystem.playPlayerFire
   private updatePlayerAttack(): void {
+    const bulletStyle = resolvePlayerBulletStyle(
+      this.currentMoveLevel,
+      this.currentMagnetLevel,
+    )
     const didFire = tryFireBulletAtNearestEnemy(
       this,
       this.playerBulletGroup,
@@ -1626,6 +1652,7 @@ export class GameScene extends Phaser.Scene {
       calculateBulletMaxHits(this.currentPierceLevel),
       this.currentRicochetLevel,
       this.time.now,
+      bulletStyle,
     )
 
     if (didFire) {
@@ -1637,7 +1664,7 @@ export class GameScene extends Phaser.Scene {
   // 呼び出し元: setupBulletEnemyOverlap の processCallback
   // 呼び出し先: なし（弾・敵の getData を読むだけ）
   private canPlayerBulletHitEnemy(
-    bullet: Phaser.GameObjects.Rectangle,
+    bullet: PlayerBulletVisual,
     enemy: Phaser.GameObjects.Rectangle,
   ): boolean {
     if (!bullet.active || !enemy.active) {
@@ -1674,7 +1701,7 @@ export class GameScene extends Phaser.Scene {
 
   // 役割: 特殊敵の防御条件を満たしているか判定する
   private canBulletDamageSpecialEnemy(
-    bullet: Phaser.GameObjects.Rectangle,
+    bullet: PlayerBulletVisual,
     enemy: Phaser.GameObjects.Rectangle,
     bulletDamage: number,
   ): boolean {
@@ -1715,7 +1742,7 @@ export class GameScene extends Phaser.Scene {
   // 呼び出し先: applyDamageToEnemy, CombatFeedback*, applyHitBlastIfUnlocked,
   //             trySpawnCoinAt, gameAudioSystem など
   private handleBulletEnemyHit(
-    bullet: Phaser.GameObjects.Rectangle,
+    bullet: PlayerBulletVisual,
     enemy: Phaser.GameObjects.Rectangle,
   ): void {
     if (!bullet.active || !enemy.active || this.isLevelUpPaused || this.isResumeCountdownActive) {
@@ -1791,6 +1818,23 @@ export class GameScene extends Phaser.Scene {
     // ダメージ数字をぴょんと飛ばす（撃破時も表示）
     playDamageNumber(this, enemyX, enemyY - 8, effectiveDamage)
 
+    // 弾の種類でヒット演出と音を分ける
+    const bulletStyle = bullet.getData('bulletStyle') as string
+    if (bulletStyle === 'powerOrb') {
+      playEnergyOrbHit(this, enemyX, enemyY, originalDamage)
+      this.gameAudioSystem.playEnergyOrbHit()
+    } else if (bulletStyle === 'waterOrb') {
+      playWaterOrbHit(this, enemyX, enemyY, originalDamage)
+      this.gameAudioSystem.playWaterOrbHit()
+    } else {
+      const slashDirX = bullet.getData('flightVx') as number
+      const slashDirY = bullet.getData('flightVy') as number
+      playWindSlashHit(this, enemyX, enemyY, slashDirX, slashDirY, originalDamage)
+      this.gameAudioSystem.playEnemyHit()
+    }
+    // 当たった敵へのホーミングは解除（貫通後に戻ってこないようにする）
+    bullet.setData('homingTarget', null)
+
     if (isDead) {
       recordEnemyDefeated()
       clearLockedTargetIfEnemyDestroyed(this.attackState, enemy)
@@ -1799,9 +1843,6 @@ export class GameScene extends Phaser.Scene {
       playEnemyDefeatFadeOut(this, enemy, () => {
         this.spawnExperienceCoinsAt(enemyX, enemyY, xpDropMultiplier)
       })
-    } else {
-      // 生存中のヒットは爽快なヒット音だけ
-      this.gameAudioSystem.playEnemyHit()
     }
 
     // 範囲爆破スキル: 命中瞬間に周囲へ円ダメージ（本体は除外）
@@ -1833,7 +1874,7 @@ export class GameScene extends Phaser.Scene {
 
   // 役割: 残り跳弾回数があれば、命中点から最寄りの未命中敵へ弾を向け直す
   private tryRicochetBullet(
-    bullet: Phaser.GameObjects.Rectangle,
+    bullet: PlayerBulletVisual,
     hitEnemyUids: number[],
     hitX: number,
     hitY: number,
@@ -1858,6 +1899,7 @@ export class GameScene extends Phaser.Scene {
       bullet,
       nextEnemy.x,
       nextEnemy.y,
+      nextEnemy,
     )
     if (!didRedirect) {
       return false
@@ -2076,12 +2118,19 @@ export class GameScene extends Phaser.Scene {
     if (this.areaId === 'volcano' && this.stageNumber === 2 && this.currentAttackDamage < 3) {
       requiredChoice = 'damage'
     }
+    // Stage 3/4: Ricochet がまだ無いとき、足りない素材スキルを優先候補にする
     if (
       this.areaId === 'volcano' &&
       (this.stageNumber === 3 || this.stageNumber === 4) &&
       this.currentRicochetLevel < 1
     ) {
-      requiredChoice = 'ricochet'
+      if (this.currentMagnetLevel < 2 && isSkillUnlocked('magnet')) {
+        requiredChoice = 'magnet'
+      } else if (this.currentAttackDamage < 2) {
+        requiredChoice = 'damage'
+      } else if (this.currentFireRateLevel < 2) {
+        requiredChoice = 'fireRate'
+      }
     }
     this.levelUpChoiceSystem.show(
       (choiceId) => {
@@ -2345,6 +2394,151 @@ export class GameScene extends Phaser.Scene {
       this.hudSystem.playStatUpgradePulse(this.mapChoiceIdToStatKey(choiceId))
     }
 
+    // Move/Speed→Pierce、Power/Range→Blast、Pickup/Power/Speed→Ricochet を同期
+    const pierceSyncResult = this.syncPierceLevelFromMoveAndSpeed()
+    const blastSyncResult = this.syncBlastLevelFromPowerAndRange()
+    const ricochetSyncResult = this.syncRicochetLevelFromPowerSpeedAndPickup()
+
+    const afterBanners = () => {
+      this.continueAfterLevelUpChoiceResolved()
+    }
+
+    // 初回は大きな OBTAINED、レベル上昇は控えめな Lv.N
+    const runRicochetBannerIfNeeded = (thenFn: () => void) => {
+      if (ricochetSyncResult === 'firstUnlock') {
+        playRicochetUnlockBanner(this, thenFn, this.currentRicochetLevel)
+        return
+      }
+      if (ricochetSyncResult === 'upgraded') {
+        playRicochetLevelUpBanner(this, this.currentRicochetLevel, thenFn)
+        return
+      }
+      thenFn()
+    }
+
+    const runBlastBannerIfNeeded = (thenFn: () => void) => {
+      if (blastSyncResult === 'firstUnlock') {
+        playBlastUnlockBanner(this, () => {
+          runRicochetBannerIfNeeded(thenFn)
+        }, this.currentBlastLevel)
+        return
+      }
+      if (blastSyncResult === 'upgraded') {
+        playBlastLevelUpBanner(this, this.currentBlastLevel, () => {
+          runRicochetBannerIfNeeded(thenFn)
+        })
+        return
+      }
+      runRicochetBannerIfNeeded(thenFn)
+    }
+
+    if (pierceSyncResult === 'firstUnlock') {
+      playPierceUnlockBanner(this, () => {
+        runBlastBannerIfNeeded(afterBanners)
+      })
+      return
+    }
+
+    runBlastBannerIfNeeded(afterBanners)
+  }
+
+  /**
+   * Move と Speed の低い方のレベルを Pierce にする。
+   * 両方とも Lv2 以上のときだけ有効。
+   * 例: 2&2→Pierce2 / 3&3→Pierce3 / 2&5→Pierce2
+   * 戻り値: firstUnlock=初めて付与 / upgraded=レベル上昇 / none=変化なし
+   */
+  private syncPierceLevelFromMoveAndSpeed(): 'firstUnlock' | 'upgraded' | 'none' {
+    const lowerLevel = Math.min(this.currentMoveLevel, this.currentFireRateLevel)
+    if (lowerLevel < PIERCE_AUTO_SYNC_MIN_LEVEL) {
+      return 'none'
+    }
+
+    if (this.currentPierceLevel >= lowerLevel) {
+      return 'none'
+    }
+
+    const wasLocked = this.currentPierceLevel <= PIERCE_LEVEL_START
+    this.currentPierceLevel = lowerLevel
+    this.pickedPierceThisRun = true
+    unlockAchievement(ACHIEVEMENT_ID_PIERCE_UNLOCK)
+    this.refreshPlayerStatsHud()
+    this.hudSystem.playStatUpgradePulse('penetrate')
+    this.gameAudioSystem.playLevelUp()
+
+    if (wasLocked) {
+      return 'firstUnlock'
+    }
+    return 'upgraded'
+  }
+
+  /**
+   * Power と Range から Blast を同期する。
+   * 両方とも Lv2 以上のとき: Blast = 低い方 − 1
+   * 例: Power2&Range2→Blast1 / Power3&Range3→Blast2
+   * 初回解放だけ大きなバナー。同じランのレベル上昇や2周目以降は控えめな Lv 表示。
+   */
+  private syncBlastLevelFromPowerAndRange(): 'firstUnlock' | 'upgraded' | 'none' {
+    const targetBlast = calculateBlastLevelFromPowerAndRange(
+      this.currentAttackDamage,
+      this.currentRangeLevel,
+    )
+    if (targetBlast <= BLAST_LEVEL_START) {
+      return 'none'
+    }
+
+    if (this.currentBlastLevel >= targetBlast) {
+      return 'none'
+    }
+
+    const wasLocked = this.currentBlastLevel <= BLAST_LEVEL_START
+    this.currentBlastLevel = targetBlast
+    this.pickedBlastThisRun = true
+    const isLifetimeFirst = unlockAchievement(ACHIEVEMENT_ID_BLAST_UNLOCK)
+    this.refreshPlayerStatsHud()
+    this.hudSystem.playStatUpgradePulse('blast')
+
+    if (wasLocked && isLifetimeFirst) {
+      this.gameAudioSystem.playLevelUp()
+      return 'firstUnlock'
+    }
+    return 'upgraded'
+  }
+
+  /**
+   * Pickup・Power・Speed から Ricochet を同期する。
+   * 3つとも Lv2 以上のとき: Ricochet = 低い方 − 1
+   * 例: 全部2→Ricochet1 / 全部3→Ricochet2
+   */
+  private syncRicochetLevelFromPowerSpeedAndPickup(): 'firstUnlock' | 'upgraded' | 'none' {
+    const targetRicochet = calculateRicochetLevelFromPowerSpeedAndPickup(
+      this.currentAttackDamage,
+      this.currentFireRateLevel,
+      this.currentMagnetLevel,
+    )
+    if (targetRicochet <= RICOCHET_LEVEL_START) {
+      return 'none'
+    }
+
+    if (this.currentRicochetLevel >= targetRicochet) {
+      return 'none'
+    }
+
+    const wasLocked = this.currentRicochetLevel <= RICOCHET_LEVEL_START
+    this.currentRicochetLevel = targetRicochet
+    const isLifetimeFirst = unlockAchievement(ACHIEVEMENT_ID_RICOCHET_UNLOCK)
+    this.refreshPlayerStatsHud()
+    this.hudSystem.playStatUpgradePulse('ricochet')
+
+    if (wasLocked && isLifetimeFirst) {
+      this.gameAudioSystem.playLevelUp()
+      return 'firstUnlock'
+    }
+    return 'upgraded'
+  }
+
+  // 役割: レベルアップ1回分のあと、次の選択／クリア結果／再開カウントダウンへ進む
+  private continueAfterLevelUpChoiceResolved(): void {
     if (this.pendingLevelUps > 0) {
       this.beginNextLevelUpChoice()
       return
@@ -2891,7 +3085,7 @@ export class GameScene extends Phaser.Scene {
 
     const bullets = this.playerBulletGroup.getChildren()
     for (let index = 0; index < bullets.length; index++) {
-      const bullet = bullets[index] as Phaser.GameObjects.Rectangle
+      const bullet = bullets[index] as PlayerBulletVisual
       if (!bullet.active || bullet.body === null) {
         continue
       }

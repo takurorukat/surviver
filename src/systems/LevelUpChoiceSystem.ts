@@ -42,12 +42,30 @@ import {
   LEVEL_UP_CHOICE_TITLE_COLOR,
   LEVEL_UP_CHOICE_DESC_COLOR,
   LEVEL_UP_UI_DEPTH,
+  LEVEL_UP_CHOICE_ICON_SIZE,
+  LEVEL_UP_CHOICE_ICON_BORDER,
+  LEVEL_UP_CHOICE_ICON_GAP,
+  UNLOCK_ICON_POWER_COLOR,
+  UNLOCK_ICON_SPEED_COLOR,
+  UNLOCK_ICON_RANGE_COLOR,
+  UNLOCK_ICON_MOVE_COLOR,
+  UNLOCK_ICON_MAGNET_COLOR,
+  UNLOCK_ICON_RICOCHET_COLOR,
+  UNLOCK_ICON_XP_BONUS_COLOR,
+  UNLOCK_ICON_POWER_LETTER,
+  UNLOCK_ICON_SPEED_LETTER,
+  UNLOCK_ICON_RANGE_LETTER,
+  UNLOCK_ICON_MOVE_LETTER,
+  UNLOCK_ICON_MAGNET_LETTER,
+  UNLOCK_ICON_RICOCHET_LETTER,
+  UNLOCK_ICON_XP_BONUS_LETTER,
+  UNLOCK_ICON_LETTER_COLOR,
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
 } from '../GameConstants'
 import { isSkillUnlocked } from './AchievementSystem'
 import { getSealedSkillIds } from './UnlockSaveSystem'
-import { shrinkTextToFitWidth } from '../utils/fitTextToWidth'
+import { shrinkTextToFitWidth, fitTextInBounds } from '../utils/fitTextToWidth'
 
 // レベルアップの選択肢 ID
 export type LevelUpChoiceId =
@@ -115,21 +133,7 @@ const LEVEL_UP_CHOICE_POOL: LevelUpChoice[] = [
     title: 'Pickup',
     description: 'Coin pickup range +1',
   },
-  {
-    id: 'pierce',
-    title: 'Pierce',
-    description: 'Hit +1 more enemy',
-  },
-  {
-    id: 'blast',
-    title: 'Blast',
-    description: 'Damage nearby on hit',
-  },
-  {
-    id: 'ricochet',
-    title: 'Ricochet',
-    description: 'Bounce to +1 enemy',
-  },
+  // Pierce / Blast / Ricochet はレベルアップ選択肢に出さない（他スキルの組み合わせで同期）
   {
     id: 'xpBonus',
     title: 'XP Bonus',
@@ -157,9 +161,37 @@ type ChoicePanel = {
   isRaised: boolean
 }
 
+/** スキルツリーと同じ記号・色をレベルアップ枠用に返す。無いものは null。 */
+function getLevelUpChoiceIconStyle(
+  choiceId: LevelUpChoiceId,
+): { letter: string; color: number } | null {
+  if (choiceId === 'damage') {
+    return { letter: UNLOCK_ICON_POWER_LETTER, color: UNLOCK_ICON_POWER_COLOR }
+  }
+  if (choiceId === 'fireRate') {
+    return { letter: UNLOCK_ICON_SPEED_LETTER, color: UNLOCK_ICON_SPEED_COLOR }
+  }
+  if (choiceId === 'range') {
+    return { letter: UNLOCK_ICON_RANGE_LETTER, color: UNLOCK_ICON_RANGE_COLOR }
+  }
+  if (choiceId === 'move') {
+    return { letter: UNLOCK_ICON_MOVE_LETTER, color: UNLOCK_ICON_MOVE_COLOR }
+  }
+  if (choiceId === 'magnet') {
+    return { letter: UNLOCK_ICON_MAGNET_LETTER, color: UNLOCK_ICON_MAGNET_COLOR }
+  }
+  if (choiceId === 'ricochet') {
+    return { letter: UNLOCK_ICON_RICOCHET_LETTER, color: UNLOCK_ICON_RICOCHET_COLOR }
+  }
+  if (choiceId === 'xpBonus') {
+    return { letter: UNLOCK_ICON_XP_BONUS_LETTER, color: UNLOCK_ICON_XP_BONUS_COLOR }
+  }
+  return null
+}
+
 /**
  * 解放済みスキルだけ候補に入れる。
- * 貫通・爆破は実績未解放ならプールから除外する。
+ * Pierce / Blast / Ricochet はプール外（他スキル同期のみ）。
  */
 function buildAvailableLevelUpChoicePool(
   maxedChoiceIds: LevelUpChoiceId[] = [],
@@ -179,15 +211,6 @@ function buildAvailableLevelUpChoicePool(
       continue
     }
     if (choice.id === 'magnet' && !isSkillUnlocked('magnet')) {
-      continue
-    }
-    if (choice.id === 'pierce' && !isSkillUnlocked('pierce')) {
-      continue
-    }
-    if (choice.id === 'blast' && !isSkillUnlocked('blast')) {
-      continue
-    }
-    if (choice.id === 'ricochet' && !isSkillUnlocked('ricochet')) {
       continue
     }
     if (choice.id === 'xpBonus' && !isSkillUnlocked('xpBonus')) {
@@ -474,6 +497,7 @@ export class LevelUpChoiceSystem {
     })
     this.titleText.setOrigin(0.5)
     this.titleText.setDepth(LEVEL_UP_UI_DEPTH + 1)
+    shrinkTextToFitWidth(this.titleText, GAME_WIDTH - 80)
   }
 
   /** 操作ヒント文字。 */
@@ -492,6 +516,7 @@ export class LevelUpChoiceSystem {
     )
     this.hintText.setOrigin(0.5)
     this.hintText.setDepth(LEVEL_UP_UI_DEPTH + 1)
+    shrinkTextToFitWidth(this.hintText, GAME_WIDTH - 80)
   }
 
   /** shownChoices の枚数ぶん、横並びパネルを作る。 */
@@ -531,37 +556,80 @@ export class LevelUpChoiceSystem {
       LEVEL_UP_PANEL_COLOR,
     )
 
-    const titleText = this.scene.add.text(0, -16, choice.title, {
+    const titleRowY = -16
+    const iconStyle = getLevelUpChoiceIconStyle(choice.id)
+    const titleMaxWidth =
+      iconStyle === null
+        ? LEVEL_UP_PANEL_WIDTH - 20
+        : LEVEL_UP_PANEL_WIDTH - 20 - LEVEL_UP_CHOICE_ICON_SIZE - LEVEL_UP_CHOICE_ICON_GAP
+
+    const titleText = this.scene.add.text(0, titleRowY, choice.title, {
       fontFamily: FONT_FAMILY_UI,
       fontSize: '20px',
       color: LEVEL_UP_CHOICE_TITLE_COLOR,
       fontStyle: 'bold',
     })
     titleText.setOrigin(0.5)
-    shrinkTextToFitWidth(titleText, LEVEL_UP_PANEL_WIDTH - 20)
+    shrinkTextToFitWidth(titleText, titleMaxWidth)
+
+    const visualChildren: Phaser.GameObjects.GameObject[] = [border, background]
+
+    // スキルツリーと同じアイコンをタイトルの左に置く（Power / Speed / Range など）
+    if (iconStyle !== null) {
+      const titleWidth = titleText.width * titleText.scaleX
+      const rowWidth =
+        LEVEL_UP_CHOICE_ICON_SIZE + LEVEL_UP_CHOICE_ICON_GAP + titleWidth
+      const iconCenterX = -rowWidth / 2 + LEVEL_UP_CHOICE_ICON_SIZE / 2
+      const titleCenterX =
+        iconCenterX +
+        LEVEL_UP_CHOICE_ICON_SIZE / 2 +
+        LEVEL_UP_CHOICE_ICON_GAP +
+        titleWidth / 2
+
+      const iconHit = LEVEL_UP_CHOICE_ICON_SIZE + LEVEL_UP_CHOICE_ICON_BORDER * 2
+      const iconBorder = this.scene.add.rectangle(
+        iconCenterX,
+        titleRowY,
+        iconHit,
+        iconHit,
+        iconStyle.color,
+      )
+      const iconFill = this.scene.add.rectangle(
+        iconCenterX,
+        titleRowY,
+        LEVEL_UP_CHOICE_ICON_SIZE,
+        LEVEL_UP_CHOICE_ICON_SIZE,
+        iconStyle.color,
+      )
+      const iconLetter = this.scene.add.text(iconCenterX, titleRowY, iconStyle.letter, {
+        fontFamily: FONT_FAMILY_HEADING,
+        fontSize: '12px',
+        color: UNLOCK_ICON_LETTER_COLOR,
+      })
+      iconLetter.setOrigin(0.5)
+
+      titleText.setPosition(titleCenterX, titleRowY)
+      visualChildren.push(iconBorder, iconFill, iconLetter)
+    }
+
+    visualChildren.push(titleText)
 
     const descText = this.scene.add.text(0, 18, choice.description, {
       fontFamily: FONT_FAMILY_UI,
       fontSize: '14px',
       color: LEVEL_UP_CHOICE_DESC_COLOR,
       align: 'center',
-      // 長い説明はパネル内で折り返す
-      wordWrap: { width: LEVEL_UP_PANEL_WIDTH - 20 },
     })
     descText.setOrigin(0.5)
-    // 折り返しても縦にはみ出す場合は、収まるまで縮小する
-    const descMaxHeight = LEVEL_UP_PANEL_HEIGHT / 2 - 6
-    if (descText.height > descMaxHeight) {
-      descText.setScale(descMaxHeight / descText.height)
-    }
+    fitTextInBounds(descText, {
+      maxWidth: LEVEL_UP_PANEL_WIDTH - 20,
+      maxHeight: LEVEL_UP_PANEL_HEIGHT / 2 - 6,
+      wrap: true,
+    })
+    visualChildren.push(descText)
 
     // 見た目だけ動かすコンテナ
-    const visualContainer = this.scene.add.container(x, y, [
-      border,
-      background,
-      titleText,
-      descText,
-    ])
+    const visualContainer = this.scene.add.container(x, y, visualChildren)
     visualContainer.setDepth(LEVEL_UP_UI_DEPTH + 2)
 
     // 当たり判定は動かない Zone（枠の位置に固定）

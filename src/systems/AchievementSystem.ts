@@ -21,8 +21,11 @@
 import {
   ACHIEVEMENT_ID_PLAINS_CLEAR,
   ACHIEVEMENT_ID_FOREST_CLEAR,
-  ACHIEVEMENT_ID_FOREST_UNTOUCHED,
+  ACHIEVEMENT_ID_VOLCANO_CLEAR,
   ACHIEVEMENT_ID_VOLCANO_UNTOUCHED,
+  ACHIEVEMENT_ID_PIERCE_UNLOCK,
+  ACHIEVEMENT_ID_BLAST_UNLOCK,
+  ACHIEVEMENT_ID_RICOCHET_UNLOCK,
   ACHIEVEMENT_TITLE_UNTOUCHED,
   ACHIEVEMENT_TITLE_PURE_POWER,
   ACHIEVEMENT_TITLE_FOREST_CLEAR,
@@ -30,10 +33,14 @@ import {
   ACHIEVEMENT_TITLE_MAGNET,
   ACHIEVEMENT_TITLE_RICOCHET,
   ACHIEVEMENT_TITLE_XP_BONUS,
+  ACHIEVEMENT_TITLE_VOLCANO_UNTOUCHED,
   ACHIEVEMENT_CONDITION_PLAINS_CLEAR,
   ACHIEVEMENT_CONDITION_FOREST_CLEAR,
-  ACHIEVEMENT_CONDITION_FOREST_UNTOUCHED,
+  ACHIEVEMENT_CONDITION_VOLCANO_CLEAR,
   ACHIEVEMENT_CONDITION_VOLCANO_UNTOUCHED,
+  ACHIEVEMENT_CONDITION_PIERCE,
+  ACHIEVEMENT_CONDITION_BLAST,
+  ACHIEVEMENT_CONDITION_RICOCHET,
   UNLOCK_SKILL_LABEL_POWER,
   UNLOCK_SKILL_LABEL_SPEED,
   UNLOCK_SKILL_LABEL_RANGE,
@@ -74,25 +81,17 @@ export type AchievementDef = {
 export const ALL_ACHIEVEMENTS: AchievementDef[] = [
   {
     id: ACHIEVEMENT_ID_PLAINS_CLEAR,
-    title: ACHIEVEMENT_TITLE_XP_BONUS,
-    condition: ACHIEVEMENT_CONDITION_PLAINS_CLEAR,
-    rewardLabel: UNLOCK_SKILL_LABEL_XP_BONUS,
-    skillId: 'xpBonus',
-  },
-  {
-    id: ACHIEVEMENT_ID_FOREST_UNTOUCHED,
-    title: ACHIEVEMENT_TITLE_PURE_POWER,
-    condition: ACHIEVEMENT_CONDITION_FOREST_UNTOUCHED,
-    rewardLabel: UNLOCK_SKILL_LABEL_BLAST,
-    skillId: 'blast',
-  },
-  // 条件が未指定のスキルは、暫定で Forest クリア実績と連動させる。
-  {
-    id: ACHIEVEMENT_ID_FOREST_CLEAR,
     title: ACHIEVEMENT_TITLE_MOVE,
-    condition: ACHIEVEMENT_CONDITION_FOREST_CLEAR,
+    condition: ACHIEVEMENT_CONDITION_PLAINS_CLEAR,
     rewardLabel: UNLOCK_SKILL_LABEL_MOVE,
     skillId: 'move',
+  },
+  {
+    id: ACHIEVEMENT_ID_BLAST_UNLOCK,
+    title: ACHIEVEMENT_TITLE_PURE_POWER,
+    condition: ACHIEVEMENT_CONDITION_BLAST,
+    rewardLabel: UNLOCK_SKILL_LABEL_BLAST,
+    skillId: 'blast',
   },
   {
     id: ACHIEVEMENT_ID_FOREST_CLEAR,
@@ -102,18 +101,31 @@ export const ALL_ACHIEVEMENTS: AchievementDef[] = [
     skillId: 'magnet',
   },
   {
-    id: ACHIEVEMENT_ID_FOREST_CLEAR,
+    id: ACHIEVEMENT_ID_PIERCE_UNLOCK,
     title: ACHIEVEMENT_TITLE_UNTOUCHED,
-    condition: ACHIEVEMENT_CONDITION_FOREST_CLEAR,
+    condition: ACHIEVEMENT_CONDITION_PIERCE,
     rewardLabel: UNLOCK_SKILL_LABEL_PIERCE,
     skillId: 'pierce',
   },
   {
-    id: ACHIEVEMENT_ID_VOLCANO_UNTOUCHED,
+    id: ACHIEVEMENT_ID_VOLCANO_CLEAR,
+    title: ACHIEVEMENT_TITLE_XP_BONUS,
+    condition: ACHIEVEMENT_CONDITION_VOLCANO_CLEAR,
+    rewardLabel: UNLOCK_SKILL_LABEL_XP_BONUS,
+    skillId: 'xpBonus',
+  },
+  {
+    id: ACHIEVEMENT_ID_RICOCHET_UNLOCK,
     title: ACHIEVEMENT_TITLE_RICOCHET,
-    condition: ACHIEVEMENT_CONDITION_VOLCANO_UNTOUCHED,
+    condition: ACHIEVEMENT_CONDITION_RICOCHET,
     rewardLabel: UNLOCK_SKILL_LABEL_RICOCHET,
     skillId: 'ricochet',
+  },
+  {
+    id: ACHIEVEMENT_ID_VOLCANO_UNTOUCHED,
+    title: ACHIEVEMENT_TITLE_VOLCANO_UNTOUCHED,
+    condition: ACHIEVEMENT_CONDITION_VOLCANO_UNTOUCHED,
+    rewardLabel: ACHIEVEMENT_TITLE_VOLCANO_UNTOUCHED,
   },
 ]
 
@@ -187,21 +199,25 @@ export function isSkillUnlocked(skillId: SkillHudId): boolean {
   if (skillId === 'damage' || skillId === 'fireRate' || skillId === 'range') {
     return true
   }
-  // Move / Pickup は Forest クリア実績で解放する
-  if (skillId === 'move' || skillId === 'magnet') {
+  // Move は Plains クリアで解放する
+  if (skillId === 'move') {
+    return hasUnlockedAchievement(ACHIEVEMENT_ID_PLAINS_CLEAR)
+  }
+  // Pickup は Forest クリアで解放する
+  if (skillId === 'magnet') {
     return hasUnlockedAchievement(ACHIEVEMENT_ID_FOREST_CLEAR)
   }
   if (skillId === 'ricochet') {
-    return hasUnlockedAchievement(ACHIEVEMENT_ID_VOLCANO_UNTOUCHED)
+    return hasUnlockedAchievement(ACHIEVEMENT_ID_RICOCHET_UNLOCK)
   }
   if (skillId === 'pierce') {
-    return hasUnlockedAchievement(ACHIEVEMENT_ID_FOREST_CLEAR)
+    return hasUnlockedAchievement(ACHIEVEMENT_ID_PIERCE_UNLOCK)
   }
   if (skillId === 'blast') {
-    return hasUnlockedAchievement(ACHIEVEMENT_ID_FOREST_UNTOUCHED)
+    return hasUnlockedAchievement(ACHIEVEMENT_ID_BLAST_UNLOCK)
   }
   if (skillId === 'xpBonus') {
-    return hasUnlockedAchievement(ACHIEVEMENT_ID_PLAINS_CLEAR)
+    return hasUnlockedAchievement(ACHIEVEMENT_ID_VOLCANO_CLEAR)
   }
   return false
 }
@@ -238,7 +254,7 @@ export function getUnlockStatusRows(): UnlockStatusRow[] {
       skillLabel: UNLOCK_SKILL_LABEL_MOVE,
       skillDescription: UNLOCK_SKILL_DESC_MOVE,
       isUnlocked: isSkillUnlocked('move'),
-      unlockCondition: ACHIEVEMENT_CONDITION_FOREST_CLEAR,
+      unlockCondition: ACHIEVEMENT_CONDITION_PLAINS_CLEAR,
     },
     {
       skillId: 'magnet',
@@ -252,28 +268,28 @@ export function getUnlockStatusRows(): UnlockStatusRow[] {
       skillLabel: UNLOCK_SKILL_LABEL_XP_BONUS,
       skillDescription: UNLOCK_SKILL_DESC_XP_BONUS,
       isUnlocked: isSkillUnlocked('xpBonus'),
-      unlockCondition: ACHIEVEMENT_CONDITION_PLAINS_CLEAR,
+      unlockCondition: ACHIEVEMENT_CONDITION_VOLCANO_CLEAR,
     },
     {
       skillId: 'pierce',
       skillLabel: UNLOCK_SKILL_LABEL_PIERCE,
       skillDescription: UNLOCK_SKILL_DESC_PIERCE,
       isUnlocked: isSkillUnlocked('pierce'),
-      unlockCondition: ACHIEVEMENT_CONDITION_FOREST_CLEAR,
+      unlockCondition: ACHIEVEMENT_CONDITION_PIERCE,
     },
     {
       skillId: 'blast',
       skillLabel: UNLOCK_SKILL_LABEL_BLAST,
       skillDescription: UNLOCK_SKILL_DESC_BLAST,
       isUnlocked: isSkillUnlocked('blast'),
-      unlockCondition: ACHIEVEMENT_CONDITION_FOREST_UNTOUCHED,
+      unlockCondition: ACHIEVEMENT_CONDITION_BLAST,
     },
     {
       skillId: 'ricochet',
       skillLabel: UNLOCK_SKILL_LABEL_RICOCHET,
       skillDescription: UNLOCK_SKILL_DESC_RICOCHET,
       isUnlocked: isSkillUnlocked('ricochet'),
-      unlockCondition: ACHIEVEMENT_CONDITION_VOLCANO_UNTOUCHED,
+      unlockCondition: ACHIEVEMENT_CONDITION_RICOCHET,
     },
   ]
 }
@@ -288,31 +304,20 @@ export function evaluateAndUnlockGameClearAchievements(
 ): NewlyUnlockedAchievement[] {
   const newlyUnlocked: NewlyUnlockedAchievement[] = []
 
-  // Plains をクリア → XP Bonus
+  // Plains をクリア → Move
   if (flags.areaId === 'plains') {
     const didUnlock = unlockAchievement(ACHIEVEMENT_ID_PLAINS_CLEAR)
     if (didUnlock) {
       newlyUnlocked.push({
         achievementId: ACHIEVEMENT_ID_PLAINS_CLEAR,
-        achievementTitle: ACHIEVEMENT_TITLE_XP_BONUS,
-        unlockedSkillLabel: UNLOCK_SKILL_LABEL_XP_BONUS,
+        achievementTitle: ACHIEVEMENT_TITLE_MOVE,
+        // Move 解放 + Power/Speed 上限 3→5（バランス確認用）
+        unlockedSkillLabel: 'Move · Power/Speed Cap 5',
       })
     }
   }
 
-  // Forest をノーダメージでゲームクリア → 範囲爆破
-  if (flags.areaId === 'forest' && !flags.tookDamageThisRun) {
-    const didUnlock = unlockAchievement(ACHIEVEMENT_ID_FOREST_UNTOUCHED)
-    if (didUnlock) {
-      newlyUnlocked.push({
-        achievementId: ACHIEVEMENT_ID_FOREST_UNTOUCHED,
-        achievementTitle: ACHIEVEMENT_TITLE_PURE_POWER,
-        unlockedSkillLabel: UNLOCK_SKILL_LABEL_BLAST,
-      })
-    }
-  }
-
-  // Forest をゲームクリア → Move / Pickup / Pierce
+  // Forest をゲームクリア → Pickup
   if (flags.areaId === 'forest') {
     const didUnlock = unlockAchievement(ACHIEVEMENT_ID_FOREST_CLEAR)
     if (didUnlock) {
@@ -324,14 +329,26 @@ export function evaluateAndUnlockGameClearAchievements(
     }
   }
 
-  // Volcano をノーダメージでゲームクリア → 跳弾
+  // Volcano をゲームクリア → XP Bonus
+  if (flags.areaId === 'volcano') {
+    const didUnlock = unlockAchievement(ACHIEVEMENT_ID_VOLCANO_CLEAR)
+    if (didUnlock) {
+      newlyUnlocked.push({
+        achievementId: ACHIEVEMENT_ID_VOLCANO_CLEAR,
+        achievementTitle: ACHIEVEMENT_TITLE_XP_BONUS,
+        unlockedSkillLabel: UNLOCK_SKILL_LABEL_XP_BONUS,
+      })
+    }
+  }
+
+  // Volcano をノーダメージでゲームクリア（スキル解放なし・実績のみ）
   if (flags.areaId === 'volcano' && !flags.tookDamageThisRun) {
     const didUnlock = unlockAchievement(ACHIEVEMENT_ID_VOLCANO_UNTOUCHED)
     if (didUnlock) {
       newlyUnlocked.push({
         achievementId: ACHIEVEMENT_ID_VOLCANO_UNTOUCHED,
-        achievementTitle: ACHIEVEMENT_TITLE_RICOCHET,
-        unlockedSkillLabel: UNLOCK_SKILL_LABEL_RICOCHET,
+        achievementTitle: ACHIEVEMENT_TITLE_VOLCANO_UNTOUCHED,
+        unlockedSkillLabel: ACHIEVEMENT_TITLE_VOLCANO_UNTOUCHED,
       })
     }
   }

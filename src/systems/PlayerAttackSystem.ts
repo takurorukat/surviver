@@ -26,6 +26,7 @@ import {
   firePlayerBullet,
   removePlayerBulletsOutsidePlayArea,
   maintainPlayerBulletVelocities,
+  type PlayerBulletStyle,
 } from '../objects/PlayerBullet'
 import { countActiveEnemies } from '../objects/Enemy'
 
@@ -163,6 +164,7 @@ export function tryFireBulletAtNearestEnemy(
   bulletMaxHits: number,
   ricochetLevel: number,
   nowMs: number,
+  bulletStyle: PlayerBulletStyle = 'windVortex',
 ): boolean {
   const elapsedSinceLastAttack = nowMs - attackState.lastAttackTimeMs
   // lastAttackTimeMs === 0 は「まだ一度も撃っていない」→ すぐ撃てる
@@ -191,6 +193,8 @@ export function tryFireBulletAtNearestEnemy(
     attackDamage,
     bulletMaxHits,
     ricochetLevel,
+    targetEnemy,
+    bulletStyle,
   )
 
   if (bullet !== null) {
