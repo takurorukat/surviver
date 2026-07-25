@@ -1,0 +1,14 @@
+{
+  "name": "bgm-inspector",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Non-destructive BGM silence / loop boundary inspector (dev-only)",
+  "scripts": {
+    "inspect": "tsx src/inspect.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
+  }
+}

@@ -513,6 +513,8 @@ export class GameScene extends Phaser.Scene {
     )
     this.levelUpChoiceSystem = new LevelUpChoiceSystem(this, () => {
       this.gameAudioSystem.playMenuMove()
+    }, () => {
+      this.gameAudioSystem.playLevelUp()
     })
     this.stageResultSystem = new StageResultSystem(this)
     // 自動物理更新を止め、update 内で stepArcadePhysicsOnce を自分で呼ぶ

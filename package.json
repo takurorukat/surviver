@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "generate:sfx": "npm --prefix tools/sfx_designer run generate --"
+    "generate:sfx": "npm --prefix tools/sfx_designer run generate --",
+    "inspect:bgm": "tools/sfx_designer/node_modules/.bin/tsx tools/bgm_inspector/src/inspect.ts",
+    "sync:audio-library": "node tools/audio_library/sync.mjs"
   },
   "devDependencies": {
     "typescript": "^5.5.3",

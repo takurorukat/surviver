@@ -345,17 +345,19 @@ function applyHitBlastIfUnlocked(
     blastDamage,
     hitEnemy,
   )
-  const killedByBlast = blastResult.killedEnemies
 
-  for (let index = 0; index < killedByBlast.length; index++) {
-    const killed = killedByBlast[index]
+  for (let index = 0; index < blastResult.damagedEnemies.length; index++) {
+    const damaged = blastResult.damagedEnemies[index]
+    playDamageNumber(ctx.scene, damaged.x, damaged.y - 8, damaged.damage)
+    if (!damaged.isDead) {
+      continue
+    }
     recordEnemyDefeated()
-    clearLockedTargetIfEnemyDestroyed(ctx.attackState, killed.enemy)
-    const xpDropMultiplier = getEnemyXpDropMultiplier(killed.enemy)
-    playDamageNumber(ctx.scene, killed.x, killed.y - 8, killed.damage)
+    clearLockedTargetIfEnemyDestroyed(ctx.attackState, damaged.enemy)
+    const xpDropMultiplier = getEnemyXpDropMultiplier(damaged.enemy)
     ctx.playEnemyDefeat()
-    playEnemyDefeatFadeOut(ctx.scene, killed.enemy, () => {
-      spawnExperienceCoinsAt(ctx, killed.x, killed.y, xpDropMultiplier)
+    playEnemyDefeatFadeOut(ctx.scene, damaged.enemy, () => {
+      spawnExperienceCoinsAt(ctx, damaged.x, damaged.y, xpDropMultiplier)
     })
   }
 }

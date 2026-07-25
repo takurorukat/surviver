@@ -92,6 +92,25 @@ python tools/game_music_generator/scripts/regen_element_bullet_sfx.py --install-
 戦闘 SE は最大 0.2s、UI SE は最大 0.3s。mono / 44.1kHz / OGG。ffmpeg で末尾無音除去とピーク -1dB 正規化。
 ゲーム内: Settings → SFX Preview → Synth Candidates で a/b/c を聴き比べ。
 
+## ループ BGM メタデータ（TODO）
+
+シームレスループ用の `loopStart` / `loopEnd` は **生成時に JSON へ記録**し、
+耳確認後のみ `src/games/survivor/constants/bgmLoop.ts` へ反映する。
+
+```json
+{
+  "themeId": "plains",
+  "outputOgg": "plains_bgm.ogg",
+  "durationSec": 62.6,
+  "introEndSec": 0.0,
+  "loopStartSec": null,
+  "loopEndSec": null,
+  "verified": false
+}
+```
+
+調査のみ行う場合: リポジトリルートで `npm run inspect:bgm`（`tools/bgm_inspector`）。
+
 ## 今後のロードマップ
 
 1. Phase 1: MIDI 生成（平原 MVP）✅

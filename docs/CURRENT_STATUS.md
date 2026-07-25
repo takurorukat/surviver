@@ -5,13 +5,16 @@
 ## 実装済み
 
 - Phaser / TypeScript / Vite のゲーム起動・ビルド
+- `src/main.ts` によるゲームID選択と、Survivor bootstrapの遅延ロード
+- Survivor固有コードの `src/games/survivor/` への分離
+- `src/core/` のゲーム非依存基盤（バージョン付き保存、オフライン進行、音声再生ポリシー、アセットマニフェスト／汎用Preload）
 - 固定画面のサバイバー戦闘、Arcade Physics、キーボード・ポインタ操作
 - Plains、Forest、Volcano、Earth Dungeonのエリア選択と解放進行
 - 敵、弾、コイン、XP、レベルアップ、複合スキル、ステージクリア・敗北処理
 - ゴールド、ショップ、実績、スキル封印、localStorage保存と保存移行
 - 設定、BGM切替、SEプレビュー、開発時のみの進行解放ボタン
 - BGM/SEアセットと、開発用の音声生成ツール
-- 定数・敵・ステージ進行の一部モジュール分割
+- 定数・敵・ステージ進行のモジュール分割
 - Vitestによる保存、解放、ショップ、レベルアップ、敵選択、Ruins HP進行のテスト
 
 ## Earth Dungeon
@@ -32,13 +35,14 @@
 | 中 | 推奨Max HPをレベルアップ候補へどう反映するか | 数値は定義済み、ゲーム仕様の決定待ち |
 | 中 | Shop / Seal Skills公開 | ロジック実装済み、`TITLE_SHOW_SHOP_AND_SEAL = false`で非表示 |
 | 低 | Castle / Abyss | `comingSoon`、専用コンテンツ未実装 |
-| 低 | 共通スターターの抽出 | `core/storage` と `core/progression` を追加済み、次作で実証してから拡張 |
+| 低 | 共通スターターの実証 | `core/storage`、`core/progression`、`core/audio`、`core/scenes` を追加済み。次作で実証してから拡張 |
 
 ## 品質確認
 
 直近の確認結果:
 
-- `npm test`: 55 tests passed
+- `npm run typecheck`: passed
+- `npm test`: 65 tests passed
 - `npm run build`: passed
 - `git diff --check`: passed
 - `npm run generate:sfx -- --check`: passed（正式OGGは未変更）

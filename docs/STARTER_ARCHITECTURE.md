@@ -57,7 +57,23 @@ project/
   tools/            # 音声生成など開発専用
 ```
 
-現リポジトリはまだ `src/games/` 分割前。**新規 core のみ追加**し、Survivor は従来パスを維持する。
+現リポジトリ構成（2026-07）:
+
+```
+src/
+  core/                    # ゲーム非依存
+    storage/
+    progression/
+    audio/SoundManager.ts
+    scenes/GenericPreloadScene.ts
+  games/
+    survivor/                # Survivor Stage 本体
+      bootstrap.ts
+      scenes/ systems/ objects/ constants/ ...
+  main.ts                    # ?game=survivor ルーティング
+```
+
+Survivor は `src/games/survivor/` に隔離済み。`UnlockSaveSystem` 等の既存セーブキーは変更していない。
 
 ## 5. 共通化の進め方
 

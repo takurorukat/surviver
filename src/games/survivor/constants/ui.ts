@@ -370,7 +370,7 @@ export const UNLOCK_STATUS_TOOLTIP_BG_ALPHA = 0.92
 export const UNLOCK_STATUS_TOOLTIP_PADDING = 6
 export const UNLOCK_STATUS_RIGHT_MARGIN = 8
 // 右カラムのスキル解放アイコン（小さな正方形）
-export const UNLOCK_ICON_SIZE = 13
+export const UNLOCK_ICON_SIZE = 16
 export const UNLOCK_ICON_GAP = 5
 export const UNLOCK_ICON_BORDER_SIZE = 2
 // スキルツリー: 左列＝基本スキル、右列＝合成スキル（線でつなぐ）

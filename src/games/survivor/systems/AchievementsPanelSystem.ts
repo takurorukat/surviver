@@ -340,7 +340,7 @@ export function createAchievementsPanelController(
         SKILL_ICON_LETTERS[def.skillId],
         {
           fontFamily: FONT_FAMILY_UI,
-          fontSize: '13px',
+          fontSize: '16px',
           color: iconLetterColor,
           fontStyle: 'bold',
         },

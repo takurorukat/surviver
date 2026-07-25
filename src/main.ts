@@ -1,69 +1,30 @@
-import Phaser from 'phaser'
-import { GAME_WIDTH, GAME_HEIGHT, ARCADE_PHYSICS_FPS, PHYSICS_FPS } from './GameConstants'
-import { BootScene } from './scenes/BootScene'
-import { PreloadScene } from './scenes/PreloadScene'
-import { TitleScene } from './scenes/TitleScene'
-
 // =============================================================================
-// エントリポイント（このファイルがゲームの「起動スイッチ」）
+// マルチゲーム起動エントリポイント
 //
-// 役割:
-//   Phaser.Game を1つ作り、画面サイズ・物理・シーン一覧を渡す。
-//   以降の画面遷移は各 Scene が this.scene.start(...) で行う。
-//
-// シーンの流れ（配列の先頭から順に登録。最初に自動起動するのは BootScene）:
-//   BootScene → PreloadScene → TitleScene →（初回プレイ時に遅延読込）GameScene
-//
-// 関連:
-//   - 画面サイズ定数は GameConstants.ts
-//   - HTML 側の <div id="game-container"> にキャンバスが埋め込まれる
+// ?game=survivor（デフォルト）で Survivor Stage を起動。
+// 将来: ?game=clicker などを追加可能。
 // =============================================================================
 
-const gameConfig: Phaser.Types.Core.GameConfig = {
-  // AUTO = WebGL が使えれば WebGL、ダメなら Canvas
-  type: Phaser.AUTO,
-  width: GAME_WIDTH,
-  height: GAME_HEIGHT,
-  // index.html 内の親要素 ID。ここに canvas が追加される
-  parent: 'game-container',
-  backgroundColor: '#000000',
-  // 120Hz ディスプレイ（スマホ等）でも 60fps に固定する。
-  // 指定しないと requestAnimationFrame の速度で update が回り、体感が約2倍速になる。
-  fps: {
-    target: PHYSICS_FPS,
-    limit: PHYSICS_FPS,
-    // smoothStep を true にすると 120Hz 端末でトゥイーンがカクつくことがある
-    smoothStep: false,
-  },
-  physics: {
-    // このゲームは Arcade Physics（シンプルな速度ベースの物理）だけ使う
-    default: 'arcade',
-    arcade: {
-      // サバイバー系なので重力なし（上から落ちない）
-      gravity: { x: 0, y: 0 },
-      debug: false,
-      // 物理は 60fps × サブステップ数 の固定刻み。
-      // 刻みを細かくするのは高速弾のすり抜け（トンネリング）対策で、
-      // Arcade Physics に CCD がないための Phaser 公式推奨のやり方。
-      // 速度は px/秒 指定なので、体感の移動速度は 60fps のときと同じ。
-      fps: ARCADE_PHYSICS_FPS,
-      fixedStep: true,
-    },
-  },
-  scale: {
-    // ウィンドウに合わせて縦横比を保ったまま最大サイズで表示（スマホ縦画面でも拡大）
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: GAME_WIDTH,
-    height: GAME_HEIGHT,
-  },
-  // Web Audio を明示（HTML5 Audio だと BGM ループが不安定になりやすい）
-  audio: {
-    disableWebAudio: false,
-  },
-  // GameScene は初回プレイ開始時に動的 import（初期 JS を少し分けて読む）
-  scene: [BootScene, PreloadScene, TitleScene],
+type SupportedGameId = 'survivor'
+
+function getGameIdFromUrl(): SupportedGameId {
+  const params = new URLSearchParams(window.location.search)
+  const gameId = params.get('game')
+  if (gameId === 'survivor' || gameId === null || gameId === '') {
+    return 'survivor'
+  }
+  console.warn(`未知の game=${gameId}。survivor を起動します。`)
+  return 'survivor'
 }
 
-// この1行で Phaser が動き始める（以降は各 Scene のライフサイクルに任せる）
-new Phaser.Game(gameConfig)
+async function bootstrap(): Promise<void> {
+  const gameId = getGameIdFromUrl()
+
+  if (gameId === 'survivor') {
+    const { startSurvivorGame } = await import('./games/survivor/bootstrap')
+    startSurvivorGame()
+    return
+  }
+}
+
+void bootstrap()

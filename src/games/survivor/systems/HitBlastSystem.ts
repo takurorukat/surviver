@@ -38,9 +38,20 @@ export type HitBlastKill = {
   damage: number
 }
 
+/** 爆破でダメージを受けた敵 1 体分（数字演出用） */
+export type HitBlastDamagedEnemy = {
+  enemy: Phaser.GameObjects.Rectangle
+  x: number
+  y: number
+  damage: number
+  isDead: boolean
+}
+
 export type HitBlastDamageResult = {
   killedEnemies: HitBlastKill[]
   damagedEnemyCount: number
+  /** 爆破範囲内でダメージが通った敵（撃破含む） */
+  damagedEnemies: HitBlastDamagedEnemy[]
 }
 
 /**
@@ -57,9 +68,10 @@ export function applyHitBlastAroundPoint(
   excludeEnemy?: Phaser.GameObjects.Rectangle,
 ): HitBlastDamageResult {
   const killedEnemies: HitBlastKill[] = []
+  const damagedEnemies: HitBlastDamagedEnemy[] = []
   let damagedEnemyCount = 0
   if (radius <= 0) {
-    return { killedEnemies, damagedEnemyCount }
+    return { killedEnemies, damagedEnemyCount, damagedEnemies }
   }
 
   const children = enemyGroup.getChildren()
@@ -90,12 +102,19 @@ export function applyHitBlastAroundPoint(
     const effectiveDamage = damage * blastMultiplier
     const isDead = applyDamageToEnemy(enemy, effectiveDamage)
     damagedEnemyCount = damagedEnemyCount + 1
+    damagedEnemies.push({
+      enemy,
+      x: enemyX,
+      y: enemyY,
+      damage: effectiveDamage,
+      isDead,
+    })
     if (isDead) {
       killedEnemies.push({ enemy, x: enemyX, y: enemyY, damage: effectiveDamage })
     }
   }
 
-  return { killedEnemies, damagedEnemyCount }
+  return { killedEnemies, damagedEnemyCount, damagedEnemies }
 }
 
 /**

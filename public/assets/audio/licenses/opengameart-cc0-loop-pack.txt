@@ -1,0 +1,8 @@
+Pack of loopable game music
+Author: obscure music (Gichco)
+Source: https://opengameart.org/content/pack-of-loopable-game-music
+License: CC0 / Public Domain
+
+The source page states that this pack is released under public domain and
+contains loopable music. Converted OGG files in ../library/cc0-loop-pack/
+are derived from the original WAV files without musical edits.

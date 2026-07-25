@@ -332,6 +332,7 @@ export class LevelUpChoiceSystem {
   private selectedIndex = 0
   private onChoiceSelected: ((choiceId: LevelUpChoiceId) => void) | null = null
   private onSelectionChanged: (() => void) | null = null
+  private onChoiceConfirmed: (() => void) | null = null
   private keyA: Phaser.Input.Keyboard.Key | null = null
   private keyD: Phaser.Input.Keyboard.Key | null = null
   private keyLeft: Phaser.Input.Keyboard.Key | null = null
@@ -345,9 +346,14 @@ export class LevelUpChoiceSystem {
    * レベルアップ UI システムを作る。
    * GameScene.create で new LevelUpChoiceSystem(this) される。
    */
-  constructor(scene: Phaser.Scene, onSelectionChanged?: () => void) {
+  constructor(
+    scene: Phaser.Scene,
+    onSelectionChanged?: () => void,
+    onChoiceConfirmed?: () => void,
+  ) {
     this.scene = scene
     this.onSelectionChanged = onSelectionChanged ?? null
+    this.onChoiceConfirmed = onChoiceConfirmed ?? null
   }
 
   /** 3 択が開いているか。GameScene がポーズ判定に使う。 */
@@ -1012,6 +1018,10 @@ export class LevelUpChoiceSystem {
    * （GameScene が次のレベルアップや戦闘再開をしても UI が残らない）。
    */
   private handleChoiceClick(choiceId: LevelUpChoiceId): void {
+    // イベント名だけでは再生先が存在しないため、GameScene から渡された
+    // 音声コールバックを直接呼ぶ。
+    this.onChoiceConfirmed?.()
+
     const callback = this.onChoiceSelected
     this.hide()
     if (callback !== null) {
