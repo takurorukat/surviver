@@ -9,6 +9,18 @@ from .models import Arrangement
 from .themes import get_theme
 
 
+def _chord_style_for_theme(theme_id: str) -> str:
+    if theme_id == "forest":
+        return "arpeggio"
+    if theme_id == "dungeon":
+        return "sparse"
+    if theme_id == "volcano":
+        return "pulse"
+    if theme_id == "title":
+        return "block"
+    return "block"
+
+
 class GameMusicComposer:
     """
     テーマ設定を読み、各生成器に委譲して Arrangement を組み立てる。
@@ -62,52 +74,73 @@ class GameMusicComposer:
             style=melody_style,
         )
         chords = self.chord_generator.generate(
-            rng, theme.key, progression, bars, beats_per_bar
+            rng,
+            theme.key,
+            progression,
+            bars,
+            beats_per_bar,
+            style=_chord_style_for_theme(theme.theme_id),
         )
         bass = self.bass_generator.generate(
             rng, theme.key, progression, bars, beats_per_bar
         )
 
-        # タイトルは控えめなドラム（ハーフタイム）＋全体を少し静かに
+        # --- エリア別ドラム／強弱 ---
         if theme.theme_id == "title":
             drums = self.drum_generator.generate(
                 rng, bars, beats_per_bar, pattern_index=3
             )
             for hit in drums:
-                hit.velocity = max(28, int(hit.velocity * 0.5))
+                hit.velocity = max(24, int(hit.velocity * 0.4))
             for note in chords:
-                note.velocity = max(40, int(note.velocity * 0.8))
+                note.velocity = max(38, int(note.velocity * 0.75))
             for note in bass:
-                note.velocity = max(50, int(note.velocity * 0.85))
+                note.velocity = max(48, int(note.velocity * 0.8))
             for note in melody:
-                note.velocity = max(55, int(note.velocity * 0.9))
+                note.velocity = max(52, int(note.velocity * 0.88))
+        elif theme.theme_id == "plains":
+            drums = self.drum_generator.generate(
+                rng, bars, beats_per_bar, pattern_index=0
+            )
+            for hit in drums:
+                hit.velocity = max(36, int(hit.velocity * 0.85))
         elif theme.theme_id == "forest":
-            # Forest: 軽めのドラムで明るく軽快に
+            # 森: ハイハット中心の軽いビート
             drums = self.drum_generator.generate(
                 rng, bars, beats_per_bar, pattern_index=1
             )
             for hit in drums:
-                hit.velocity = max(32, int(hit.velocity * 0.7))
+                # キックを弱く、全体も控えめ
+                if hit.pitch == 36:
+                    hit.velocity = max(20, int(hit.velocity * 0.45))
+                else:
+                    hit.velocity = max(28, int(hit.velocity * 0.6))
+            for note in bass:
+                note.velocity = max(45, int(note.velocity * 0.85))
         elif theme.theme_id == "volcano":
-            # Fire Volcano: やや強めのドラムで熱さを出す（やりすぎない）
+            # 火山: 速めの押し出しビート
             drums = self.drum_generator.generate(
                 rng, bars, beats_per_bar, pattern_index=2
             )
             for hit in drums:
-                hit.velocity = max(40, min(110, int(hit.velocity * 1.05)))
+                hit.velocity = max(48, min(118, int(hit.velocity * 1.15)))
             for note in bass:
-                note.velocity = max(55, min(115, int(note.velocity * 1.05)))
+                note.velocity = max(60, min(120, int(note.velocity * 1.12)))
+            for note in melody:
+                note.velocity = max(58, min(118, int(note.velocity * 1.05)))
         elif theme.theme_id == "dungeon":
-            # Earth Dungeon: ハーフタイム寄りのドラム＋低音を少し厚く
+            # ダンジョン: ほぼハーフタイム、ドラムはごく薄く
             drums = self.drum_generator.generate(
                 rng, bars, beats_per_bar, pattern_index=3
             )
             for hit in drums:
-                hit.velocity = max(30, min(100, int(hit.velocity * 0.85)))
+                hit.velocity = max(22, min(70, int(hit.velocity * 0.55)))
             for note in bass:
-                note.velocity = max(58, min(118, int(note.velocity * 1.08)))
+                note.velocity = max(62, min(120, int(note.velocity * 1.12)))
             for note in chords:
-                note.velocity = max(42, min(105, int(note.velocity * 0.9)))
+                note.velocity = max(36, min(90, int(note.velocity * 0.85)))
+            for note in melody:
+                note.velocity = max(50, min(105, int(note.velocity * 0.92)))
         else:
             drums = self.drum_generator.generate(rng, bars, beats_per_bar)
 

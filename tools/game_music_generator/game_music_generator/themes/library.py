@@ -48,8 +48,8 @@ THEME_LIBRARY: dict[str, ThemeConfig] = {
         theme_id="title",
         display_name="Title (Magic Survivor)",
         key="A",
-        tempo_bpm=92,
-        # タイトル向け: 少し神秘的でループしやすい短循環
+        tempo_bpm=88,
+        # 神秘: 短調循環（他エリアと被らない）
         progressions=(
             ("i", "VI", "III", "VII"),
             ("i", "VII", "VI", "VII"),
@@ -60,36 +60,36 @@ THEME_LIBRARY: dict[str, ThemeConfig] = {
         theme_id="plains",
         display_name="Plains",
         key="C",
-        tempo_bpm=110,
+        tempo_bpm=112,
+        # 開けた平原: 明るいメジャー進行
         progressions=(
             ("I", "V", "vi", "IV"),
-            ("I", "vi", "IV", "V"),
             ("I", "IV", "V", "I"),
+            ("I", "vi", "ii", "V"),
         ),
     ),
     "forest": ThemeConfig(
         theme_id="forest",
         display_name="Forest",
+        # 鼻歌モチーフが G 系なのでキーは維持。進行とテンポで平原と差別化
         key="G",
-        # 少し明るく・軽快に（鼻歌メロディ向け）
-        tempo_bpm=108,
+        tempo_bpm=98,
         progressions=(
-            ("I", "V", "vi", "IV"),
-            ("I", "IV", "V", "I"),
-            ("I", "vi", "IV", "V"),
+            ("I", "iii", "IV", "I"),
+            ("vi", "IV", "I", "V"),
+            ("I", "ii", "IV", "V"),
         ),
     ),
     "dungeon": ThemeConfig(
         theme_id="dungeon",
         display_name="Earth Dungeon",
-        # 現行洞窟アレンジ（D minor・低音寄り）をベースに、
-        # 鼻歌「どうくつ」の上昇メロディをモチーフ化
         key="D",
-        tempo_bpm=114,
+        tempo_bpm=100,
+        # 地下: 低音ドローン寄り・狭い進行
         progressions=(
-            ("i", "VI", "III", "VII"),
-            ("i", "iv", "VI", "V"),
-            ("i", "VII", "iv", "VI"),
+            ("i", "i", "iv", "V"),
+            ("i", "iv", "i", "VII"),
+            ("i", "VI", "iv", "i"),
         ),
     ),
     "town": ThemeConfig(
@@ -150,14 +150,13 @@ THEME_LIBRARY: dict[str, ThemeConfig] = {
     "volcano": ThemeConfig(
         theme_id="volcano",
         display_name="Fire Volcano",
-        # 現行 volcano_bgm（約 B minor / 120BPM）を参考にしつつ、
-        # 同じ曲に聞こえないようキーと進行をずらす
-        key="E",
-        tempo_bpm=124,
+        key="B",
+        tempo_bpm=130,
+        # 火山: 短調で押し出す・平原/森と対照的
         progressions=(
-            ("i", "VII", "VI", "III"),
-            ("i", "iv", "VI", "V"),
-            ("i", "VI", "iv", "VII"),
+            ("i", "VII", "VI", "VII"),
+            ("i", "iv", "VII", "i"),
+            ("i", "VI", "III", "VII"),
         ),
     ),
 }

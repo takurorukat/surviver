@@ -1,7 +1,11 @@
 output/
 .venv/
-.venv312/
+.venv*/
 input/
+soundfonts/
+soundfont_install/
 __pycache__/
 *.pyc
+*.sf2
+*.sf3
 .DS_Store

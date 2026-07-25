@@ -19,18 +19,28 @@ class MidiWriter:
         pm = pretty_midi.PrettyMIDI(initial_tempo=arrangement.tempo_bpm)
         seconds_per_beat = 60.0 / arrangement.tempo_bpm
 
-        # タイトルは魔法っぽい音色（ハープ＋パッド＋ソフトベース）
+        # エリアごとに音色セットを変える（SoundFont で差がはっきり出る）
         if arrangement.theme_id == "title":
             melody = pretty_midi.Instrument(program=46, name="Melody")  # Harp
             chords = pretty_midi.Instrument(program=89, name="Chords")  # Warm Pad
             bass = pretty_midi.Instrument(program=35, name="Bass")  # Fretless Bass
+        elif arrangement.theme_id == "plains":
+            # 平原: 明るいアコギ＋ストリングス
+            melody = pretty_midi.Instrument(program=73, name="Melody")  # Flute
+            chords = pretty_midi.Instrument(program=24, name="Chords")  # Nylon Guitar
+            bass = pretty_midi.Instrument(program=32, name="Bass")  # Acoustic Bass
         elif arrangement.theme_id == "forest":
-            # Forest: 明るめ（フルート＋マリンバ寄りコード）
+            # 森: フルート＋マリンバ（水っぽく軽快）
             melody = pretty_midi.Instrument(program=73, name="Melody")  # Flute
             chords = pretty_midi.Instrument(program=12, name="Chords")  # Marimba
             bass = pretty_midi.Instrument(program=32, name="Bass")  # Acoustic Bass
+        elif arrangement.theme_id == "volcano":
+            # 火山: 歪み寄りリード＋ブラス
+            melody = pretty_midi.Instrument(program=30, name="Melody")  # Distortion Guitar
+            chords = pretty_midi.Instrument(program=61, name="Chords")  # Brass Section
+            bass = pretty_midi.Instrument(program=33, name="Bass")  # Finger Bass
         elif arrangement.theme_id == "dungeon":
-            # Earth Dungeon: 地下っぽい低めの音色
+            # 地下: チェロ＋クワイア
             melody = pretty_midi.Instrument(program=42, name="Melody")  # Cello
             chords = pretty_midi.Instrument(program=52, name="Chords")  # Choir Aahs
             bass = pretty_midi.Instrument(program=34, name="Bass")  # Pick Bass

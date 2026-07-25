@@ -3,9 +3,9 @@
 Game Music Generator CLI
 
 例:
-  python main.py plains
-  python main.py plains --length 60 --tempo 110 --seed 42 --wav --ogg
-  python main.py game_over --ogg
+  python main.py plains --ogg
+  python main.py plains --ogg --renderer soft
+  python main.py game_over --ogg --renderer fluid
 """
 
 from __future__ import annotations
@@ -16,7 +16,11 @@ import sys
 from pathlib import Path
 
 from game_music_generator import GameMusicComposer
-from game_music_generator.jingles import JINGLE_BUILDERS
+from game_music_generator.fluid_synth import FluidSynthRenderer, find_fluidsynth_binary
+from game_music_generator.jingles import (
+    DEPRECATED_SHORT_SFX_JINGLE_BUILDERS,
+    JINGLE_BUILDERS,
+)
 from game_music_generator.midi_writer import MidiWriter
 from game_music_generator.soft_synth import SoftSynthRenderer
 from game_music_generator.themes import THEME_LIBRARY
@@ -69,22 +73,48 @@ def build_parser() -> argparse.ArgumentParser:
         default=Path(__file__).resolve().parent / "output",
         help="Output directory",
     )
-    parser.add_argument("--wav", action="store_true", help="Also write WAV via soft synth")
+    parser.add_argument("--wav", action="store_true", help="Also write WAV")
     parser.add_argument(
         "--ogg",
         action="store_true",
         help="Also write OGG (requires ffmpeg; implies --wav)",
     )
+    parser.add_argument(
+        "--renderer",
+        choices=("fluid", "soft", "auto"),
+        default="auto",
+        help="Audio renderer: fluid=SoundFont, soft=正弦波, auto=fluidsynthがあればfluid",
+    )
     return parser
 
 
-def render_audio(midi_path: Path, want_ogg: bool, want_wav: bool) -> None:
+def resolve_renderer_name(requested: str) -> str:
+    if requested == "soft":
+        return "soft"
+    if requested == "fluid":
+        return "fluid"
+    # auto
+    if find_fluidsynth_binary() is not None:
+        return "fluid"
+    return "soft"
+
+
+def render_audio(
+    midi_path: Path,
+    want_ogg: bool,
+    want_wav: bool,
+    renderer_name: str,
+) -> None:
     need_wav = want_wav or want_ogg
     if not need_wav:
         return
     wav_path = midi_path.with_suffix(".wav")
-    SoftSynthRenderer().render_midi_file(midi_path, wav_path)
-    print(f"Wrote {wav_path}")
+    if renderer_name == "fluid":
+        FluidSynthRenderer().render_midi_file(midi_path, wav_path)
+        print(f"Wrote {wav_path} (fluid / SoundFont)")
+    else:
+        SoftSynthRenderer().render_midi_file(midi_path, wav_path)
+        print(f"Wrote {wav_path} (soft synth)")
     if want_ogg:
         ogg_path = midi_path.with_suffix(".ogg")
         convert_wav_to_ogg(wav_path, ogg_path)
@@ -94,6 +124,18 @@ def render_audio(midi_path: Path, want_ogg: bool, want_wav: bool) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    renderer_name = resolve_renderer_name(args.renderer)
+
+    if args.theme in DEPRECATED_SHORT_SFX_JINGLE_BUILDERS:
+        print(
+            f"短尺 SE '{args.theme}' は MIDI/SoundFont では生成しません。\n"
+            "波形合成スクリプトを使ってください:\n"
+            "  python tools/game_music_generator/scripts/regen_element_bullet_sfx.py --preview-pack\n"
+            "  python tools/game_music_generator/scripts/regen_element_bullet_sfx.py "
+            f"--install {args.theme}=a",
+            file=sys.stderr,
+        )
+        return 2
 
     if args.theme in JINGLE_BUILDERS:
         midi_path = next_output_path(args.output_dir, args.theme)
@@ -103,7 +145,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             builder(midi_path)
         print(f"Wrote {midi_path}")
-        render_audio(midi_path, want_ogg=args.ogg, want_wav=args.wav)
+        render_audio(midi_path, want_ogg=args.ogg, want_wav=args.wav, renderer_name=renderer_name)
         return 0
 
     composer = GameMusicComposer()
@@ -116,9 +158,9 @@ def main(argv: list[str] | None = None) -> int:
     midi_path = next_output_path(args.output_dir, arrangement.theme_id)
     MidiWriter().write(arrangement, midi_path)
     print(f"Wrote {midi_path}")
-    render_audio(midi_path, want_ogg=args.ogg, want_wav=args.wav)
+    render_audio(midi_path, want_ogg=args.ogg, want_wav=args.wav, renderer_name=renderer_name)
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
