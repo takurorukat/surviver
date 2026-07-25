@@ -394,8 +394,8 @@ export function playWindSlashHit(
     const x0 = -halfLength * lengthScale
     const x1 = halfLength * lengthScale
 
-    // 黒縁
-    slash.lineStyle(lineWidth + 3, WIND_SLASH_OUTLINE_COLOR, 0.95)
+    // 黒縁（本体よりしっかり太く取る）
+    slash.lineStyle(lineWidth + 6, WIND_SLASH_OUTLINE_COLOR, 1)
     slash.beginPath()
     slash.moveTo(x0, offsetY)
     slash.lineTo(x1, offsetY)

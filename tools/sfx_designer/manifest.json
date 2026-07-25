@@ -1,0 +1,449 @@
+{
+  "generatedAt": "2026-07-24_17-52-59",
+  "engine": "tone-offline",
+  "toneVersion": "15.1.22",
+  "backupDir": "tools/sfx_designer/backups/2026-07-24_17-52-59",
+  "outputDir": "tools/sfx_designer/output",
+  "formalDir": "public/assets/audio",
+  "presets": [
+    {
+      "id": "player_fire_power",
+      "purpose": "パワー弾の発射",
+      "category": "element",
+      "patch": "power_fire",
+      "ogg": "player_fire_power.ogg",
+      "blurb": "FM/短い周波数下降のクリーンな魔法弾。ノイズ最少"
+    },
+    {
+      "id": "player_hit_power",
+      "purpose": "パワー弾の命中",
+      "category": "element",
+      "patch": "power_hit",
+      "ogg": "player_hit_power.ogg",
+      "blurb": "短いクリーン命中。ピッチ下降のみで明瞭"
+    },
+    {
+      "id": "player_fire_wind",
+      "purpose": "風弾の発射",
+      "category": "element",
+      "patch": "wind_fire",
+      "ogg": "player_fire_wind.ogg",
+      "blurb": "帯域ノイズ主体の「シュッ」。丸い音程を避ける"
+    },
+    {
+      "id": "player_hit_wind",
+      "purpose": "風弾の命中",
+      "category": "element",
+      "patch": "wind_hit",
+      "ogg": "player_hit_wind.ogg",
+      "blurb": "短い空気切れ。High/BandPass で抜ける"
+    },
+    {
+      "id": "player_fire_water",
+      "purpose": "水弾の発射",
+      "category": "element",
+      "patch": "water_fire",
+      "ogg": "player_fire_water.ogg",
+      "blurb": "近い周波数の液体共鳴 + LowPass。ベル禁止"
+    },
+    {
+      "id": "player_hit_water",
+      "purpose": "水弾の命中",
+      "category": "element",
+      "patch": "water_hit",
+      "ogg": "player_hit_water.ogg",
+      "blurb": "小さな水滴の衝突。わずかなピッチ下降"
+    },
+    {
+      "id": "player_fire_fire",
+      "purpose": "火弾の発射",
+      "category": "element",
+      "patch": "fire_fire",
+      "ogg": "player_fire_fire.ogg",
+      "blurb": "色付きノイズ + 火の粉。爆発音・重低音なし"
+    },
+    {
+      "id": "player_hit_fire",
+      "purpose": "火弾の命中",
+      "category": "element",
+      "patch": "fire_hit",
+      "ogg": "player_hit_fire.ogg",
+      "blurb": "短い火花ヒット。長い燃焼はしない"
+    },
+    {
+      "id": "player_fire_earth",
+      "purpose": "土弾の発射",
+      "category": "element",
+      "patch": "earth_fire",
+      "ogg": "player_fire_earth.ogg",
+      "blurb": "砂粒・軽い石。地震ではなくコッ／ポスッ"
+    },
+    {
+      "id": "player_hit_earth",
+      "purpose": "土弾の命中",
+      "category": "element",
+      "patch": "earth_hit",
+      "ogg": "player_hit_earth.ogg",
+      "blurb": "粒状ノイズ + 短い石の共鳴"
+    },
+    {
+      "id": "player_fire",
+      "purpose": "デフォルト発射（パワーと同音）",
+      "category": "element",
+      "patch": "copy_player_fire_power",
+      "ogg": "player_fire.ogg",
+      "blurb": "player_fire_power と同一ファイル"
+    },
+    {
+      "id": "enemy_defeat",
+      "purpose": "敵撃破",
+      "category": "combat",
+      "patch": "enemy_defeat",
+      "ogg": "enemy_defeat.ogg",
+      "blurb": "プチッ／ポフ。結晶・ベルなし"
+    },
+    {
+      "id": "enemy_hit",
+      "purpose": "敵への軽い命中",
+      "category": "combat",
+      "patch": "enemy_hit",
+      "ogg": "enemy_hit.ogg",
+      "blurb": "乾いた軽いヒット"
+    },
+    {
+      "id": "enemy_blocked",
+      "purpose": "敵の防御／弾き",
+      "category": "combat",
+      "patch": "enemy_blocked",
+      "ogg": "enemy_blocked.ogg",
+      "blurb": "硬い反射。金属ベルではない"
+    },
+    {
+      "id": "coin_pickup",
+      "purpose": "コイン取得",
+      "category": "combat",
+      "patch": "coin_pickup",
+      "ogg": "coin_pickup.ogg",
+      "blurb": "控えめな上昇ピップ"
+    },
+    {
+      "id": "player_hurt",
+      "purpose": "プレイヤー被弾",
+      "category": "combat",
+      "patch": "player_hurt",
+      "ogg": "player_hurt.ogg",
+      "blurb": "短い被弾。重すぎず警告音すぎない"
+    },
+    {
+      "id": "menu_move",
+      "purpose": "メニュー移動",
+      "category": "ui",
+      "patch": "menu_move",
+      "ogg": "menu_move.ogg",
+      "blurb": "小さいクリック"
+    },
+    {
+      "id": "menu_cancel",
+      "purpose": "メニューキャンセル",
+      "category": "ui",
+      "patch": "menu_cancel",
+      "ogg": "menu_cancel.ogg",
+      "blurb": "少し低い戻る音"
+    },
+    {
+      "id": "shop_purchase",
+      "purpose": "ショップ購入",
+      "category": "ui",
+      "patch": "shop_purchase",
+      "ogg": "shop_purchase.ogg",
+      "blurb": "短い肯定音（2音上昇）"
+    },
+    {
+      "id": "level_up",
+      "purpose": "レベルアップ",
+      "category": "event",
+      "patch": "level_up",
+      "ogg": "level_up.ogg",
+      "blurb": "C→E→G の協和上昇。悲しい下降禁止"
+    },
+    {
+      "id": "stage_clear",
+      "purpose": "ステージクリア",
+      "category": "event",
+      "patch": "stage_clear",
+      "ogg": "stage_clear.ogg",
+      "blurb": "短い勝利感"
+    },
+    {
+      "id": "area_clear",
+      "purpose": "エリアクリア",
+      "category": "event",
+      "patch": "area_clear",
+      "ogg": "area_clear.ogg",
+      "blurb": "Stage Clear より一段豪華"
+    },
+    {
+      "id": "game_over",
+      "purpose": "ゲームオーバー",
+      "category": "event",
+      "patch": "game_over",
+      "ogg": "game_over.ogg",
+      "blurb": "短い下降感。過度に暗くしない"
+    }
+  ],
+  "results": [
+    {
+      "id": "player_fire_power",
+      "preset": "player_fire_power",
+      "oggName": "player_fire_power.ogg",
+      "duration": 0.082494,
+      "channels": 1,
+      "maxVolumeDb": -1.7,
+      "trailingSilenceMs": 1.0430839002267573,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "player_hit_power",
+      "preset": "player_hit_power",
+      "oggName": "player_hit_power.ogg",
+      "duration": 0.060136,
+      "channels": 1,
+      "maxVolumeDb": -1.5,
+      "trailingSilenceMs": 0.5668934240362812,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "player_fire_wind",
+      "preset": "player_fire_wind",
+      "oggName": "player_fire_wind.ogg",
+      "duration": 0.090272,
+      "channels": 1,
+      "maxVolumeDb": -1.9,
+      "trailingSilenceMs": 0,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "player_hit_wind",
+      "preset": "player_hit_wind",
+      "oggName": "player_hit_wind.ogg",
+      "duration": 0.055011,
+      "channels": 1,
+      "maxVolumeDb": -1.8,
+      "trailingSilenceMs": 0,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "player_fire_water",
+      "preset": "player_fire_water",
+      "oggName": "player_fire_water.ogg",
+      "duration": 0.087143,
+      "channels": 1,
+      "maxVolumeDb": -1.4,
+      "trailingSilenceMs": 0,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "player_hit_water",
+      "preset": "player_hit_water",
+      "oggName": "player_hit_water.ogg",
+      "duration": 0.061746,
+      "channels": 1,
+      "maxVolumeDb": -1.4,
+      "trailingSilenceMs": 0,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "player_fire_fire",
+      "preset": "player_fire_fire",
+      "oggName": "player_fire_fire.ogg",
+      "duration": 0.089093,
+      "channels": 1,
+      "maxVolumeDb": -1.5,
+      "trailingSilenceMs": 0,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "player_hit_fire",
+      "preset": "player_hit_fire",
+      "oggName": "player_hit_fire.ogg",
+      "duration": 0.07644,
+      "channels": 1,
+      "maxVolumeDb": -1.6,
+      "trailingSilenceMs": 14.03628117913832,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "player_fire_earth",
+      "preset": "player_fire_earth",
+      "oggName": "player_fire_earth.ogg",
+      "duration": 0.090181,
+      "channels": 1,
+      "maxVolumeDb": -1.6,
+      "trailingSilenceMs": 11.383219954648528,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "player_hit_earth",
+      "preset": "player_hit_earth",
+      "oggName": "player_hit_earth.ogg",
+      "duration": 0.105488,
+      "channels": 1,
+      "maxVolumeDb": -1.3,
+      "trailingSilenceMs": 0,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "enemy_defeat",
+      "preset": "enemy_defeat",
+      "oggName": "enemy_defeat.ogg",
+      "duration": 0.070408,
+      "channels": 1,
+      "maxVolumeDb": -1.6,
+      "trailingSilenceMs": 20.272108843537413,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "enemy_hit",
+      "preset": "enemy_hit",
+      "oggName": "enemy_hit.ogg",
+      "duration": 0.048844,
+      "channels": 1,
+      "maxVolumeDb": -1.3,
+      "trailingSilenceMs": 0.3854875283446712,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "enemy_blocked",
+      "preset": "enemy_blocked",
+      "oggName": "enemy_blocked.ogg",
+      "duration": 0.08,
+      "channels": 1,
+      "maxVolumeDb": -1.2,
+      "trailingSilenceMs": 0,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "coin_pickup",
+      "preset": "coin_pickup",
+      "oggName": "coin_pickup.ogg",
+      "duration": 0.094218,
+      "channels": 1,
+      "maxVolumeDb": -1.3,
+      "trailingSilenceMs": 0.045351473922902494,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "player_hurt",
+      "preset": "player_hurt",
+      "oggName": "player_hurt.ogg",
+      "duration": 0.1061,
+      "channels": 1,
+      "maxVolumeDb": -1.5,
+      "trailingSilenceMs": 0,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "menu_move",
+      "preset": "menu_move",
+      "oggName": "menu_move.ogg",
+      "duration": 0.045465,
+      "channels": 1,
+      "maxVolumeDb": -1.6,
+      "trailingSilenceMs": 25.442176870748302,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "menu_cancel",
+      "preset": "menu_cancel",
+      "oggName": "menu_cancel.ogg",
+      "duration": 0.079501,
+      "channels": 1,
+      "maxVolumeDb": -1.7,
+      "trailingSilenceMs": 0.4988662131519275,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "shop_purchase",
+      "preset": "shop_purchase",
+      "oggName": "shop_purchase.ogg",
+      "duration": 0.190771,
+      "channels": 1,
+      "maxVolumeDb": -1.3,
+      "trailingSilenceMs": 0.24943310657596374,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "level_up",
+      "preset": "level_up",
+      "oggName": "level_up.ogg",
+      "duration": 0.520952,
+      "channels": 1,
+      "maxVolumeDb": -1.6,
+      "trailingSilenceMs": 19.591836734693878,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "stage_clear",
+      "preset": "stage_clear",
+      "oggName": "stage_clear.ogg",
+      "duration": 0.992812,
+      "channels": 1,
+      "maxVolumeDb": -1.5,
+      "trailingSilenceMs": 20.11337868480726,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "area_clear",
+      "preset": "area_clear",
+      "oggName": "area_clear.ogg",
+      "duration": 1.74415,
+      "channels": 1,
+      "maxVolumeDb": -1.6,
+      "trailingSilenceMs": 0.045351473922902494,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "game_over",
+      "preset": "game_over",
+      "oggName": "game_over.ogg",
+      "duration": 1.043288,
+      "channels": 1,
+      "maxVolumeDb": -3.7,
+      "trailingSilenceMs": 0.5442176870748299,
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "player_fire",
+      "preset": "player_fire",
+      "oggName": "player_fire.ogg",
+      "duration": 0.082494,
+      "channels": 1,
+      "maxVolumeDb": -1.7,
+      "trailingSilenceMs": 1.0430839002267573,
+      "ok": true,
+      "errors": []
+    }
+  ]
+}

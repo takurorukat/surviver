@@ -5,6 +5,7 @@
 //
 // 役割:
 //   - 発射間隔・射程・ダメージ・貫通数を見て弾を撃つ
+//   - Pierce と Ricochet が両方あるときは貫通弾と跳弾を同時に2発出す
 //   - 毎回、射程内で一番近い敵を狙う（より近い敵が来たらそちらへ切り替える）
 //   - 弾の速度維持とプレイエリア外削除を毎フレーム呼ぶ
 //
@@ -150,6 +151,11 @@ function resolveAttackTarget(
  * クールダウンが空いていて狙える敵がいれば弾を撃つ。
  * 撃てたら true。クールダウン中・敵なし・弾生成失敗なら false。
  * GameScene.update から毎フレーム呼ばれる。
+ *
+ * Pierce と Ricochet が両方あるときは、1発に混ぜず:
+ *   - 貫通だけする弾（跳弾なし）
+ *   - 跳弾だけする弾（貫通なし）
+ * の2発を同時に出す。
  */
 export function tryFireBulletAtNearestEnemy(
   scene: Phaser.Scene,
@@ -183,6 +189,58 @@ export function tryFireBulletAtNearestEnemy(
     return false
   }
 
+  const hasPierce = bulletMaxHits > 1
+  const hasRicochet = ricochetLevel > 0
+
+  // 両方あるとき: 貫通弾と跳弾を分けて撃つ
+  // わずかに左右へずらして、重なって1発に見えないようにする
+  if (hasPierce && hasRicochet) {
+    const aimDx = targetEnemy.x - playerX
+    const aimDy = targetEnemy.y - playerY
+    const aimLength = Math.sqrt(aimDx * aimDx + aimDy * aimDy)
+    // 進行方向に垂直な単位ベクトル（左右に分ける用）
+    let sideX = 0
+    let sideY = 0
+    if (aimLength > 0) {
+      sideX = -aimDy / aimLength
+      sideY = aimDx / aimLength
+    }
+    const splitOffset = 10
+
+    const pierceBullet = firePlayerBullet(
+      scene,
+      bulletGroup,
+      playerX,
+      playerY,
+      targetEnemy.x + sideX * splitOffset,
+      targetEnemy.y + sideY * splitOffset,
+      attackDamage,
+      bulletMaxHits,
+      0,
+      targetEnemy,
+      bulletStyle,
+    )
+    const ricochetBullet = firePlayerBullet(
+      scene,
+      bulletGroup,
+      playerX,
+      playerY,
+      targetEnemy.x - sideX * splitOffset,
+      targetEnemy.y - sideY * splitOffset,
+      attackDamage,
+      1,
+      ricochetLevel,
+      targetEnemy,
+      bulletStyle,
+    )
+    if (pierceBullet !== null || ricochetBullet !== null) {
+      attackState.lastAttackTimeMs = nowMs
+      return true
+    }
+    return false
+  }
+
+  // 片方だけ、またはどちらもなし: 従来どおり1発
   const bullet = firePlayerBullet(
     scene,
     bulletGroup,

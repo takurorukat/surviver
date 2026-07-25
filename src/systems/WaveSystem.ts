@@ -32,6 +32,7 @@ import {
   getEnemyPackGapSeconds,
   ENEMY_RANGED_PACK_SIZE,
   ENEMY_STUMP_PACK_SIZE,
+  ENEMY_STONE_GUARD_PACK_SIZE,
   PLAINS_STAGE3_BEE_GROUPS_PER_SPAWN,
   PLAINS_STAGE3_BEE_GROUPS_ON_FINAL_WAVE,
   FINAL_WAVE_EXTRA_PACK_GAP_SECONDS,
@@ -217,6 +218,14 @@ export class WaveSystem {
         return remainingCount
       }
       return ENEMY_STUMP_PACK_SIZE
+    }
+
+    // Ruins Stage1 の Stone Guard はパック人数固定
+    if (this.areaId === 'ruins' && this.stageNumber === 1) {
+      if (remainingCount < ENEMY_STONE_GUARD_PACK_SIZE) {
+        return remainingCount
+      }
+      return ENEMY_STONE_GUARD_PACK_SIZE
     }
 
     // Plains Stage3 の蜂は2体固定（泥スライムの大群とは別）

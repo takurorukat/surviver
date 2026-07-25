@@ -16,8 +16,6 @@ import {
   BLAST_LEVEL_START,
   RICOCHET_LEVEL_START,
   XP_BONUS_LEVEL_START,
-  calculateXpCoinDropCount,
-  calculateClearXpBonusMultiplier,
   START_COUNTDOWN_STAGE1_OFFSET_Y,
   PLAY_AREA_ORIGIN_X,
   PLAY_AREA_ORIGIN_Y,
@@ -28,57 +26,22 @@ import {
   XP_GAIN_EFFECT_DURATION_MS,
   COIN_MAGNET_RADIUS,
   calculateCoinMagnetRadius,
+  calculateCarriedStageStartHp,
   DEFAULT_UNLOCKED_SKILL_LEVEL_CAP,
-  RICOCHET_SEARCH_RADIUS,
-  ENEMY_SHIELD_FRONT_DOT_THRESHOLD,
-  STAGE_CLEAR_VACUUM_SETTLE_MS,
-  ALL_ENEMIES_CLEAR_BONUS_XP,
   calculateBulletMaxHits,
-  calculatePierceHitDamage,
-  calculateBlastRadius,
-  calculateBlastDamage,
   resolvePlayerBulletStyle,
-  calculateAllEnemiesClearTimeBonusXp,
-  CLEAR_TIME_BONUS_COIN_FALL_TILES,
-  CLEAR_TIME_BONUS_COIN_SPREAD_RADIUS,
-  CLEAR_TIME_BONUS_COIN_FALL_MS,
-  CLEAR_GOLD_COIN_FALL_TILES,
-  CLEAR_GOLD_COIN_SPREAD_RADIUS,
-  CLEAR_GOLD_COIN_FALL_MS,
   FINAL_WAVE_REMAINING_SECONDS,
   getAreaStageCount,
-  getStageFloorColor,
   AUTO_GOLD_LEVEL_UP_CHAIN_DELAY_MS,
-  PIERCE_AUTO_SYNC_MIN_LEVEL,
+  calculatePierceLevelFromMoveAndSpeed,
   calculateBlastLevelFromPowerAndRange,
   calculateRicochetLevelFromPowerSpeedAndPickup,
   ACHIEVEMENT_ID_PIERCE_UNLOCK,
   ACHIEVEMENT_ID_BLAST_UNLOCK,
   ACHIEVEMENT_ID_RICOCHET_UNLOCK,
-  TITLE_SHOW_SHOP_AND_SEAL,
-  FLOOR_DARKEN_ALPHA,
-  VOLCANO_FLOOR_TILE_BLOCK_INDEX,
-  VOLCANO_FLOOR_RED_OVERLAY_COLOR,
-  getVolcanoFloorRedOverlayAlpha,
-  getVolcanoFloorDarkenAlpha,
-  PLAINS_FLOOR_TILESET_KEY,
-  PLAINS_FLOOR_BLOCK_HEIGHT,
-  PLAINS_FLOOR_BLOCK_COUNT,
-  PLAINS_FLOOR_SOURCE_CROP_X,
-  PLAINS_FLOOR_SOURCE_CROP_Y_OFFSET,
-  PLAINS_FLOOR_SOURCE_CROP_SIZE,
-  PLAINS_FLOOR_TILE_DISPLAY_SIZE,
-  FLOOR_DETAIL_TILESET_KEY,
-  FLOOR_DETAIL_TILE_SIZE,
-  FLOOR_DETAIL_DISPLAY_SIZE,
-  FOREST_DETAIL_TILES,
-  FOREST_DETAIL_GRID_SIZE,
-  FOREST_DETAIL_CHANCE,
   FOREST_BGM_KEY,
   VOLCANO_BGM_KEY,
   RUINS_BGM_KEY,
-  isFinalStage,
-  calculateStageClearGold,
   type StageAreaId,
 } from '../GameConstants'
 import {
@@ -98,6 +61,8 @@ import {
   shouldUseRelativePointerFollow,
   endRelativePointerFollow,
   updateRelativeFollowAimOnly,
+  shiftRelativeFollowBaseForDisplacement,
+  suspendAbsoluteFollowUntilPointerMoves,
   type MovementKeys,
   type MovementState,
   type PlayAreaBounds,
@@ -123,16 +88,12 @@ import {
   createPlayerAttackState,
   tryFireBulletAtNearestEnemy,
   updatePlayerBullets,
-  clearLockedTargetIfEnemyDestroyed,
-  findNearestUnhitEnemyInRange,
   type PlayerAttackState,
 } from '../systems/PlayerAttackSystem'
 import {
   createPlayerBulletGroup,
   advancePlayerBulletCollisionAge,
   maintainPlayerBulletVelocities,
-  redirectPlayerBulletToward,
-  recyclePlayerBullet,
   type PlayerBulletVisual,
 } from '../objects/PlayerBullet'
 import {
@@ -144,29 +105,31 @@ import {
   recycleEnemyBullet,
 } from '../objects/EnemyBullet'
 import {
-  applyDamageToEnemy,
-  countActiveEnemies,
-  getEnemyXpDropMultiplier,
-  playEnemyDefeatFadeOut,
   updateAllEnemyHpBars,
   updateAllEnemyWalkSprites,
-  updateStumpMushroomSpawns,
-  updateBurningTreeSpiritFireSpawns,
-  updateBranchBeetleSpawns,
-  updateGravestoneBeetleSpawns,
-  updateChaosElementalSpawns,
-  spawnForestStage5Gravestone,
-  spawnVolcanoStage5ChaosElemental,
 } from '../objects/Enemy'
-import { createCoinGroup, countActiveCoins, trySpawnCoinAt, spawnClearTimeBonusCoinRain, type CoinView } from '../objects/Coin'
+import { createCoinGroup, type CoinView } from '../objects/Coin'
 import {
   createGoldCoinGroup,
-  countActiveGoldCoins,
-  spawnClearGoldCoinRain,
-  updateAllGoldCoinsVacuumMovement,
   ensureGoldCoinAnimation,
   type GoldCoinView,
 } from '../objects/GoldCoin'
+import { createStageBackgroundAndFloor } from './game/createStageFloor'
+import {
+  updateSpecialEnemySpawns,
+  spawnAreaBossIfNeeded,
+} from './game/updateSpecialEnemySpawns'
+import {
+  canPlayerBulletHitEnemy,
+  handleBulletEnemyHit,
+  type PlayerBulletCombatContext,
+} from '../systems/PlayerBulletCombatSystem'
+import {
+  checkStageClearConditions,
+  updateClearCoinVacuum,
+  showStageClearResult,
+  type StageClearFlowContext,
+} from '../systems/StageClearFlowSystem'
 import { playXpGainVisualEffect } from '../systems/XpGainEffectSystem'
 import { playGoldGainVisualEffect, playGoldCoinFlyToHud } from '../systems/GoldGainEffectSystem'
 import { playStartCountdown, playResumeCountdown } from '../systems/StartCountdownSystem'
@@ -175,7 +138,6 @@ import {
   type OrientationGuideView,
 } from '../systems/OrientationGuideSystem'
 import {
-  updateAllCoinsVacuumMovement,
   updateCoinMagnetMovement,
 } from '../systems/CoinMagnetSystem'
 import { GameAudioSystem } from '../systems/GameAudioSystem'
@@ -192,21 +154,12 @@ import {
 } from '../systems/LevelUpChoiceSystem'
 import { StageResultSystem } from '../systems/StageResultSystem'
 import {
-  evaluateAndUnlockGameClearAchievements,
-  formatUnlockNotificationLines,
-  formatAreaUnlockNotificationLines,
-  formatAreaClearMaxHpBonusLines,
-  formatShopUnlockNotificationLines,
   isSkillUnlocked,
 } from '../systems/AchievementSystem'
 import {
-  markAreaCleared,
   clearRunProgress,
   recordRunStart,
   recordPlayerDeath,
-  recordEnemyDefeated,
-  recordStageCleared,
-  recordGameClear,
   addGold,
   getPurchasedMaxHp,
   getPurchasedPowerCap,
@@ -218,11 +171,6 @@ import {
   unlockAchievement,
 } from '../systems/UnlockSaveSystem'
 import type { CarriedProgress } from '../types/CarriedProgress'
-import {
-  playStageClearBanner,
-  playAllEnemiesClearBanner,
-  playAllEnemiesRewardBanner,
-} from '../systems/StageClearBannerSystem'
 import { playFinalWaveBanner } from '../systems/FinalWaveBannerSystem'
 import { playPierceUnlockBanner, playPierceLevelUpBanner } from '../systems/PierceUnlockBannerSystem'
 import {
@@ -234,15 +182,6 @@ import {
   playRicochetLevelUpBanner,
 } from '../systems/RicochetUnlockBannerSystem'
 import {
-  applyHitBlastAroundPoint,
-  playHitBlastRing,
-} from '../systems/HitBlastSystem'
-import {
-  playDamageNumber,
-  playWindSlashHit,
-  playEnergyOrbHit,
-  playWaterOrbHit,
-  playEnemyBlockedShield,
   playHpFullText,
   playAutoGoldLevelUpText,
   playPlayerHurtFlash,
@@ -459,7 +398,6 @@ export class GameScene extends Phaser.Scene {
   // 呼び出し先: resetStageState, create* / setup*, beginStageWithCountdown など多数
   create(): void {
     this.resetStageState()
-    this.createOuterBackground()
     this.gameAudioSystem = new GameAudioSystem(this)
     this.confirmDialogSystem = new ConfirmDialogSystem(this)
     this.settingsMenuSystem = new SettingsMenuSystem(this, {
@@ -535,8 +473,7 @@ export class GameScene extends Phaser.Scene {
     )
     this.hudSystem.create()
     this.setupSettingsHotkey()
-    this.createPlayAreaFrame()
-    this.createFloor()
+    createStageBackgroundAndFloor(this, this.areaId, this.stageNumber, this.areaStageCount)
     this.setupPhysicsWorld()
     this.createEnemyGroup()
     this.createCoinGroup()
@@ -676,26 +613,16 @@ export class GameScene extends Phaser.Scene {
       this.isStartCountdownActive = false
       this.isStageActive = true
       this.stageElapsedMs = 0
-      this.spawnForestStage5GravestoneIfNeeded()
-      this.spawnVolcanoStage5ChaosElementalIfNeeded()
+      spawnAreaBossIfNeeded({
+        scene: this,
+        areaId: this.areaId,
+        stageNumber: this.stageNumber,
+        areaStageCount: this.areaStageCount,
+        enemyGroup: this.enemyGroup,
+        nowMs: this.time.now,
+      })
       this.waveSystem.startWaves()
     })
-  }
-
-  // 役割: Forest Stage5 開始直後に墓石を1体だけ出す（他の敵より先）
-  private spawnForestStage5GravestoneIfNeeded(): void {
-    if (this.areaId !== 'forest' || this.stageNumber !== 5) {
-      return
-    }
-    spawnForestStage5Gravestone(this, this.enemyGroup)
-  }
-
-  // 役割: Volcano Stage5 開始直後に混沌エレメンタルを1体だけ出す（他の敵より先）
-  private spawnVolcanoStage5ChaosElementalIfNeeded(): void {
-    if (this.areaId !== 'volcano' || this.stageNumber !== 5) {
-      return
-    }
-    spawnVolcanoStage5ChaosElemental(this, this.enemyGroup)
   }
 
   // 役割: 毎フレームの司令塔。進行状態に応じて戦闘／移動／物理／HUD を回す
@@ -753,7 +680,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.isClearCoinVacuum) {
-      this.updateClearCoinVacuum()
+      updateClearCoinVacuum(this.buildStageClearFlowContext())
       return
     }
 
@@ -789,16 +716,19 @@ export class GameScene extends Phaser.Scene {
       advanceEnemyBulletCollisionAge(this.enemyBulletGroup)
       this.updatePlayerAttack()
       this.updateEnemyRangedAttack()
-      this.updateStumpMushroomSpawn()
-      this.updateBurningTreeSpiritFireSpawn()
-      this.updateBranchBeetleSpawn()
-      this.updateGravestoneBeetleSpawn()
-      this.updateChaosElementalSpawn()
+      updateSpecialEnemySpawns({
+        scene: this,
+        areaId: this.areaId,
+        stageNumber: this.stageNumber,
+        areaStageCount: this.areaStageCount,
+        enemyGroup: this.enemyGroup,
+        nowMs: this.time.now,
+      })
       updatePlayerBullets(this.playerBulletGroup)
       updateEnemyBullets(this.enemyBulletGroup)
       this.updateCoinMagnet()
       this.updateInvincibilityBlink()
-      this.checkStageClearConditions()
+      checkStageClearConditions(this.buildStageClearFlowContext())
     }
 
     this.updateHudDisplay()
@@ -806,6 +736,8 @@ export class GameScene extends Phaser.Scene {
     this.updateHitboxDisplay()
 
     // ノックバック中は通常移動で速度を上書きしない
+    const playerXBeforePhysics = this.player.x
+    const playerYBeforePhysics = this.player.y
     const isKnockbackActive = applyPlayerKnockbackIfActive(
       this.playerBody,
       this.damageState,
@@ -827,6 +759,16 @@ export class GameScene extends Phaser.Scene {
 
     // 物理はここだけで1回。overlap コールバックもこの中で発火する
     stepArcadePhysicsOnce(this.arcadeWorld, this.time.now, this.game.loop.delta)
+
+    // ノックバックで強制移動した分、相対追従の基準もずらす
+    // （押したときの位置へ引き戻されないようにする）
+    if (isKnockbackActive) {
+      shiftRelativeFollowBaseForDisplacement(
+        this.movementState,
+        this.player.x - playerXBeforePhysics,
+        this.player.y - playerYBeforePhysics,
+      )
+    }
 
     // 物理移動後の位置に HP バーを合わせる
     updateAllEnemyHpBars(this.enemyGroup)
@@ -935,7 +877,11 @@ export class GameScene extends Phaser.Scene {
     this.currentMagnetLevel = progress.currentMagnetLevel
     this.currentMagnetRadius = progress.currentMagnetRadius
     this.maxHp = progress.maxHp
-    this.currentHp = this.maxHp
+    this.currentHp = calculateCarriedStageStartHp(
+      this.areaId,
+      progress.currentHp,
+      this.maxHp,
+    )
     this.currentAttackIntervalMs = progress.currentAttackIntervalMs
     this.currentAttackRange = progress.currentAttackRange
     this.currentPierceLevel = progress.currentPierceLevel
@@ -964,6 +910,7 @@ export class GameScene extends Phaser.Scene {
       currentMagnetLevel: this.currentMagnetLevel,
       currentMagnetRadius: this.currentMagnetRadius,
       maxHp: this.maxHp,
+      currentHp: this.currentHp,
       currentAttackIntervalMs: this.currentAttackIntervalMs,
       currentAttackRange: this.currentAttackRange,
       currentMoveSpeed: this.currentMoveSpeed,
@@ -977,208 +924,6 @@ export class GameScene extends Phaser.Scene {
       pickedBlastThisRun: this.pickedBlastThisRun,
       pierceAvailableAtRunStart: this.pierceAvailableAtRunStart,
       blastAvailableAtRunStart: this.blastAvailableAtRunStart,
-    }
-  }
-
-  // 役割: 画面全体の暗い背景（プレイエリアの外側）を描く
-  // 呼び出し元: create / 呼び出し先: this.add.rectangle
-  private createOuterBackground(): void {
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0f172a)
-  }
-
-  // 役割: プレイエリアの枠（少し大きめの半透明四角）を描く
-  // 呼び出し元: create / 呼び出し先: this.add.rectangle
-  private createPlayAreaFrame(): void {
-    const frameCenterX = PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH / 2
-    const frameCenterY = PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT / 2
-    this.add.rectangle(
-      frameCenterX,
-      frameCenterY,
-      PLAY_AREA_WIDTH + 4,
-      PLAY_AREA_HEIGHT + 4,
-      0x000000,
-      0.35,
-    )
-  }
-
-  // 役割: ステージに応じた床をプレイエリアに敷く
-  // 呼び出し元: create
-  // Plains / Forest / Volcano は Plains タイルシート。Forest は枝・葉、Volcano は赤→黒。
-  // 他エリアは従来の単色四角
-  private createFloor(): void {
-    if (this.areaId === 'plains') {
-      this.createTiledFloor(false)
-      this.createFloorDarkenOverlay(FLOOR_DARKEN_ALPHA)
-      return
-    }
-    if (this.areaId === 'forest') {
-      this.createTiledFloor(true)
-      this.createFloorDarkenOverlay(FLOOR_DARKEN_ALPHA)
-      return
-    }
-    if (this.areaId === 'volcano') {
-      // Plains と同じタイル（一番明るい色）＋ 赤オーバーレイ＋黒で徐々に暗く
-      this.createTiledFloor(false, VOLCANO_FLOOR_TILE_BLOCK_INDEX)
-      this.createVolcanoFloorOverlays()
-      return
-    }
-
-    const floorColor = getStageFloorColor(this.stageNumber, this.areaStageCount)
-    const floorCenterX = PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH / 2
-    const floorCenterY = PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT / 2
-
-    this.add.rectangle(
-      floorCenterX,
-      floorCenterY,
-      PLAY_AREA_WIDTH,
-      PLAY_AREA_HEIGHT,
-      floorColor,
-    )
-    this.createFloorDarkenOverlay(FLOOR_DARKEN_ALPHA)
-  }
-
-  // 役割: Volcano 用。明るい赤から、ステージが進むほど黒く見せる
-  // 呼び出し元: createFloor
-  private createVolcanoFloorOverlays(): void {
-    const centerX = PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH / 2
-    const centerY = PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT / 2
-    const redAlpha = getVolcanoFloorRedOverlayAlpha(this.stageNumber)
-    const darkAlpha = getVolcanoFloorDarkenAlpha(this.stageNumber)
-
-    const redOverlay = this.add.rectangle(
-      centerX,
-      centerY,
-      PLAY_AREA_WIDTH,
-      PLAY_AREA_HEIGHT,
-      VOLCANO_FLOOR_RED_OVERLAY_COLOR,
-      redAlpha,
-    )
-    redOverlay.setDepth(0)
-
-    this.createFloorDarkenOverlay(darkAlpha)
-  }
-
-  // 役割: 床の上に半透明の黒を重ねて、フィールド全体を暗めに見せる
-  // 呼び出し元: createFloor / createVolcanoFloorOverlays
-  private createFloorDarkenOverlay(darkenAlpha: number): void {
-    const overlay = this.add.rectangle(
-      PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH / 2,
-      PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT / 2,
-      PLAY_AREA_WIDTH,
-      PLAY_AREA_HEIGHT,
-      0x000000,
-      darkenAlpha,
-    )
-    // 生成順で床の直後に追加しているため、キャラや弾より下に表示される
-    overlay.setDepth(0)
-  }
-
-  // 役割: 床タイルを敷き詰めた1枚絵テクスチャを作って表示する
-  // タイルシートは縦に5色。Stage 1 = 一番上の色、Stage 2 = 2番目... と順に使う
-  // withForestDetails が true のときは枝・草・葉の装飾をランダムに散らす
-  // forceBlockIndex を渡すと、ステージ番号ではなく指定色ブロックを使う（Volcano 用）
-  private createTiledFloor(
-    withForestDetails: boolean,
-    forceBlockIndex?: number,
-  ): void {
-    let blockIndex = Math.min(this.stageNumber - 1, PLAINS_FLOOR_BLOCK_COUNT - 1)
-    if (forceBlockIndex !== undefined) {
-      blockIndex = Math.min(
-        Math.max(0, forceBlockIndex),
-        PLAINS_FLOOR_BLOCK_COUNT - 1,
-      )
-    }
-    const textureKey = `${this.areaId}-floor-stage-${blockIndex}`
-
-    if (!this.textures.exists(textureKey)) {
-      const canvasTexture = this.textures.createCanvas(
-        textureKey,
-        PLAY_AREA_WIDTH,
-        PLAY_AREA_HEIGHT,
-      )
-      if (canvasTexture === null) {
-        // 万一テクスチャが作れなければ従来の単色床にフォールバック
-        const floorColor = getStageFloorColor(this.stageNumber, this.areaStageCount)
-        this.add.rectangle(
-          PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH / 2,
-          PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT / 2,
-          PLAY_AREA_WIDTH,
-          PLAY_AREA_HEIGHT,
-          floorColor,
-        )
-        return
-      }
-
-      const context = canvasTexture.getContext()
-      const sourceImage = this.textures
-        .get(PLAINS_FLOOR_TILESET_KEY)
-        .getSourceImage() as HTMLImageElement
-      // ドット絵がぼやけないよう補間を切る
-      context.imageSmoothingEnabled = false
-
-      // 右側のベタ塗りタイルの、完全に不透明な内側だけを使う（黒透けを防ぐ）
-      const sourceY =
-        blockIndex * PLAINS_FLOOR_BLOCK_HEIGHT + PLAINS_FLOOR_SOURCE_CROP_Y_OFFSET
-      // Python: for y in range(0, H, size): for x in range(0, W, size): に相当
-      for (let y = 0; y < PLAY_AREA_HEIGHT; y += PLAINS_FLOOR_TILE_DISPLAY_SIZE) {
-        for (let x = 0; x < PLAY_AREA_WIDTH; x += PLAINS_FLOOR_TILE_DISPLAY_SIZE) {
-          context.drawImage(
-            sourceImage,
-            PLAINS_FLOOR_SOURCE_CROP_X,
-            sourceY,
-            PLAINS_FLOOR_SOURCE_CROP_SIZE,
-            PLAINS_FLOOR_SOURCE_CROP_SIZE,
-            x,
-            y,
-            PLAINS_FLOOR_TILE_DISPLAY_SIZE,
-            PLAINS_FLOOR_TILE_DISPLAY_SIZE,
-          )
-        }
-      }
-
-      if (withForestDetails) {
-        this.drawForestDetailsOnFloor(context)
-      }
-      canvasTexture.refresh()
-    }
-
-    const floorImage = this.add.image(PLAY_AREA_ORIGIN_X, PLAY_AREA_ORIGIN_Y, textureKey)
-    floorImage.setOrigin(0, 0)
-  }
-
-  // 役割: 床テクスチャの上に、枝・小枝・草・葉の装飾をランダムに描く
-  // 呼び出し元: createTiledFloor（Forest のみ）
-  // 格子ごとに確率で1つ置き、位置を少しずらして自然に見せる
-  private drawForestDetailsOnFloor(context: CanvasRenderingContext2D): void {
-    const detailSource = this.textures
-      .get(FLOOR_DETAIL_TILESET_KEY)
-      .getSourceImage() as HTMLImageElement
-
-    for (let y = 0; y < PLAY_AREA_HEIGHT; y += FOREST_DETAIL_GRID_SIZE) {
-      for (let x = 0; x < PLAY_AREA_WIDTH; x += FOREST_DETAIL_GRID_SIZE) {
-        if (Math.random() >= FOREST_DETAIL_CHANCE) {
-          continue
-        }
-
-        const tile =
-          FOREST_DETAIL_TILES[Phaser.Math.Between(0, FOREST_DETAIL_TILES.length - 1)]
-        // 格子内でランダムにずらす（はみ出さない範囲）
-        const maxOffset = FOREST_DETAIL_GRID_SIZE - FLOOR_DETAIL_DISPLAY_SIZE
-        const offsetX = Phaser.Math.Between(0, maxOffset)
-        const offsetY = Phaser.Math.Between(0, maxOffset)
-
-        context.drawImage(
-          detailSource,
-          tile.column * FLOOR_DETAIL_TILE_SIZE,
-          tile.row * FLOOR_DETAIL_TILE_SIZE,
-          FLOOR_DETAIL_TILE_SIZE,
-          FLOOR_DETAIL_TILE_SIZE,
-          x + offsetX,
-          y + offsetY,
-          FLOOR_DETAIL_DISPLAY_SIZE,
-          FLOOR_DETAIL_DISPLAY_SIZE,
-        )
-      }
     }
   }
 
@@ -1357,13 +1102,14 @@ export class GameScene extends Phaser.Scene {
       this.playerBulletGroup,
       this.enemyGroup,
       (bulletObject, enemyObject) => {
-        this.handleBulletEnemyHit(
+        handleBulletEnemyHit(
+          this.buildPlayerBulletCombatContext(),
           bulletObject as PlayerBulletVisual,
           enemyObject as Phaser.GameObjects.Rectangle,
         )
       },
       (bulletObject, enemyObject) => {
-        return this.canPlayerBulletHitEnemy(
+        return canPlayerBulletHitEnemy(
           bulletObject as PlayerBulletVisual,
           enemyObject as Phaser.GameObjects.Rectangle,
         )
@@ -1614,61 +1360,6 @@ export class GameScene extends Phaser.Scene {
     )
   }
 
-  // 役割: 切り株が一定間隔でキノコを出す
-  private updateStumpMushroomSpawn(): void {
-    updateStumpMushroomSpawns(
-      this,
-      this.enemyGroup,
-      this.stageNumber,
-      this.areaStageCount,
-      this.time.now,
-    )
-  }
-
-  // 役割: 燃え木が 3〜5 秒ごとに火の精霊を出す
-  private updateBurningTreeSpiritFireSpawn(): void {
-    updateBurningTreeSpiritFireSpawns(
-      this,
-      this.enemyGroup,
-      this.stageNumber,
-      this.areaStageCount,
-      this.time.now,
-    )
-  }
-
-  // 役割: 枝が一定間隔でカブトムシを出す
-  private updateBranchBeetleSpawn(): void {
-    updateBranchBeetleSpawns(
-      this,
-      this.enemyGroup,
-      this.stageNumber,
-      this.areaStageCount,
-      this.time.now,
-    )
-  }
-
-  // 役割: 墓石が一定間隔で切り株と枝を出す
-  private updateGravestoneBeetleSpawn(): void {
-    updateGravestoneBeetleSpawns(
-      this,
-      this.enemyGroup,
-      this.stageNumber,
-      this.areaStageCount,
-      this.time.now,
-    )
-  }
-
-  // 役割: 混沌エレメンタルが 2 秒ごとに下位ステージの敵を出す
-  private updateChaosElementalSpawn(): void {
-    updateChaosElementalSpawns(
-      this,
-      this.enemyGroup,
-      this.stageNumber,
-      this.areaStageCount,
-      this.time.now,
-    )
-  }
-
   // 役割: 最寄り敵へ自動射撃を試み、撃てたら SE を鳴らす
   // 呼び出し元: update（isStageActive）
   // 呼び出し先: tryFireBulletAtNearestEnemy, gameAudioSystem.playPlayerFire
@@ -1676,6 +1367,8 @@ export class GameScene extends Phaser.Scene {
     const bulletStyle = resolvePlayerBulletStyle(
       this.currentMoveLevel,
       this.currentMagnetLevel,
+      this.currentXpBonusLevel,
+      this.areaId,
     )
     const didFire = tryFireBulletAtNearestEnemy(
       this,
@@ -1694,315 +1387,7 @@ export class GameScene extends Phaser.Scene {
     )
 
     if (didFire) {
-      this.gameAudioSystem.playPlayerFire()
-    }
-  }
-
-  // 役割: overlap の processCallback。貫通上限・同一敵への二重ヒットを命中前に弾く
-  // 呼び出し元: setupBulletEnemyOverlap の processCallback
-  // 呼び出し先: なし（弾・敵の getData を読むだけ）
-  private canPlayerBulletHitEnemy(
-    bullet: PlayerBulletVisual,
-    enemy: Phaser.GameObjects.Rectangle,
-  ): boolean {
-    if (!bullet.active || !enemy.active) {
-      return false
-    }
-    if (enemy.getData('isDefeated') === true) {
-      return false
-    }
-
-    const hitsLeft = bullet.getData('hitsLeft') as number
-    if (typeof hitsLeft !== 'number' || hitsLeft <= 0) {
-      return false
-    }
-
-    const enemyUid = enemy.getData('enemyUid') as number
-    if (typeof enemyUid !== 'number') {
-      return true
-    }
-
-    const hitEnemyUidsRaw = bullet.getData('hitEnemyUids')
-    if (!Array.isArray(hitEnemyUidsRaw)) {
-      return true
-    }
-
-    // すでに命中した敵 UID なら false（同じ敵に何度も当たらない）
-    for (let index = 0; index < hitEnemyUidsRaw.length; index++) {
-      if (hitEnemyUidsRaw[index] === enemyUid) {
-        return false
-      }
-    }
-
-    return true
-  }
-
-  // 役割: 特殊敵の防御条件を満たしているか判定する
-  private canBulletDamageSpecialEnemy(
-    bullet: PlayerBulletVisual,
-    enemy: Phaser.GameObjects.Rectangle,
-    bulletDamage: number,
-  ): boolean {
-    const enemyKind = enemy.getData('enemyKind') as string
-
-    if (enemyKind === 'armored') {
-      const minimumDamage = enemy.getData('minimumDamage') as number
-      return typeof minimumDamage !== 'number' || bulletDamage >= minimumDamage
-    }
-
-    if (enemyKind !== 'shielded') {
-      return true
-    }
-
-    const flightVx = bullet.getData('flightVx') as number
-    const flightVy = bullet.getData('flightVy') as number
-    if (typeof flightVx !== 'number' || typeof flightVy !== 'number') {
-      return false
-    }
-
-    // 盾敵の正面は常にプレイヤー方向。弾の進行方向との内積で正面攻撃を判定する
-    const frontX = this.player.x - enemy.x
-    const frontY = this.player.y - enemy.y
-    const frontLength = Math.sqrt(frontX * frontX + frontY * frontY)
-    const flightLength = Math.sqrt(flightVx * flightVx + flightVy * flightVy)
-    if (frontLength <= 0 || flightLength <= 0) {
-      return false
-    }
-
-    const dot =
-      (flightVx / flightLength) * (frontX / frontLength) +
-      (flightVy / flightLength) * (frontY / frontLength)
-    return dot > ENEMY_SHIELD_FRONT_DOT_THRESHOLD
-  }
-
-  // 役割: プレイヤー弾が敵に当たったときのダメージ・撃破・爆破・貫通処理
-  // 呼び出し元: setupBulletEnemyOverlap の overlap コールバック（物理ステップ内）
-  // 呼び出し先: applyDamageToEnemy, CombatFeedback*, applyHitBlastIfUnlocked,
-  //             trySpawnCoinAt, gameAudioSystem など
-  private handleBulletEnemyHit(
-    bullet: PlayerBulletVisual,
-    enemy: Phaser.GameObjects.Rectangle,
-  ): void {
-    if (!bullet.active || !enemy.active || this.isLevelUpPaused || this.isResumeCountdownActive) {
-      return
-    }
-
-    // 弾の生成フレームは無視（発射瞬間の誤ヒット・撃破音防止）
-    const collisionAge = bullet.getData('collisionAge') as number
-    if (typeof collisionAge !== 'number' || collisionAge < 1) {
-      return
-    }
-
-    // 弾と敵が入れ替わって渡された場合に備える（damage / hp の型で確認）
-    const originalDamage = bullet.getData('damage')
-    const enemyHp = enemy.getData('hp')
-    if (typeof originalDamage !== 'number' || typeof enemyHp !== 'number') {
-      return
-    }
-
-    // すでに倒れた敵には音もダメージも出さない
-    if (enemy.getData('isDefeated') === true || enemyHp <= 0) {
-      return
-    }
-
-    const hitEnemyUidsRaw = bullet.getData('hitEnemyUids')
-    const hitEnemyUids: number[] = Array.isArray(hitEnemyUidsRaw)
-      ? (hitEnemyUidsRaw as number[])
-      : []
-    const effectiveDamage = calculatePierceHitDamage(
-      originalDamage,
-      hitEnemyUids.length,
-    )
-
-    // 灰騎士など: 残りブロック回数があればダメージなし（シールドマーク）
-    const remainingBlockHits = enemy.getData('remainingBlockHits') as number
-    if (typeof remainingBlockHits === 'number' && remainingBlockHits > 0) {
-      enemy.setData('remainingBlockHits', remainingBlockHits - 1)
-      playDamageNumber(this, enemy.x, enemy.y - 8, 0)
-      playEnemyBlockedShield(this, enemy)
-      this.gameAudioSystem.playEnemyBlocked()
-      recyclePlayerBullet(bullet)
-      return
-    }
-
-    // 装甲不足または盾の正面からの攻撃は、0ダメージで弾を消す
-    if (!this.canBulletDamageSpecialEnemy(bullet, enemy, effectiveDamage)) {
-      playDamageNumber(this, enemy.x, enemy.y - 8, 0)
-      playEnemyBlockedShield(this, enemy)
-      this.gameAudioSystem.playEnemyBlocked()
-      recyclePlayerBullet(bullet)
-      return
-    }
-
-    // 命中済み UID を記録（同じ敵への再ヒット防止）
-    const enemyUid = enemy.getData('enemyUid') as number
-    if (typeof enemyUid === 'number') {
-      hitEnemyUids.push(enemyUid)
-      bullet.setData('hitEnemyUids', hitEnemyUids)
-    }
-
-    // 残り命中を1減らす。0 になったらこの敵が最後（2体目 / 3体目 …）
-    let hitsLeft = bullet.getData('hitsLeft') as number
-    if (typeof hitsLeft !== 'number') {
-      hitsLeft = 1
-    }
-    hitsLeft = hitsLeft - 1
-    bullet.setData('hitsLeft', hitsLeft)
-
-    const enemyX = enemy.x
-    const enemyY = enemy.y
-    const isDead = applyDamageToEnemy(enemy, effectiveDamage)
-
-    // ダメージ数字をぴょんと飛ばす（撃破時も表示）
-    playDamageNumber(this, enemyX, enemyY - 8, effectiveDamage)
-
-    // 弾の種類でヒット演出と音を分ける
-    const bulletStyle = bullet.getData('bulletStyle') as string
-    if (bulletStyle === 'powerOrb') {
-      playEnergyOrbHit(this, enemyX, enemyY, originalDamage)
-      this.gameAudioSystem.playEnergyOrbHit()
-    } else if (bulletStyle === 'waterOrb') {
-      playWaterOrbHit(this, enemyX, enemyY, originalDamage)
-      this.gameAudioSystem.playWaterOrbHit()
-    } else {
-      const slashDirX = bullet.getData('flightVx') as number
-      const slashDirY = bullet.getData('flightVy') as number
-      playWindSlashHit(this, enemyX, enemyY, slashDirX, slashDirY, originalDamage)
-      this.gameAudioSystem.playEnemyHit()
-    }
-    // 当たった敵へのホーミングは解除（貫通後に戻ってこないようにする）
-    bullet.setData('homingTarget', null)
-
-    if (isDead) {
-      recordEnemyDefeated()
-      clearLockedTargetIfEnemyDestroyed(this.attackState, enemy)
-      const xpDropMultiplier = getEnemyXpDropMultiplier(enemy)
-      this.gameAudioSystem.playEnemyDefeat()
-      playEnemyDefeatFadeOut(this, enemy, () => {
-        this.spawnExperienceCoinsAt(enemyX, enemyY, xpDropMultiplier)
-      })
-    }
-
-    // 範囲爆破スキル: 命中瞬間に周囲へ円ダメージ（本体は除外）
-    this.applyHitBlastIfUnlocked(enemy, enemyX, enemyY, effectiveDamage)
-
-    // 跳弾スキル: 命中済みではない最寄り敵へ向きを変える
-    if (hitsLeft > 0 && this.tryRicochetBullet(bullet, hitEnemyUids, enemyX, enemyY)) {
-      return
-    }
-
-    // 命中上限に達したら弾を消す（1回目の貫通取得なら2体目で消滅）
-    if (hitsLeft <= 0) {
-      recyclePlayerBullet(bullet)
-      return
-    }
-
-    // 貫通後も飛行速度を維持する（overlap で速度が乱れることがあるため再設定）
-    const flightVx = bullet.getData('flightVx') as number
-    const flightVy = bullet.getData('flightVy') as number
-    if (
-      bullet.body !== null &&
-      typeof flightVx === 'number' &&
-      typeof flightVy === 'number'
-    ) {
-      const body = bullet.body as Phaser.Physics.Arcade.Body
-      body.setVelocity(flightVx, flightVy)
-    }
-  }
-
-  // 役割: 残り跳弾回数があれば、命中点から最寄りの未命中敵へ弾を向け直す
-  private tryRicochetBullet(
-    bullet: PlayerBulletVisual,
-    hitEnemyUids: number[],
-    hitX: number,
-    hitY: number,
-  ): boolean {
-    let ricochetsLeft = bullet.getData('ricochetsLeft') as number
-    if (typeof ricochetsLeft !== 'number' || ricochetsLeft <= 0) {
-      return false
-    }
-
-    const nextEnemy = findNearestUnhitEnemyInRange(
-      this.enemyGroup,
-      hitX,
-      hitY,
-      RICOCHET_SEARCH_RADIUS,
-      hitEnemyUids,
-    )
-    if (nextEnemy === null) {
-      return false
-    }
-
-    const didRedirect = redirectPlayerBulletToward(
-      bullet,
-      nextEnemy.x,
-      nextEnemy.y,
-      nextEnemy,
-    )
-    if (!didRedirect) {
-      return false
-    }
-
-    ricochetsLeft = ricochetsLeft - 1
-    bullet.setData('ricochetsLeft', ricochetsLeft)
-    return true
-  }
-
-  // 役割: 爆破レベルがあれば、命中点の周囲の敵にダメージを与える
-  // 呼び出し元: handleBulletEnemyHit
-  // 呼び出し先: calculateBlast*, HitBlastSystem, 撃破演出一式
-  private applyHitBlastIfUnlocked(
-    hitEnemy: Phaser.GameObjects.Rectangle,
-    centerX: number,
-    centerY: number,
-    bulletDamage: number,
-  ): void {
-    const blastRadius = calculateBlastRadius(this.currentBlastLevel)
-    const blastDamage = calculateBlastDamage(this.currentBlastLevel, bulletDamage)
-    if (blastRadius <= 0 || blastDamage <= 0) {
-      return
-    }
-
-    playHitBlastRing(this, centerX, centerY, blastRadius)
-    const blastResult = applyHitBlastAroundPoint(
-      this.enemyGroup,
-      centerX,
-      centerY,
-      blastRadius,
-      blastDamage,
-      hitEnemy,
-    )
-    const killedByBlast = blastResult.killedEnemies
-
-    for (let index = 0; index < killedByBlast.length; index++) {
-      const killed = killedByBlast[index]
-      recordEnemyDefeated()
-      clearLockedTargetIfEnemyDestroyed(this.attackState, killed.enemy)
-      const xpDropMultiplier = getEnemyXpDropMultiplier(killed.enemy)
-      playDamageNumber(this, killed.x, killed.y - 8, killed.damage)
-      this.gameAudioSystem.playEnemyDefeat()
-      playEnemyDefeatFadeOut(this, killed.enemy, () => {
-        this.spawnExperienceCoinsAt(killed.x, killed.y, xpDropMultiplier)
-      })
-    }
-  }
-
-  // 役割: XP Bonusのレベルに応じた枚数の「1 XPコイン」を敵の周囲へ落とす
-  private spawnExperienceCoinsAt(
-    enemyX: number,
-    enemyY: number,
-    xpDropMultiplier: number = 1,
-  ): void {
-    const safeMultiplier = Math.max(1, Math.floor(xpDropMultiplier))
-    const baseCoinCount = calculateXpCoinDropCount(this.currentXpBonusLevel)
-    const coinCount = baseCoinCount * safeMultiplier
-    const spreadRadius = coinCount > 1 ? 8 : 0
-
-    for (let index = 0; index < coinCount; index++) {
-      const angle = (Math.PI * 2 * index) / coinCount
-      const coinX = enemyX + Math.cos(angle) * spreadRadius
-      const coinY = enemyY + Math.sin(angle) * spreadRadius
-      trySpawnCoinAt(this, this.coinGroup, coinX, coinY)
+      this.gameAudioSystem.playPlayerFire(bulletStyle)
     }
   }
 
@@ -2237,7 +1622,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.waitingToShowStageClear) {
-      this.showStageClearResult()
+      showStageClearResult(this.buildStageClearFlowContext())
     }
     // 通常プレイ中はポーズも再開カウントダウンもしない
   }
@@ -2499,23 +1884,26 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Move と Speed の低い方のレベルを Pierce にする。
-   * 両方とも Lv2 以上のときだけ有効。
-   * 例: 2&2→Pierce2 / 3&3→Pierce3 / 2&5→Pierce2
+   * Move と Speed から Pierce を同期する。
+   * 両方とも Lv2 以上のとき: Pierce = 低い方 − 1
+   * 例: 2&2→Pierce1 / 3&3→Pierce2 / 2&5→Pierce1
    * 戻り値: firstUnlock=初めて付与 / upgraded=レベル上昇 / none=変化なし
    */
   private syncPierceLevelFromMoveAndSpeed(): 'firstUnlock' | 'upgraded' | 'none' {
-    const lowerLevel = Math.min(this.currentMoveLevel, this.currentFireRateLevel)
-    if (lowerLevel < PIERCE_AUTO_SYNC_MIN_LEVEL) {
+    const targetPierce = calculatePierceLevelFromMoveAndSpeed(
+      this.currentMoveLevel,
+      this.currentFireRateLevel,
+    )
+    if (targetPierce <= PIERCE_LEVEL_START) {
       return 'none'
     }
 
-    if (this.currentPierceLevel >= lowerLevel) {
+    if (this.currentPierceLevel >= targetPierce) {
       return 'none'
     }
 
     const wasLocked = this.currentPierceLevel <= PIERCE_LEVEL_START
-    this.currentPierceLevel = lowerLevel
+    this.currentPierceLevel = targetPierce
     this.pickedPierceThisRun = true
     unlockAchievement(ACHIEVEMENT_ID_PIERCE_UNLOCK)
     this.refreshPlayerStatsHud()
@@ -2602,7 +1990,7 @@ export class GameScene extends Phaser.Scene {
 
     // クリア前吸引で得た XP のレベルアップが終わったら結果 UI へ
     if (this.waitingToShowStageClear) {
-      this.showStageClearResult()
+      showStageClearResult(this.buildStageClearFlowContext())
       return
     }
 
@@ -2708,6 +2096,16 @@ export class GameScene extends Phaser.Scene {
     return true
   }
 
+  // 役割: ノックバック開始時、マウス絶対追従が古い位置へ引き戻さないよう一時停止する
+  private suspendMouseFollowAfterKnockback(): void {
+    const pointer = this.input.activePointer
+    suspendAbsoluteFollowUntilPointerMoves(
+      this.movementState,
+      pointer.worldX,
+      pointer.worldY,
+    )
+  }
+
   // 役割: 敵との体当たりダメージ・ノックバック・死亡判定
   // 呼び出し元: setupPlayerEnemyOverlap のコールバック
   // 呼び出し先: PlayerDamageSystem*, handlePlayerDeath
@@ -2730,6 +2128,7 @@ export class GameScene extends Phaser.Scene {
       this.playerBody,
       this.damageState,
     )
+    this.suspendMouseFollowAfterKnockback()
     this.gameAudioSystem.playPlayerHurt()
     playPlayerHurtFlash(this)
 
@@ -2784,6 +2183,7 @@ export class GameScene extends Phaser.Scene {
       this.playerBody,
       this.damageState,
     )
+    this.suspendMouseFollowAfterKnockback()
     recycleEnemyBullet(bullet)
     this.gameAudioSystem.playPlayerHurt()
     playPlayerHurtFlash(this)
@@ -2828,359 +2228,120 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
-  // 役割: 時間切れ（生存）または全ウェーブ後に敵ゼロでクリア開始条件を見る
-  // 呼び出し元: update（isStageActive）
-  // 呼び出し先: beginStageClearSequence
-  private checkStageClearConditions(): void {
-    if (
-      this.isStageSettled ||
-      this.isPlayerDead ||
-      this.isStageClearBannerPlaying ||
-      this.isClearCoinVacuum ||
-      this.waitingToShowStageClear ||
-      this.isLevelUpPaused ||
-      this.isResumeCountdownActive ||
-      this.currentHp <= 0
-    ) {
-      return
-    }
-
-    const timeUp = this.remainingSeconds <= 0
-    const allEnemiesDefeated =
-      this.waveSystem.areAllSpawnsFinished() && countActiveEnemies(this.enemyGroup) === 0
-    const earlyClear = !timeUp && allEnemiesDefeated
-
-    if (!timeUp && !allEnemiesDefeated) {
-      return
-    }
-
-    this.beginStageClearSequence(earlyClear)
-  }
-
-  // 役割: クリア演出の入口。順番: ①大きなクリア文字 → ②コイン吸引 → ③レベルアップ → ④結果 UI
-  // 呼び出し元: checkStageClearConditions
-  // 呼び出し先: playStageClearBanner → beginClearCoinVacuum, playStageClear
-  private beginStageClearSequence(didClearAllEnemiesBeforeTimeUp: boolean): void {
-    if (this.isStageClearBannerPlaying || this.isStageSettled) {
-      return
-    }
-
-    this.isStageClearBannerPlaying = true
-    this.isStageActive = false
-    this.waveSystem.stopWaves()
-    destroyAllEnemyBullets(this.enemyBulletGroup)
-    // マウス追従モードは消さない（次ステージへ isKeyboardMode を正しく渡すため）
-    this.stopAllMovingBodies({ keepRelativeFollow: true })
-
-    if (this.levelUpChoiceSystem.isOpen()) {
-      this.levelUpChoiceSystem.hide()
-      this.isLevelUpPaused = false
-      this.time.paused = false
-    }
-    this.isResumeCountdownActive = false
-    this.isStartCountdownActive = false
-
-    // 戦闘 BGM を止めて、バナー表示と同時にクリア音を鳴らす。
-    // エリア最終: AREA CLEAR! 表示と同時に LevelUp2／途中ステージ: STAGE CLEAR! と同時に通常クリア音
-    this.gameAudioSystem.stopBgm()
-    const isGameClear = isFinalStage(this.stageNumber, this.areaStageCount)
-    if (isGameClear) {
-      this.gameAudioSystem.playAreaClear()
-    } else {
-      this.gameAudioSystem.playStageClear()
-    }
-
-    playStageClearBanner(this, isGameClear, () => {
-      if (didClearAllEnemiesBeforeTimeUp) {
-        playAllEnemiesClearBanner(this, () => {
-          const clearXpMultiplier = calculateClearXpBonusMultiplier(
-            this.currentXpBonusLevel,
-          )
-          const baseBonusXp = ALL_ENEMIES_CLEAR_BONUS_XP * clearXpMultiplier
-          const timeBonusXp = calculateAllEnemiesClearTimeBonusXp(
-            baseBonusXp,
-            this.remainingSeconds,
-          )
-          const totalBonusXp = baseBonusXp + timeBonusXp
-          const hasNoDamageGoldBonus = !this.tookDamageThisStage
-          playAllEnemiesRewardBanner(
-            this,
-            this.remainingSeconds,
-            totalBonusXp,
-            hasNoDamageGoldBonus,
-            () => {
-              this.awardStageClearRewards(true, baseBonusXp, timeBonusXp)
-            },
-          )
-        })
-        return
-      }
-
-      this.awardStageClearRewards(false, 0, 0)
-    })
-  }
-
-  /**
-   * ステージクリア報酬を保存し、中央から各HUD表示へキラキラを飛ばす。
-   * 全敵撃破時: 基本ボーナスは即時 XP、時間ボーナスはコインとして落として吸引で取得。
-   */
-  private awardStageClearRewards(
-    didClearAllEnemiesBeforeTimeUp: boolean,
-    awardedAllEnemiesXp: number,
-    timeBonusXp: number,
-  ): void {
-    if (didClearAllEnemiesBeforeTimeUp) {
-      this.totalXp = this.totalXp + awardedAllEnemiesXp
-      playXpGainVisualEffect(
-        this,
-        this.hudSystem,
-        GAME_WIDTH / 2,
-        GAME_HEIGHT / 2,
-        awardedAllEnemiesXp,
-      )
-      this.animateXpBarTo(this.totalXp)
-
-      // 残り時間ボーナス分のコインを中央付近の上から落とす（吸引で床コインと同じタイミングで取得）
-      if (timeBonusXp > 0) {
-        const fallHeight =
-          PLAINS_FLOOR_TILE_DISPLAY_SIZE * CLEAR_TIME_BONUS_COIN_FALL_TILES
-        spawnClearTimeBonusCoinRain(
-          this,
-          this.coinGroup,
-          PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH / 2,
-          PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT / 2,
-          timeBonusXp,
-          fallHeight,
-          CLEAR_TIME_BONUS_COIN_SPREAD_RADIUS,
-          CLEAR_TIME_BONUS_COIN_FALL_MS,
-        )
-      }
-    }
-
-    const finalStage = isFinalStage(this.stageNumber, this.areaStageCount)
-    const noDamageAllEnemiesClear =
-      didClearAllEnemiesBeforeTimeUp && !this.tookDamageThisStage
-    const awardedGold = calculateStageClearGold(
-      this.areaId,
-      finalStage,
-      noDamageAllEnemiesClear,
-    )
-    // ゴールドは即時加算せず、上から落として吸引時に取得する
-    if (awardedGold > 0) {
-      const goldFallHeight =
-        PLAINS_FLOOR_TILE_DISPLAY_SIZE * CLEAR_GOLD_COIN_FALL_TILES
-      spawnClearGoldCoinRain(
-        this,
-        this.goldCoinGroup,
-        PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH / 2,
-        PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT / 2,
-        awardedGold,
-        goldFallHeight,
-        CLEAR_GOLD_COIN_SPREAD_RADIUS,
-        CLEAR_GOLD_COIN_FALL_MS,
-      )
-    }
-
-    const rewardEffectDurationMs = Math.max(
-      XP_GAIN_EFFECT_DURATION_MS,
-      CLEAR_TIME_BONUS_COIN_FALL_MS + 120,
-      CLEAR_GOLD_COIN_FALL_MS + 120,
-    )
-    this.time.delayedCall(rewardEffectDurationMs + 150, () => {
-      this.isStageClearBannerPlaying = false
-      this.beginClearCoinVacuum()
-    })
-  }
-
-  // 役割: 落ちているコインを全画面から集める吸引フェーズを開始する
-  // 呼び出し元: beginStageClearSequence のバナー完了コールバック
-  // 呼び出し先: stopCombatBodiesKeepCoins / finishClearCoinVacuum（コイン0のとき）
-  private beginClearCoinVacuum(): void {
-    if (this.isClearCoinVacuum || this.isStageSettled) {
-      return
-    }
-
-    this.isClearCoinVacuum = true
-    this.isStageActive = false
-    this.clearCoinVacuumEmptySinceMs = 0
-    this.stopCombatBodiesKeepCoins()
-
-    // コインもゴールドもなければ次（レベルアップ or 結果 UI）へ
-    if (
-      countActiveCoins(this.coinGroup) === 0 &&
-      countActiveGoldCoins(this.goldCoinGroup) === 0
-    ) {
-      this.finishClearCoinVacuum()
-    }
-  }
-
-  // 役割: クリア吸引中の毎フレーム更新（コイン・ゴールドだけ動かし、空になって少し待って終了）
-  // 呼び出し元: update（isClearCoinVacuum）
-  // 呼び出し先: updateAllCoinsVacuumMovement, stepArcadePhysicsOnce, finishClearCoinVacuum
-  private updateClearCoinVacuum(): void {
-    this.playerBody.setVelocity(0, 0)
-    updateAllCoinsVacuumMovement(this.coinGroup, this.player.x, this.player.y)
-    updateAllGoldCoinsVacuumMovement(
-      this.goldCoinGroup,
-      this.player.x,
-      this.player.y,
-    )
-    this.updateHudDisplay()
-
-    stepArcadePhysicsOnce(this.arcadeWorld, this.time.now, this.game.loop.delta)
-    updateAllEnemyHpBars(this.enemyGroup)
-
-    if (
-      countActiveCoins(this.coinGroup) > 0 ||
-      countActiveGoldCoins(this.goldCoinGroup) > 0
-    ) {
-      this.clearCoinVacuumEmptySinceMs = 0
-      return
-    }
-
-    // XP バー演出が少し見えるよう、空になってから短く待つ
-    if (this.clearCoinVacuumEmptySinceMs === 0) {
-      this.clearCoinVacuumEmptySinceMs = this.time.now
-      return
-    }
-
-    if (this.time.now - this.clearCoinVacuumEmptySinceMs < STAGE_CLEAR_VACUUM_SETTLE_MS) {
-      return
-    }
-
-    this.finishClearCoinVacuum()
-  }
-
-  // 役割: 吸引完了後、未処理レベルアップがあれば選択 UI、なければ結果 UI へ
-  // 呼び出し元: beginClearCoinVacuum / updateClearCoinVacuum
-  // 呼び出し先: beginNextLevelUpChoice または showStageClearResult
-  private finishClearCoinVacuum(): void {
-    this.isClearCoinVacuum = false
-    this.clearCoinVacuumEmptySinceMs = 0
-    this.stopAllMovingBodies({ keepRelativeFollow: true })
-    this.waitingToShowStageClear = true
-
-    // ②吸引完了 → ③レベルアップ → ④四角の結果 UI
-    this.syncPendingLevelUpsFromTotalXp()
-    if (this.pendingLevelUps > 0) {
-      this.beginNextLevelUpChoice()
-      return
-    }
-
-    this.showStageClearResult()
-  }
-
-  // 役割: ステージクリア／ゲームクリアの結果 UI を出し、次の遷移先を決める
-  // 呼び出し元: finishClearCoinVacuum / applyLevelUpChoice
-  // 呼び出し先: AchievementSystem（ゲームクリア時）, stageResultSystem.show,
-  //             scene.restart（次ステージ）または TitleScene
-  private showStageClearResult(): void {
-    if (this.isStageSettled) {
-      return
-    }
-
-    this.waitingToShowStageClear = false
-    this.isStageSettled = true
-    this.isStageActive = false
-    this.stopAllMovingBodies({ keepRelativeFollow: true })
-    this.time.paused = true
-
-    const isGameClear = isFinalStage(this.stageNumber, this.areaStageCount)
-
-    recordStageCleared()
-
-    // ロック解除はゲームクリア時だけ判定する（途中ステージでは解除しない）
-    // ただし Shop は Stage1 クリアのゴールド取得で開くので、そのときは結果画面に出す
-    // （タイトルに Shop を出していないあいだは Shop 解放案内も出さない）
-    let unlockLines: string[] = []
-    if (TITLE_SHOW_SHOP_AND_SEAL && this.pendingShopUnlockNotify) {
-      unlockLines = formatShopUnlockNotificationLines()
-      this.pendingShopUnlockNotify = false
-    } else if (this.pendingShopUnlockNotify) {
-      this.pendingShopUnlockNotify = false
-    }
-    if (isGameClear) {
-      recordGameClear()
-      clearRunProgress()
-      // 実績解放を先に行う（後で markAreaCleared すると、旧セーブ移行が
-      // 「エリアクリア済み＝すでに実績解放済み」と誤判定して通知が出ない）
-      const newlyUnlocked = evaluateAndUnlockGameClearAchievements({
-        areaId: this.areaId,
-        tookDamageThisRun: this.tookDamageThisRun,
-        pickedPowerThisRun: this.pickedPowerThisRun,
-      })
-      unlockLines = unlockLines.concat(formatUnlockNotificationLines(newlyUnlocked))
-      // 初めてそのエリアをクリアしたときだけ、次エリア解放を結果画面に出す
-      const isFirstTimeAreaClear = markAreaCleared(this.areaId)
-      if (isFirstTimeAreaClear) {
-        const areaUnlockLines = formatAreaUnlockNotificationLines(this.areaId)
-        const maxHpBonusLines = formatAreaClearMaxHpBonusLines(this.areaId)
-        // エリア解放 → Max HP ボーナス → スキル解放の順で見せる
-        unlockLines = areaUnlockLines.concat(maxHpBonusLines).concat(unlockLines)
-      }
-      this.hudSystem.refreshUnlockStatus()
-    }
-
-    if (isGameClear) {
-      this.stageResultSystem.show(
-        'gameClear',
-        this.stageNumber,
-        () => {
-          this.time.paused = false
-          this.gameAudioSystem.stopAllSounds()
-          this.scene.start('TitleScene')
-        },
-        unlockLines,
-      )
-      return
-    }
-
-    const nextStageNumber = this.stageNumber + 1
-    const carriedProgress = this.createCarriedProgress()
-
-    this.stageResultSystem.show(
-      'clear',
-      this.stageNumber,
-      () => {
-        this.time.paused = false
-        // クリア BGM を止めて、次ステージで戦闘 BGM を再開する
-        this.gameAudioSystem.stopBgm()
-        this.scene.restart({
-          stageNumber: nextStageNumber,
-          carriedProgress,
-          areaId: this.areaId,
-          isKeyboardMode: this.movementState.isKeyboardMode,
-        })
+  // 役割: プレイヤー弾命中処理へ渡す文脈を組み立てる
+  private buildPlayerBulletCombatContext(): PlayerBulletCombatContext {
+    return {
+      scene: this,
+      playerX: this.player.x,
+      playerY: this.player.y,
+      enemyGroup: this.enemyGroup,
+      coinGroup: this.coinGroup,
+      attackState: this.attackState,
+      currentBlastLevel: this.currentBlastLevel,
+      currentXpBonusLevel: this.currentXpBonusLevel,
+      isLevelUpPaused: this.isLevelUpPaused,
+      isResumeCountdownActive: this.isResumeCountdownActive,
+      playEnemyBlocked: () => {
+        this.gameAudioSystem.playEnemyBlocked()
       },
-      unlockLines,
-    )
+      playBulletHit: (bulletStyle) => {
+        this.gameAudioSystem.playBulletHit(bulletStyle)
+      },
+      playEnemyDefeat: () => {
+        this.gameAudioSystem.playEnemyDefeat()
+      },
+    }
   }
 
-  // 役割: クリア吸引中はコインだけ動かすため、プレイヤー・敵・プレイヤー弾を止める
-  // 呼び出し元: beginClearCoinVacuum
-  // 呼び出し先: destroyAllEnemyBullets, body.setVelocity(0, 0)
-  private stopCombatBodiesKeepCoins(): void {
-    this.playerBody.setVelocity(0, 0)
-    destroyAllEnemyBullets(this.enemyBulletGroup)
-
-    const enemies = this.enemyGroup.getChildren()
-    for (let index = 0; index < enemies.length; index++) {
-      const enemy = enemies[index] as Phaser.GameObjects.Rectangle
-      if (!enemy.active || enemy.body === null) {
-        continue
-      }
-      const body = enemy.body as Phaser.Physics.Arcade.Body
-      body.setVelocity(0, 0)
-    }
-
-    const bullets = this.playerBulletGroup.getChildren()
-    for (let index = 0; index < bullets.length; index++) {
-      const bullet = bullets[index] as PlayerBulletVisual
-      if (!bullet.active || bullet.body === null) {
-        continue
-      }
-      const body = bullet.body as Phaser.Physics.Arcade.Body
-      body.setVelocity(0, 0)
+  // 役割: ステージクリア演出へ渡す文脈を組み立てる
+  private buildStageClearFlowContext(): StageClearFlowContext {
+    return {
+      scene: this,
+      stageNumber: this.stageNumber,
+      areaId: this.areaId,
+      areaStageCount: this.areaStageCount,
+      remainingSeconds: this.remainingSeconds,
+      currentHp: this.currentHp,
+      tookDamageThisStage: this.tookDamageThisStage,
+      tookDamageThisRun: this.tookDamageThisRun,
+      pickedPowerThisRun: this.pickedPowerThisRun,
+      currentXpBonusLevel: this.currentXpBonusLevel,
+      getIsStageSettled: () => this.isStageSettled,
+      setIsStageSettled: (value) => {
+        this.isStageSettled = value
+      },
+      getIsPlayerDead: () => this.isPlayerDead,
+      getIsStageClearBannerPlaying: () => this.isStageClearBannerPlaying,
+      setIsStageClearBannerPlaying: (value) => {
+        this.isStageClearBannerPlaying = value
+      },
+      getIsClearCoinVacuum: () => this.isClearCoinVacuum,
+      setIsClearCoinVacuum: (value) => {
+        this.isClearCoinVacuum = value
+      },
+      getWaitingToShowStageClear: () => this.waitingToShowStageClear,
+      setWaitingToShowStageClear: (value) => {
+        this.waitingToShowStageClear = value
+      },
+      getIsLevelUpPaused: () => this.isLevelUpPaused,
+      setIsLevelUpPaused: (value) => {
+        this.isLevelUpPaused = value
+      },
+      getIsResumeCountdownActive: () => this.isResumeCountdownActive,
+      setIsResumeCountdownActive: (value) => {
+        this.isResumeCountdownActive = value
+      },
+      setIsStartCountdownActive: (value) => {
+        this.isStartCountdownActive = value
+      },
+      setIsStageActive: (value) => {
+        this.isStageActive = value
+      },
+      getClearCoinVacuumEmptySinceMs: () => this.clearCoinVacuumEmptySinceMs,
+      setClearCoinVacuumEmptySinceMs: (value) => {
+        this.clearCoinVacuumEmptySinceMs = value
+      },
+      getTotalXp: () => this.totalXp,
+      setTotalXp: (value) => {
+        this.totalXp = value
+      },
+      getPendingLevelUps: () => this.pendingLevelUps,
+      getPendingShopUnlockNotify: () => this.pendingShopUnlockNotify,
+      setPendingShopUnlockNotify: (value) => {
+        this.pendingShopUnlockNotify = value
+      },
+      enemyGroup: this.enemyGroup,
+      coinGroup: this.coinGroup,
+      goldCoinGroup: this.goldCoinGroup,
+      playerBulletGroup: this.playerBulletGroup,
+      enemyBulletGroup: this.enemyBulletGroup,
+      player: this.player,
+      playerBody: this.playerBody,
+      arcadeWorld: this.arcadeWorld,
+      frameDelta: this.game.loop.delta,
+      nowMs: this.time.now,
+      waveSystem: this.waveSystem,
+      hudSystem: this.hudSystem,
+      stageResultSystem: this.stageResultSystem,
+      gameAudioSystem: this.gameAudioSystem,
+      levelUpChoiceSystem: this.levelUpChoiceSystem,
+      stopAllMovingBodies: (options) => {
+        this.stopAllMovingBodies(options)
+      },
+      animateXpBarTo: (totalXp) => {
+        this.animateXpBarTo(totalXp)
+      },
+      updateHudDisplay: () => {
+        this.updateHudDisplay()
+      },
+      beginNextLevelUpChoice: () => {
+        this.beginNextLevelUpChoice()
+      },
+      syncPendingLevelUpsFromTotalXp: () => {
+        this.syncPendingLevelUpsFromTotalXp()
+      },
+      createCarriedProgress: () => this.createCarriedProgress(),
+      getIsKeyboardMode: () => this.movementState.isKeyboardMode,
     }
   }
 }

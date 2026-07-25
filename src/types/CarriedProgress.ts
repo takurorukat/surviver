@@ -9,6 +9,8 @@ export type CarriedProgress = {
   currentMagnetLevel: number
   currentMagnetRadius: number
   maxHp: number
+  /** 前ステージをクリアした時点のHP。Ruinsでは次ステージにも引き継ぐ。 */
+  currentHp: number
   currentAttackIntervalMs: number
   currentAttackRange: number
   currentMoveSpeed: number

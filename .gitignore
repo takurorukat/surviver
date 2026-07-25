@@ -23,3 +23,30 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# SoftSynth audio backups (local restore only)
+public/assets/audio/_softsynth_backup/
+public/assets/audio/_audio_renderer.txt
+public/assets/audio/*_backup.ogg
+public/assets/audio/*_backup.mp3
+public/assets/audio/*_before_hum.ogg
+public/assets/audio/*_prev.ogg
+# 波形合成 SE の a/b/c 候補（regen_element_bullet_sfx.py --preview-pack）
+public/assets/audio/candidates/
+
+# Music generator: venv / SoundFont / 生成物はリポジトリに含めない（クローン・CI 軽量化）
+tools/game_music_generator/.venv/
+tools/game_music_generator/.venv*/
+tools/game_music_generator/output/
+tools/game_music_generator/input/
+tools/game_music_generator/soundfonts/
+tools/game_music_generator/soundfont_install/
+tools/game_music_generator/**/__pycache__/
+
+# Tone.js SFX designer（開発ツール専用・ゲーム本体には入れない）
+tools/sfx_designer/node_modules/
+tools/sfx_designer/output/
+tools/sfx_designer/backups/
+
+# リファクタ時のバックアップ（復旧用・ローカルのみ）
+**/_refactor_backup/

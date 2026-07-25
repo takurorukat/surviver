@@ -10,7 +10,16 @@ import {
   SFX_KEY_ENEMY_DEFEAT,
   SFX_KEY_ENEMY_HIT,
   SFX_KEY_ENEMY_BLOCKED,
-  SFX_KEY_PLAYER_FIRE,
+  SFX_KEY_PLAYER_FIRE_POWER,
+  SFX_KEY_PLAYER_HIT_POWER,
+  SFX_KEY_PLAYER_FIRE_WIND,
+  SFX_KEY_PLAYER_HIT_WIND,
+  SFX_KEY_PLAYER_FIRE_WATER,
+  SFX_KEY_PLAYER_HIT_WATER,
+  SFX_KEY_PLAYER_FIRE_FIRE,
+  SFX_KEY_PLAYER_HIT_FIRE,
+  SFX_KEY_PLAYER_FIRE_EARTH,
+  SFX_KEY_PLAYER_HIT_EARTH,
   SFX_KEY_GAME_OVER,
   SFX_KEY_COIN_PICKUP,
   SFX_KEY_PLAYER_HURT,
@@ -28,6 +37,7 @@ import {
   AREA_CLEAR_BGM_KEY,
   BGM_ENABLED_STORAGE_KEY,
 } from '../GameConstants'
+import type { PlayerBulletStyle } from '../objects/PlayerBullet'
 
 type ToneConfig = {
   key: string
@@ -101,10 +111,40 @@ export function isBgmEnabled(): boolean {
   return bgmEnabledPreference
 }
 
+function getFireSfxKeyForBulletStyle(bulletStyle: PlayerBulletStyle): string {
+  if (bulletStyle === 'windVortex') {
+    return SFX_KEY_PLAYER_FIRE_WIND
+  }
+  if (bulletStyle === 'waterOrb') {
+    return SFX_KEY_PLAYER_FIRE_WATER
+  }
+  if (bulletStyle === 'fireOrb') {
+    return SFX_KEY_PLAYER_FIRE_FIRE
+  }
+  if (bulletStyle === 'earthOrb') {
+    return SFX_KEY_PLAYER_FIRE_EARTH
+  }
+  return SFX_KEY_PLAYER_FIRE_POWER
+}
+
+function getHitSfxKeyForBulletStyle(bulletStyle: PlayerBulletStyle): string {
+  if (bulletStyle === 'windVortex') {
+    return SFX_KEY_PLAYER_HIT_WIND
+  }
+  if (bulletStyle === 'waterOrb') {
+    return SFX_KEY_PLAYER_HIT_WATER
+  }
+  if (bulletStyle === 'fireOrb') {
+    return SFX_KEY_PLAYER_HIT_FIRE
+  }
+  if (bulletStyle === 'earthOrb') {
+    return SFX_KEY_PLAYER_HIT_EARTH
+  }
+  return SFX_KEY_PLAYER_HIT_POWER
+}
+
 const TONE_CONFIGS: ToneConfig[] = [
-  // 敵撃破・ヒットは外部 OGG（Preload）を使う
-  { key: SFX_KEY_COIN_PICKUP, frequency: 880, durationSeconds: 0.08, volume: 0.2 },
-  { key: SFX_KEY_PLAYER_HURT, frequency: 140, durationSeconds: 0.15, volume: 0.3 },
+  // コイン／被弾も OGG（SoundFont レンダー）に統一。Web Audio 合成は使わない。
 ]
 
 function createToneBuffer(
@@ -514,8 +554,8 @@ export class GameAudioSystem {
     }
   }
 
-  playPlayerFire(): void {
-    this.playSound(SFX_KEY_PLAYER_FIRE)
+  playPlayerFire(bulletStyle: PlayerBulletStyle = 'powerOrb'): void {
+    this.playSound(getFireSfxKeyForBulletStyle(bulletStyle))
   }
 
   playGameOver(): void {
@@ -535,144 +575,26 @@ export class GameAudioSystem {
   }
 
   /**
-   * エネルギー弾（パワーオーブ）のヒット音。
-   * 外部アセットは使わず、Web Audio の正弦波でその場で鳴らす（Phaser 定番の短い peew）。
+   * 効果音プレビュー用。ファイル SE を指定音量で鳴らす。
+   * volume は 0〜1（ゲーム本編の SFX_VOLUME とは別）。
    */
-  playEnergyOrbHit(): void {
-    this.unlock()
-    this.prepare()
-
-    const audioContext = getAudioContext(this.scene)
-    if (audioContext === null) {
-      return
-    }
-
-    const playNow = (): void => {
-      try {
-        const now = audioContext.currentTime
-        // 高い「ピ」から下がる短いトーン
-        const oscillator = audioContext.createOscillator()
-        oscillator.type = 'sine'
-        oscillator.frequency.setValueAtTime(980, now)
-        oscillator.frequency.exponentialRampToValueAtTime(240, now + 0.09)
-
-        const toneGain = audioContext.createGain()
-        toneGain.gain.setValueAtTime(0.0001, now)
-        toneGain.gain.exponentialRampToValueAtTime(0.18, now + 0.008)
-        toneGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11)
-
-        oscillator.connect(toneGain)
-        toneGain.connect(audioContext.destination)
-        oscillator.start(now)
-        oscillator.stop(now + 0.12)
-
-        // ごく短いノイズで「弾ける」感を足す
-        const noiseDuration = 0.04
-        const noiseBuffer = audioContext.createBuffer(
-          1,
-          Math.floor(audioContext.sampleRate * noiseDuration),
-          audioContext.sampleRate,
-        )
-        const noiseData = noiseBuffer.getChannelData(0)
-        for (let index = 0; index < noiseData.length; index++) {
-          const fade = 1 - index / noiseData.length
-          noiseData[index] = (Math.random() * 2 - 1) * fade
-        }
-        const noiseSource = audioContext.createBufferSource()
-        noiseSource.buffer = noiseBuffer
-        const noiseGain = audioContext.createGain()
-        noiseGain.gain.setValueAtTime(0.08, now)
-        noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + noiseDuration)
-        noiseSource.connect(noiseGain)
-        noiseGain.connect(audioContext.destination)
-        noiseSource.start(now)
-      } catch (_error) {
-        // 再生失敗時は無視
-      }
-    }
-
-    this.whenAudioReady(playNow)
+  playSfxByKey(soundKey: string, volume: number): void {
+    this.playSound(soundKey, volume)
   }
 
-  /**
-   * 水魔法弾のヒット音。
-   * ガラス／氷が少し割れるような高めのトーン＋短い水のノイズ。
-   */
-  playWaterOrbHit(): void {
-    this.unlock()
-    this.prepare()
+  /** 属性弾が敵に当たったときのヒット音 */
+  playBulletHit(bulletStyle: PlayerBulletStyle): void {
+    this.playSound(getHitSfxKeyForBulletStyle(bulletStyle))
+  }
 
-    const audioContext = getAudioContext(this.scene)
-    if (audioContext === null) {
-      return
-    }
+  /** @deprecated playBulletHit('powerOrb') を使う */
+  playEnergyOrbHit(_volumeScale: number = 1): void {
+    this.playBulletHit('powerOrb')
+  }
 
-    const playNow = (): void => {
-      try {
-        const now = audioContext.currentTime
-
-        // 氷っぽい高めの「キン」→下がる
-        const iceTone = audioContext.createOscillator()
-        iceTone.type = 'triangle'
-        iceTone.frequency.setValueAtTime(1400, now)
-        iceTone.frequency.exponentialRampToValueAtTime(420, now + 0.14)
-
-        const iceGain = audioContext.createGain()
-        iceGain.gain.setValueAtTime(0.0001, now)
-        iceGain.gain.exponentialRampToValueAtTime(0.14, now + 0.01)
-        iceGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16)
-
-        iceTone.connect(iceGain)
-        iceGain.connect(audioContext.destination)
-        iceTone.start(now)
-        iceTone.stop(now + 0.17)
-
-        // 少し低い副音で厚みを出す
-        const softTone = audioContext.createOscillator()
-        softTone.type = 'sine'
-        softTone.frequency.setValueAtTime(660, now)
-        softTone.frequency.exponentialRampToValueAtTime(180, now + 0.12)
-
-        const softGain = audioContext.createGain()
-        softGain.gain.setValueAtTime(0.0001, now)
-        softGain.gain.exponentialRampToValueAtTime(0.09, now + 0.012)
-        softGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14)
-
-        softTone.connect(softGain)
-        softGain.connect(audioContext.destination)
-        softTone.start(now)
-        softTone.stop(now + 0.15)
-
-        // 短い水しぶきノイズ（高域寄り）
-        const noiseDuration = 0.07
-        const noiseBuffer = audioContext.createBuffer(
-          1,
-          Math.floor(audioContext.sampleRate * noiseDuration),
-          audioContext.sampleRate,
-        )
-        const noiseData = noiseBuffer.getChannelData(0)
-        for (let index = 0; index < noiseData.length; index++) {
-          const fade = 1 - index / noiseData.length
-          noiseData[index] = (Math.random() * 2 - 1) * fade * fade
-        }
-        const noiseSource = audioContext.createBufferSource()
-        noiseSource.buffer = noiseBuffer
-        const noiseFilter = audioContext.createBiquadFilter()
-        noiseFilter.type = 'highpass'
-        noiseFilter.frequency.setValueAtTime(900, now)
-        const noiseGain = audioContext.createGain()
-        noiseGain.gain.setValueAtTime(0.07, now)
-        noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + noiseDuration)
-        noiseSource.connect(noiseFilter)
-        noiseFilter.connect(noiseGain)
-        noiseGain.connect(audioContext.destination)
-        noiseSource.start(now)
-      } catch (_error) {
-        // 再生失敗時は無視
-      }
-    }
-
-    this.whenAudioReady(playNow)
+  /** @deprecated playBulletHit('waterOrb') を使う */
+  playWaterOrbHit(_volumeScale: number = 1): void {
+    this.playBulletHit('waterOrb')
   }
 
   playEnemyBlocked(): void {
@@ -710,8 +632,9 @@ export class GameAudioSystem {
   /**
    * 効果音を Web Audio で直接鳴らす。
    * Phaser sound.play 経由だと locked / suspended で無音になりやすい。
+   * volumeOverride があればそれを使う（プレビュー用）。なければ SFX_VOLUME。
    */
-  private playSound(soundKey: string): void {
+  private playSound(soundKey: string, volumeOverride?: number): void {
     this.unlock()
     this.prepare()
 
@@ -726,6 +649,10 @@ export class GameAudioSystem {
 
     // stopAllSounds 後に届く古い予約を捨てるための番号
     const commandSeq = sfxCommandSequence
+    const playVolume =
+      typeof volumeOverride === 'number'
+        ? Math.max(0, Math.min(1, volumeOverride))
+        : SFX_VOLUME
 
     const playNow = (): void => {
       if (commandSeq !== sfxCommandSequence) {
@@ -739,7 +666,7 @@ export class GameAudioSystem {
 
       try {
         const gainNode = audioContext.createGain()
-        gainNode.gain.value = SFX_VOLUME
+        gainNode.gain.value = playVolume
         const source = audioContext.createBufferSource()
         source.buffer = audioBuffer
         source.connect(gainNode)

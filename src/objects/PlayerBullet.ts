@@ -7,10 +7,12 @@
  * - 貫通: hitsLeft / hitEnemyUids（同じ enemyUid に二度当たらない）
  * - collisionAge: 発射フレームでは overlap を無視（同フレーム撃破事故防止）
  *
- * 見た目は3種類:
+ * 見た目は5種類:
  * - powerOrb: 初期のエネルギー弾
  * - waterOrb: Pickup 強化後の水魔法弾
- * - windVortex: Move 強化後（Pickup 未強化）の風魔法の渦弾
+ * - windVortex: Move 強化後の風魔法の渦弾
+ * - fireOrb: XP Bonus 強化後の火魔法弾
+ * - earthOrb: Dungeon（土）の岩弾
  * パワーが高いほど大きくなる。
  * 弾も座標直書きせず、body.setVelocity で飛ばす。
  * 消すときは destroy せず inactive にして Group 内で再利用する（Phaser のプール）。
@@ -27,6 +29,12 @@ import {
   PLAYER_BULLET_WATER_ORB_COLOR,
   PLAYER_BULLET_WATER_ORB_CORE_COLOR,
   PLAYER_BULLET_WATER_ORB_RIM_COLOR,
+  PLAYER_BULLET_FIRE_ORB_COLOR,
+  PLAYER_BULLET_FIRE_ORB_CORE_COLOR,
+  PLAYER_BULLET_FIRE_ORB_RIM_COLOR,
+  PLAYER_BULLET_EARTH_ORB_COLOR,
+  PLAYER_BULLET_EARTH_ORB_CORE_COLOR,
+  PLAYER_BULLET_EARTH_ORB_RIM_COLOR,
   PLAYER_BULLET_SPEED,
   PLAYER_BULLET_RADIUS,
   PLAYER_BULLET_SIZE_SCALE_PER_DAMAGE,
@@ -49,14 +57,23 @@ import { applyDevEntityDepth } from '../utils/applyDevEntityDepth'
 export type PlayerBulletVisual = Phaser.GameObjects.Image
 
 /** 弾の見た目スタイル */
-export type PlayerBulletStyle = 'powerOrb' | 'waterOrb' | 'windVortex'
+export type PlayerBulletStyle =
+  | 'powerOrb'
+  | 'waterOrb'
+  | 'windVortex'
+  | 'fireOrb'
+  | 'earthOrb'
 
 /** 渦テクスチャのキー（シーン内で1回だけ生成） */
-const PLAYER_BULLET_VORTEX_TEXTURE_KEY = 'player-bullet-vortex'
+const PLAYER_BULLET_VORTEX_TEXTURE_KEY = 'player-bullet-vortex-v2'
 /** 丸パワー弾テクスチャのキー */
 const PLAYER_BULLET_POWER_ORB_TEXTURE_KEY = 'player-bullet-power-orb'
 /** 水魔法弾テクスチャのキー */
 const PLAYER_BULLET_WATER_ORB_TEXTURE_KEY = 'player-bullet-water-orb'
+/** 火魔法弾テクスチャのキー */
+const PLAYER_BULLET_FIRE_ORB_TEXTURE_KEY = 'player-bullet-fire-orb'
+/** 土（岩）弾テクスチャのキー */
+const PLAYER_BULLET_EARTH_ORB_TEXTURE_KEY = 'player-bullet-earth-orb'
 /** テクスチャ解像度（表示は setDisplaySize で弾サイズに合わせる） */
 const PLAYER_BULLET_TEXTURE_SIZE = 64
 
@@ -90,7 +107,7 @@ export function calculatePlayerBulletSizeScale(damage: number): number {
 
 /**
  * Graphics で渦模様を描き、テクスチャとして登録する（1シーン1回）。
- * 円弧を2本＋中心玉＋黒枠リング。
+ * 床に溶けないよう下地円＋太い黒縁を先に取り、その上に渦を描く。
  */
 function ensurePlayerBulletVortexTexture(scene: Phaser.Scene): void {
   if (scene.textures.exists(PLAYER_BULLET_VORTEX_TEXTURE_KEY)) {
@@ -102,14 +119,20 @@ function ensurePlayerBulletVortexTexture(scene: Phaser.Scene): void {
   const centerX = size / 2
   const centerY = size / 2
   const outerRadius = size * 0.42
+  // 黒縁の太さ（線の両側に乗るので、本体線よりかなり太くする）
+  const outlinePad = 4
 
-  // 外側の黒枠リング
-  graphics.lineStyle(2, ENTITY_OUTLINE_COLOR, 1)
+  // 下地の円（透明渦だけだと床に溶ける）
+  graphics.fillStyle(PLAYER_BULLET_SWIRL_COLOR, 0.45)
+  graphics.fillCircle(centerX, centerY, outerRadius * 0.96)
+
+  // 外側の黒枠（最初にしっかり取る）
+  graphics.lineStyle(3.5, ENTITY_OUTLINE_COLOR, 1)
   graphics.strokeCircle(centerX, centerY, outerRadius)
 
-  // 外側の渦（黒縁 → 本体色）
-  const outerArcRadius = outerRadius * 0.92
-  graphics.lineStyle(4, ENTITY_OUTLINE_COLOR, 1)
+  // 外側の渦: 黒縁 → 本体色
+  const outerArcRadius = outerRadius * 0.88
+  graphics.lineStyle(2.5 + outlinePad, ENTITY_OUTLINE_COLOR, 1)
   graphics.beginPath()
   graphics.arc(
     centerX,
@@ -132,9 +155,9 @@ function ensurePlayerBulletVortexTexture(scene: Phaser.Scene): void {
   )
   graphics.strokePath()
 
-  // 内側の渦（位相をずらす）
-  const innerArcRadius = outerRadius * 0.55
-  graphics.lineStyle(3.5, ENTITY_OUTLINE_COLOR, 1)
+  // 内側の渦: 黒縁 → 本体色
+  const innerArcRadius = outerRadius * 0.52
+  graphics.lineStyle(2 + outlinePad, ENTITY_OUTLINE_COLOR, 1)
   graphics.beginPath()
   graphics.arc(
     centerX,
@@ -157,12 +180,18 @@ function ensurePlayerBulletVortexTexture(scene: Phaser.Scene): void {
   )
   graphics.strokePath()
 
-  // 中心の光る玉
+  // 中心の光る玉（黒縁付き）
   const coreRadius = outerRadius * 0.28
+  graphics.fillStyle(ENTITY_OUTLINE_COLOR, 1)
+  graphics.fillCircle(centerX, centerY, coreRadius + 2)
   graphics.fillStyle(PLAYER_BULLET_COLOR, 1)
   graphics.fillCircle(centerX, centerY, coreRadius)
-  graphics.lineStyle(1.5, ENTITY_OUTLINE_COLOR, 1)
-  graphics.strokeCircle(centerX, centerY, coreRadius)
+  graphics.fillStyle(0xffffff, 0.55)
+  graphics.fillCircle(centerX - coreRadius * 0.25, centerY - coreRadius * 0.25, coreRadius * 0.35)
+
+  // いちばん手前にもう一度外側黒枠（渦線で欠けないように）
+  graphics.lineStyle(3.5, ENTITY_OUTLINE_COLOR, 1)
+  graphics.strokeCircle(centerX, centerY, outerRadius)
 
   graphics.generateTexture(PLAYER_BULLET_VORTEX_TEXTURE_KEY, size, size)
   graphics.destroy()
@@ -173,33 +202,14 @@ function ensurePlayerBulletVortexTexture(scene: Phaser.Scene): void {
  * 外側リング → 本体 → 明るいコアの3層。
  */
 function ensurePlayerBulletPowerOrbTexture(scene: Phaser.Scene): void {
-  if (scene.textures.exists(PLAYER_BULLET_POWER_ORB_TEXTURE_KEY)) {
-    return
-  }
-
-  const size = PLAYER_BULLET_TEXTURE_SIZE
-  const graphics = scene.make.graphics({ x: 0, y: 0 })
-  const centerX = size / 2
-  const centerY = size / 2
-  const outerRadius = size * 0.42
-
-  graphics.lineStyle(2.5, ENTITY_OUTLINE_COLOR, 1)
-  graphics.strokeCircle(centerX, centerY, outerRadius)
-
-  graphics.fillStyle(PLAYER_BULLET_POWER_ORB_RIM_COLOR, 1)
-  graphics.fillCircle(centerX, centerY, outerRadius * 0.95)
-
-  graphics.fillStyle(PLAYER_BULLET_POWER_ORB_COLOR, 1)
-  graphics.fillCircle(centerX, centerY, outerRadius * 0.72)
-
-  graphics.fillStyle(PLAYER_BULLET_POWER_ORB_CORE_COLOR, 1)
-  graphics.fillCircle(centerX, centerY, outerRadius * 0.38)
-
-  graphics.lineStyle(1.5, ENTITY_OUTLINE_COLOR, 1)
-  graphics.strokeCircle(centerX, centerY, outerRadius * 0.95)
-
-  graphics.generateTexture(PLAYER_BULLET_POWER_ORB_TEXTURE_KEY, size, size)
-  graphics.destroy()
+  ensureColoredOrbTexture(
+    scene,
+    PLAYER_BULLET_POWER_ORB_TEXTURE_KEY,
+    PLAYER_BULLET_POWER_ORB_RIM_COLOR,
+    PLAYER_BULLET_POWER_ORB_COLOR,
+    PLAYER_BULLET_POWER_ORB_CORE_COLOR,
+    false,
+  )
 }
 
 /**
@@ -207,7 +217,48 @@ function ensurePlayerBulletPowerOrbTexture(scene: Phaser.Scene): void {
  * 雫っぽい丸＋ハイライトで、エネルギー弾より青く見える。
  */
 function ensurePlayerBulletWaterOrbTexture(scene: Phaser.Scene): void {
-  if (scene.textures.exists(PLAYER_BULLET_WATER_ORB_TEXTURE_KEY)) {
+  ensureColoredOrbTexture(
+    scene,
+    PLAYER_BULLET_WATER_ORB_TEXTURE_KEY,
+    PLAYER_BULLET_WATER_ORB_RIM_COLOR,
+    PLAYER_BULLET_WATER_ORB_COLOR,
+    PLAYER_BULLET_WATER_ORB_CORE_COLOR,
+    true,
+  )
+}
+
+function ensurePlayerBulletFireOrbTexture(scene: Phaser.Scene): void {
+  ensureColoredOrbTexture(
+    scene,
+    PLAYER_BULLET_FIRE_ORB_TEXTURE_KEY,
+    PLAYER_BULLET_FIRE_ORB_RIM_COLOR,
+    PLAYER_BULLET_FIRE_ORB_COLOR,
+    PLAYER_BULLET_FIRE_ORB_CORE_COLOR,
+    false,
+  )
+}
+
+function ensurePlayerBulletEarthOrbTexture(scene: Phaser.Scene): void {
+  ensureColoredOrbTexture(
+    scene,
+    PLAYER_BULLET_EARTH_ORB_TEXTURE_KEY,
+    PLAYER_BULLET_EARTH_ORB_RIM_COLOR,
+    PLAYER_BULLET_EARTH_ORB_COLOR,
+    PLAYER_BULLET_EARTH_ORB_CORE_COLOR,
+    false,
+  )
+}
+
+/** 色付きオーブ弾の共通テクスチャ生成 */
+function ensureColoredOrbTexture(
+  scene: Phaser.Scene,
+  textureKey: string,
+  rimColor: number,
+  bodyColor: number,
+  coreColor: number,
+  withWaterHighlight: boolean,
+): void {
+  if (scene.textures.exists(textureKey)) {
     return
   }
 
@@ -220,23 +271,28 @@ function ensurePlayerBulletWaterOrbTexture(scene: Phaser.Scene): void {
   graphics.lineStyle(2.5, ENTITY_OUTLINE_COLOR, 1)
   graphics.strokeCircle(centerX, centerY, outerRadius)
 
-  graphics.fillStyle(PLAYER_BULLET_WATER_ORB_RIM_COLOR, 1)
+  graphics.fillStyle(rimColor, 1)
   graphics.fillCircle(centerX, centerY, outerRadius * 0.95)
 
-  graphics.fillStyle(PLAYER_BULLET_WATER_ORB_COLOR, 1)
+  graphics.fillStyle(bodyColor, 1)
   graphics.fillCircle(centerX, centerY, outerRadius * 0.72)
 
-  graphics.fillStyle(PLAYER_BULLET_WATER_ORB_CORE_COLOR, 1)
+  graphics.fillStyle(coreColor, 1)
   graphics.fillCircle(centerX, centerY, outerRadius * 0.38)
 
-  // 左上のハイライト（水っぽさ）
-  graphics.fillStyle(0xffffff, 0.55)
-  graphics.fillCircle(centerX - outerRadius * 0.22, centerY - outerRadius * 0.22, outerRadius * 0.16)
+  if (withWaterHighlight) {
+    graphics.fillStyle(0xffffff, 0.55)
+    graphics.fillCircle(
+      centerX - outerRadius * 0.22,
+      centerY - outerRadius * 0.22,
+      outerRadius * 0.16,
+    )
+  }
 
   graphics.lineStyle(1.5, ENTITY_OUTLINE_COLOR, 1)
   graphics.strokeCircle(centerX, centerY, outerRadius * 0.95)
 
-  graphics.generateTexture(PLAYER_BULLET_WATER_ORB_TEXTURE_KEY, size, size)
+  graphics.generateTexture(textureKey, size, size)
   graphics.destroy()
 }
 
@@ -246,6 +302,12 @@ function getTextureKeyForBulletStyle(style: PlayerBulletStyle): string {
   }
   if (style === 'waterOrb') {
     return PLAYER_BULLET_WATER_ORB_TEXTURE_KEY
+  }
+  if (style === 'fireOrb') {
+    return PLAYER_BULLET_FIRE_ORB_TEXTURE_KEY
+  }
+  if (style === 'earthOrb') {
+    return PLAYER_BULLET_EARTH_ORB_TEXTURE_KEY
   }
   return PLAYER_BULLET_VORTEX_TEXTURE_KEY
 }
@@ -257,6 +319,14 @@ function ensureBulletTextureForStyle(scene: Phaser.Scene, style: PlayerBulletSty
   }
   if (style === 'waterOrb') {
     ensurePlayerBulletWaterOrbTexture(scene)
+    return
+  }
+  if (style === 'fireOrb') {
+    ensurePlayerBulletFireOrbTexture(scene)
+    return
+  }
+  if (style === 'earthOrb') {
+    ensurePlayerBulletEarthOrbTexture(scene)
     return
   }
   ensurePlayerBulletVortexTexture(scene)
@@ -273,7 +343,7 @@ function applyPlayerBulletStyle(
   ensureBulletTextureForStyle(scene, style)
   bullet.setTexture(getTextureKeyForBulletStyle(style))
   bullet.setData('bulletStyle', style)
-  if (style === 'powerOrb' || style === 'waterOrb') {
+  if (style !== 'windVortex') {
     // 丸弾は回転させないので角度をリセット
     bullet.setRotation(0)
   }
@@ -415,7 +485,8 @@ export function firePlayerBullet(
   bullet.setData('sizeScale', sizeScale)
   // 狙った敵へ弱く曲がる（倒れた／消えたら追従解除）
   bullet.setData('homingTarget', homingTarget)
-  // 貫通 + 跳弾で当たれる合計回数
+  // 命中できる残り回数（跳弾ありなら「初撃 + 跳弾回数」）
+  // Pierce と Ricochet 同時所持時は、攻撃側で貫通専用／跳弾専用に分けて撃つ
   const safeMaxHits = Math.max(1, Math.round(maxHits))
   const safeMaxRicochets = Math.max(0, Math.round(maxRicochets))
   bullet.setData('hitsLeft', safeMaxHits + safeMaxRicochets)

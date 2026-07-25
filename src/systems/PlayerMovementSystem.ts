@@ -47,6 +47,10 @@ export type MovementState = {
   relativeBasePlayerY: number
   // 追従を開始したポインタ ID（別指の up で誤って解除しない）
   relativePointerId: number
+  // ノックバック後、マウスが動くまで絶対追従を止める
+  suspendAbsoluteFollowUntilPointerMoves: boolean
+  absoluteFollowResumePointerX: number
+  absoluteFollowResumePointerY: number
 }
 
 // 目標点の薄いマーカー
@@ -99,6 +103,9 @@ export function createInitialMovementState(isKeyboardMode: boolean): MovementSta
     relativeBasePlayerX: 0,
     relativeBasePlayerY: 0,
     relativePointerId: -1,
+    suspendAbsoluteFollowUntilPointerMoves: false,
+    absoluteFollowResumePointerX: 0,
+    absoluteFollowResumePointerY: 0,
   }
 }
 
@@ -278,6 +285,7 @@ export function beginRelativePointerFollow(
   movementState.relativeBasePlayerX = playerX
   movementState.relativeBasePlayerY = playerY
   movementState.relativePointerId = pointer.id
+  movementState.suspendAbsoluteFollowUntilPointerMoves = false
 }
 
 // 旧方式: クリック後、ポインタ位置そのものへ追従（マウス用・定数で切替）
@@ -286,6 +294,7 @@ export function beginAbsolutePointerFollow(movementState: MovementState): void {
   movementState.allowMouseFollow = true
   movementState.isRelativeFollowActive = false
   movementState.relativePointerId = -1
+  movementState.suspendAbsoluteFollowUntilPointerMoves = false
 }
 
 // このポインタ入力を相対追従として扱うか（タッチは常に相対。マウスは定数）
@@ -304,7 +313,49 @@ export function endRelativePointerFollow(
   movementState.isRelativeFollowActive = false
   movementState.allowMouseFollow = false
   movementState.relativePointerId = -1
+  movementState.suspendAbsoluteFollowUntilPointerMoves = false
   hidePointerFollowMarker(marker)
+}
+
+/**
+ * ノックバックなどでプレイヤーが強制移動したとき、
+ * 相対追従の基準点も同じだけずらす（押したときの地点へ戻らないようにする）。
+ */
+export function shiftRelativeFollowBaseForDisplacement(
+  movementState: MovementState,
+  deltaX: number,
+  deltaY: number,
+): void {
+  if (!movementState.isRelativeFollowActive) {
+    return
+  }
+  movementState.relativeBasePlayerX =
+    movementState.relativeBasePlayerX + deltaX
+  movementState.relativeBasePlayerY =
+    movementState.relativeBasePlayerY + deltaY
+}
+
+/**
+ * ノックバック直後、マウス絶対追従が「ノックバック前の位置（カーソル）」へ
+ * すぐ戻らないよう、ポインタが動くまで追従を一時停止する。
+ */
+export function suspendAbsoluteFollowUntilPointerMoves(
+  movementState: MovementState,
+  pointerWorldX: number,
+  pointerWorldY: number,
+): void {
+  if (movementState.isKeyboardMode) {
+    return
+  }
+  if (movementState.isRelativeFollowActive) {
+    return
+  }
+  if (!movementState.allowMouseFollow) {
+    return
+  }
+  movementState.suspendAbsoluteFollowUntilPointerMoves = true
+  movementState.absoluteFollowResumePointerX = pointerWorldX
+  movementState.absoluteFollowResumePointerY = pointerWorldY
 }
 
 /**
@@ -398,6 +449,19 @@ export function applyPlayerMovement(
   // 絶対追従（マウス用・POINTER_FOLLOW_MOUSE_USES_RELATIVE=false のとき）
   if (movementState.allowMouseFollow && !movementState.isRelativeFollowActive) {
     const pointer = scene.input.activePointer
+    // ノックバック直後は、マウスが動くまでその場に留める
+    // （動かないカーソル＝ノックバック前の位置へ引き戻されるのを防ぐ）
+    if (movementState.suspendAbsoluteFollowUntilPointerMoves) {
+      const movedX = pointer.worldX - movementState.absoluteFollowResumePointerX
+      const movedY = pointer.worldY - movementState.absoluteFollowResumePointerY
+      const movedDistance = Math.sqrt(movedX * movedX + movedY * movedY)
+      if (movedDistance < 4) {
+        hidePointerFollowMarker(marker)
+        playerBody.setVelocity(0, 0)
+        return
+      }
+      movementState.suspendAbsoluteFollowUntilPointerMoves = false
+    }
     const target = clampPointToPlayArea(pointer.worldX, pointer.worldY, playArea)
     hidePointerFollowMarker(marker)
     setVelocityTowardTarget(player, playerBody, target.x, target.y, moveSpeed, deltaSeconds)

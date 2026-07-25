@@ -2043,9 +2043,21 @@ export class TitleScene extends Phaser.Scene {
     this.sound.unlock()
     this.titleAudioSystem.unlock()
     this.titleAudioSystem.prepare()
+    void this.startGameScene(selectedArea.id)
+  }
+
+  /**
+   * GameScene を初回だけ遅延読み込みしてから開始する。
+   * Python: importlib でモジュールを後から読むイメージ。
+   */
+  private async startGameScene(areaId: StageAreaId): Promise<void> {
+    if (!this.scene.get('GameScene')) {
+      const gameSceneModule = await import('./GameScene')
+      this.scene.add('GameScene', gameSceneModule.GameScene, false)
+    }
     this.scene.start('GameScene', {
       stageNumber: 1,
-      areaId: selectedArea.id,
+      areaId,
       // 最初は止まっている（キーボードモード）。画面クリックでマウス追従へ
       isKeyboardMode: true,
     })

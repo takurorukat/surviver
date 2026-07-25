@@ -3,7 +3,6 @@ import { GAME_WIDTH, GAME_HEIGHT, ARCADE_PHYSICS_FPS, PHYSICS_FPS } from './Game
 import { BootScene } from './scenes/BootScene'
 import { PreloadScene } from './scenes/PreloadScene'
 import { TitleScene } from './scenes/TitleScene'
-import { GameScene } from './scenes/GameScene'
 
 // =============================================================================
 // エントリポイント（このファイルがゲームの「起動スイッチ」）
@@ -13,7 +12,7 @@ import { GameScene } from './scenes/GameScene'
 //   以降の画面遷移は各 Scene が this.scene.start(...) で行う。
 //
 // シーンの流れ（配列の先頭から順に登録。最初に自動起動するのは BootScene）:
-//   BootScene → PreloadScene → TitleScene → GameScene
+//   BootScene → PreloadScene → TitleScene →（初回プレイ時に遅延読込）GameScene
 //
 // 関連:
 //   - 画面サイズ定数は GameConstants.ts
@@ -62,8 +61,8 @@ const gameConfig: Phaser.Types.Core.GameConfig = {
   audio: {
     disableWebAudio: false,
   },
-  // 登録順の先頭シーン（BootScene）が起動時に自動で create される
-  scene: [BootScene, PreloadScene, TitleScene, GameScene],
+  // GameScene は初回プレイ開始時に動的 import（初期 JS を少し分けて読む）
+  scene: [BootScene, PreloadScene, TitleScene],
 }
 
 // この1行で Phaser が動き始める（以降は各 Scene のライフサイクルに任せる）

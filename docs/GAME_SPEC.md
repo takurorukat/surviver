@@ -1,6 +1,8 @@
-# Survivor Stage ゲーム仕様書（v1.1）
+# Survivor Stage ゲーム仕様書（v1.2）
 
 固定カメラのステージ制サバイバー。Phaser 3 + TypeScript + Vite。
+
+定数は `src/GameConstants.ts`（バレル）経由で、`src/constants/` 配下にドメイン分割してある。
 
 ---
 
@@ -9,11 +11,11 @@
 | 項目 | 値 |
 |------|-----|
 | 解像度 | 960 × 540 |
-| ステージ数 | エリアごと（Plains 3 / Forest 5） |
-| エリア選択 | タイトルで選択。Plains 最初から、Forest は Plains クリア後 |
+| ステージ数 | エリアごと（Plains 3 / Forest・Volcano・Earth Dungeon は各5） |
+| エリア選択 | タイトルで選択。Plains 最初から、以降は直前エリアクリアで解除 |
 | 1ステージ時間 | 全ステージ 30秒（残り10秒で FINAL WAVE） |
 | カメラ | 固定（スクロールなし） |
-| 床 | Plains / Forest はタイルシート（縦5色を上から順に Stage 1→）を敷き詰め。Forest はさらに枝・草・葉の装飾をランダム配置。他エリアは Rectangle の単色 |
+| 床 | Plains / Forest はタイルシート（縦5色を上から順に Stage 1→）を敷き詰め。Forest はさらに枝・草・葉の装飾をランダム配置。Volcano は Plains タイルの赤〜黒グラデ。Earth Dungeon ほかは Rectangle の単色 |
 | UI | Rectangle + Text のみ（DOM 不可） |
 | 物理 | arcade のみ（`fps: 240 = 60×4サブステップ`, `fixedStep: true`） |
 
@@ -43,24 +45,26 @@
 - ゴールドは獲得演出開始時に即保存する
 - ゴールドはタイトル画面のショップで永続強化に使う
 
-### ショップ（実装済み）
+### ショップ / スキル封印（実装済み・公開UIはオフ）
 
+ロジック・セーブ・購入価格は実装済み。**公開ビルドではタイトルから隠す**
+（`TITLE_SHOW_SHOP_AND_SEAL = false`）。true にするとタイトル下部に Shop / Seal Skills が出る。
+
+**Shop（`TITLE_SHOW_SHOP_AND_SEAL` が true のとき）**
 - タイトル下部の Shop 枠をクリック、または選択して SPACE / ENTER で開く
 - 2列の商品カード（最大3段）。マウスまたは WASD / 矢印で選択、SPACE / ENTERで購入、ESCで戻る
-- 初回価格は各1G。購入するたびに同じ商品の価格が +1G（1、2、3…）
-- Max HP: すべての新規ランの開始最大HP +1
-- Power Cap / Speed Cap / Range Cap: 対応するラン中レベル上限 +1
-- Power / Speed / Range の初期上限は3
+- Max HP: 1 → 10 → 20 → 30 → 40G（以降も 40G）。新規ランの開始最大HP +1
+- Power / Speed / Range / XP Bonus / Pierce Cap: 1 → 5 → 10 → 20 → 30 → 40G（以降も 40G）
+- Blast Cap など上記以外の線形商品: 初回1G、購入ごとに +1G（1、2、3…）
+- Power / Speed の基礎上限は Plains クリアで5、Forest クリアで7。Range 初期上限は3
 - Pierce / Blast の初期上限は1。各スキルを実績で入手すると、対応する Cap 商品がショップに追加される
-- Pierce Cap / Blast Cap: 対応するラン中レベル上限 +1
-- XP Bonus の初期上限は2。Plainsクリア後、XP Bonus Capがショップに追加される
+- XP Bonus の初期上限は2。Volcano クリア後、XP Bonus Cap がショップに追加される
 - Seal Slot: レベルアップ候補から封印できるスキル数 +1。初期枠は0
-- Seal Slot価格は10G、20G、30G、40G、50G…と購入ごとに10Gずつ上昇
+- Seal Slot価格は10G、20G、30G…と購入ごとに10Gずつ上昇
 - 購入内容と残りゴールドは即時保存し、Clear Saveでリセット
 
-### スキル封印
-
-- タイトル画面のShop横にある `Seal Skills` から設定する
+**スキル封印（同上フラグが true のとき）**
+- タイトル画面の Shop 横にある `Seal Skills` から設定する
 - Power / Speed / Range と解放済みスキルを、購入済み封印枠の数まで封印できる
 - 封印したスキルはレベルアップ候補に出ない。解除すれば再び候補に戻る
 - Goldは封印対象外。封印状態はセーブへ永続保存する
@@ -72,24 +76,25 @@
 
 ### ステージ進行
 
-ステージクリアで次へ進むときは **レベル・XP・強化ステータスを引き継ぐ**（同じプレイ中のみ）。HP は次ステージ開始時に全回復。  
+ステージクリアで次へ進むときは **レベル・XP・強化ステータスを引き継ぐ**（同じプレイ中のみ）。通常エリアのHPは次ステージ開始時に全回復するが、**Ruinsは残HPを引き継ぐ**。
 途中でタイトルに戻った場合、強化の引き継ぎは残らない。
 
 ### エリア選択（タイトル）
 
 タイトルでエリアを選んでから開始する。
 
-| エリア | 英語名 | ステージ数 | 状態 |
-|--------|--------|------------|------|
-| 平原 | Plains | 3 | ✅ 最初から選択・開始可。Stage 3 が最終（強化難易度） |
-| 森 | Forest | 5 | Plains クリアで解除。Stage 5 が最終 |
-| 火山 | Volcano | 5 | Forest クリアで解除 |
-| 遺跡 | Ruins | 5 | Volcano クリアで解除 |
-| 城 | Castle | 5 | Ruins解放まで「?」。Ruinsクリアで解除 |
-| 地下迷宮 | Dungeon | 5 | Castle解放まで「?」。Castleクリアで解除 |
+| エリア | 英語名（実装ID） | ステージ数 | 状態 |
+|--------|------------------|------------|------|
+| 平原 | Windy Plains（`plains`） | 3 | ✅ 最初から選択・開始可。Stage 3 が最終 |
+| 森 | Water Forest（`forest`） | 5 | Plains クリアで解除。Stage 5 が最終 |
+| 火山 | Fire Volcano（`volcano`） | 5 | Forest クリアで解除。開放までタイトルでは「?」 |
+| 土の迷宮 | Earth Dungeon（`ruins`） | 5 | Volcano クリアで解除。開放まで「?」 |
+| 城 | Castle（`castle`） | 5 | **Coming Soon**（専用敵・床・タイトル絵・BGMが未整備のため選択不可） |
+| 深淵 | Abyss（`dungeon`） | 5 | **Coming Soon**（同上。Castle クリア後の想定だが現状遊べない） |
 
 操作: **W/S**（または↑↓）で選択、**SPACE / ENTER** で決定。  
-LOCKED も選択できるが決定はできない。選択中に解除条件を表示する。
+名前が見えている LOCKED は選択できるが決定はできない。選択中に解除条件を表示する。
+「?」のエリアは選択不可。`comingSoon: true` のエリアは条件を満たしても開始できない。
 
 ### Volcano の敵
 
@@ -150,12 +155,13 @@ XP BonusがLv2～3ならこのクリアXPは2倍、Lv4～5なら3倍（以降も
 
 ### ステージクリア後の順番（固定）
 
-1. 大きな STAGE CLEAR! 文字（tween）＋戦闘 BGM 停止→クリア BGM
+1. 大きな STAGE CLEAR! 文字（tween）＋戦闘 BGM 停止→エリアクリア系 SFX／クリア演出
 2. 落ちているコインを全画面からプレイヤーへ吸引（XP 加算）
 3. たまったレベルアップをすべて選択
 4. 四角パネルの STAGE CLEAR / GAME CLEAR 表示
 
-クリア BGM ファイル: `public/assets/audio/bgm_clear.ogg`（未配置時は無音で続行）
+エリア最終クリア用 BGM: `public/assets/audio/area_clear_bgm.ogg`（キー `bgm-area-clear`）。未配置時は無音で続行。
+旧ファイル名 `bgm_clear.ogg` / `bgm_loop.ogg` は使わない。
 
 ### 難易度（レベルアップ成長に連動）
 
@@ -201,10 +207,21 @@ XP BonusがLv2～3ならこのクリアXPは2倍、Lv4～5なら3倍（以降も
 | `sfx-coin-pickup` | コイン取得時 | 短い高音 |
 | `sfx-player-hurt` | プレイヤー被ダメ時 | 低い衝撃音 |
 | `sfx-level-up` | レベルアップ時 | 上昇音 |
-| `bgm` | ゲーム中 | `bgm_loop.ogg` をループ再生 |
+| `bgm` / エリア別 | 戦闘中 | エリアごとにループ再生（下表） |
+| `bgm-title` | タイトル | `title_bgm.ogg` |
+| `bgm-area-clear` | エリア最終クリア | `area_clear_bgm.ogg` |
 
-- 発射音だけ外部OGGを使い、それ以外の効果音は Web Audio で生成
-- BGM は `public/assets/audio/bgm_loop.ogg`
+**戦闘 BGM（エリア別）**
+
+| エリア ID | キー | ファイル |
+|-----------|------|----------|
+| `plains`（既定） | `bgm` | `plains_bgm.ogg` |
+| `forest` | `bgm-forest` | `forest_bgm.ogg` |
+| `volcano` | `bgm-volcano` | `volcano_bgm.ogg` |
+| `ruins`（Earth Dungeon） | `bgm-ruins` | `ruins_bgm.ogg` |
+
+- 効果音・BGM はいずれも `public/assets/audio/` の外部 OGG を主に使用
+- タイトル設定の BGM ON/OFF は `localStorage` キー `survivor-bgm-enabled-v2`
 
 ### 演出（Day 5 で実装）
 
@@ -388,6 +405,23 @@ XP BonusがLv2～3ならこのクリアXPは2倍、Lv4～5なら3倍（以降も
 ### XP 閾値（累計）
 
 Lv2=4, Lv3=9, Lv4=15, Lv5=22…（次に必要な量は 4, 5, 6, 7… と増える）
+
+---
+
+## 開発・公開フラグ
+
+| フラグ | 公開ビルド | 説明 |
+|--------|------------|------|
+| `TITLE_SHOW_SHOP_AND_SEAL` | `false` | Shop / Seal UI をタイトルに出すか |
+| `TITLE_SHOW_DEBUG_PROGRESS` | `import.meta.env.DEV` のみ true | 進行解放デバッグボタン（本番では出ない） |
+
+自動テスト: `npm test`（Vitest）。ゴールド計算・セーブ移行・エリア解放・レベルアップ候補・ステージ報酬を検証。
+
+### バンドルサイズ（参考）
+
+本番 JS は約 1.7MB（gzip 約 400KB）。大半は Phaser 本体。
+`GameScene` はタイトルから初回開始時に遅延読み込みし、アプリ側コードを分割している。
+未使用の旧 BGM（`bgm_loop` / `bgm_clear`）はリポジトリから外す。
 
 ---
 

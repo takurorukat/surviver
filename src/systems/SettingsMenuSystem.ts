@@ -3,7 +3,7 @@
 // ------------------------------------------------------------
 // 歯車から開く設定メニュー（右から tween でスライドイン）。
 // BGM ON/OFF、タイトルでは Clear Save、ゲーム中は Give Up。
-// Credits は Back の上。押すとクレジット表示。
+// Credits / SFX Preview は Back の上。
 // キーボード: W/S・上下矢印で選択、SPACE/ENTER で決定、一番下の Back で閉じる。
 // 背景は Phaser の postFX ブラーでぼかす（設定 UI は別カメラでくっきり）。
 // ============================================================
@@ -31,6 +31,7 @@ import {
   FONT_FAMILY_UI,
 } from '../GameConstants'
 import { GameAudioSystem } from './GameAudioSystem'
+import { SfxPreviewSystem } from './SfxPreviewSystem'
 import { shrinkTextToFitWidth } from '../utils/fitTextToWidth'
 
 export type SettingsMenuMode = 'title' | 'game'
@@ -71,6 +72,7 @@ export class SettingsMenuSystem {
   private isOpen = false
   private isTweening = false
   private isCreditsOpen = false
+  private sfxPreviewSystem: SfxPreviewSystem | null = null
   private panelContainer: Phaser.GameObjects.Container | null = null
   private overlay: Phaser.GameObjects.Rectangle | null = null
   private bgmButtonLabel: Phaser.GameObjects.Text | null = null
@@ -116,6 +118,10 @@ export class SettingsMenuSystem {
     }
     if (this.isCreditsOpen) {
       this.closeCredits()
+      return
+    }
+    if (this.isSfxPreviewOpen()) {
+      this.closeSfxPreview()
       return
     }
     this.close()
@@ -208,6 +214,7 @@ export class SettingsMenuSystem {
 
     this.clearKeyboard()
     this.destroyCredits()
+    this.destroySfxPreview()
 
     if (this.panelContainer === null) {
       this.isOpen = false
@@ -323,10 +330,24 @@ export class SettingsMenuSystem {
       buttonViews.push(giveUpButton.border, giveUpButton.background, giveUpButton.label)
     }
 
-    // Back のすぐ上に Credits
+    // Back の上に SFX Preview → Credits
     const backButtonY = GAME_HEIGHT / 2 - 56
     const creditsButtonY =
       backButtonY - SETTINGS_MENU_BUTTON_HEIGHT - SETTINGS_MENU_BUTTON_GAP
+    const sfxPreviewButtonY =
+      creditsButtonY - SETTINGS_MENU_BUTTON_HEIGHT - SETTINGS_MENU_BUTTON_GAP
+
+    const sfxPreviewButton = this.createMenuButton(0, sfxPreviewButtonY, 'SFX Preview', () => {
+      this.callbacks.audioSystem.playShopPurchase()
+      this.openSfxPreview()
+    })
+    this.menuButtons.push(sfxPreviewButton)
+    buttonViews.push(
+      sfxPreviewButton.border,
+      sfxPreviewButton.background,
+      sfxPreviewButton.label,
+    )
+
     const creditsButton = this.createMenuButton(0, creditsButtonY, 'Credits', () => {
       // Settings を開くときと同じ決定音
       this.callbacks.audioSystem.playShopPurchase()
@@ -493,10 +514,6 @@ export class SettingsMenuSystem {
 
   // 役割: クレジット用オブジェクトをメインカメラ（ブラー）から外し、くっきり見せる
   private keepCreditsSharpOnUiCamera(): void {
-    if (this.uiCamera === null) {
-      return
-    }
-
     const creditsObjects: Phaser.GameObjects.GameObject[] = []
     if (this.creditsOverlay !== null) {
       creditsObjects.push(this.creditsOverlay)
@@ -520,8 +537,7 @@ export class SettingsMenuSystem {
         this.creditsBackButton.label,
       )
     }
-
-    this.scene.cameras.main.ignore(creditsObjects)
+    this.keepObjectsSharpOnUiCamera(creditsObjects)
   }
 
   private closeCredits(): void {
@@ -561,6 +577,60 @@ export class SettingsMenuSystem {
       this.creditsBackButton.label.destroy()
       this.creditsBackButton = null
     }
+  }
+
+  private isSfxPreviewOpen(): boolean {
+    return this.sfxPreviewSystem !== null && this.sfxPreviewSystem.isOpen()
+  }
+
+  // 役割: 効果音の聴き比べパネルを開く（設定キーは一時オフ）
+  private openSfxPreview(): void {
+    if (this.isSfxPreviewOpen() || this.isCreditsOpen) {
+      return
+    }
+
+    this.clearKeyboard()
+    this.destroySfxPreview()
+
+    this.sfxPreviewSystem = new SfxPreviewSystem(this.scene, {
+      audioSystem: this.callbacks.audioSystem,
+      onUiObjectsReady: (objects) => {
+        this.keepObjectsSharpOnUiCamera(objects)
+      },
+      onCancelled: () => {
+        this.callbacks.onCancelled?.()
+      },
+      onClose: () => {
+        this.sfxPreviewSystem = null
+        if (this.isOpen) {
+          this.setupKeyboard()
+        }
+      },
+    })
+    this.sfxPreviewSystem.open()
+  }
+
+  private closeSfxPreview(): void {
+    if (this.sfxPreviewSystem === null) {
+      return
+    }
+    this.sfxPreviewSystem.close(true)
+  }
+
+  private destroySfxPreview(): void {
+    if (this.sfxPreviewSystem === null) {
+      return
+    }
+    this.sfxPreviewSystem.destroy()
+    this.sfxPreviewSystem = null
+  }
+
+  // 役割: 指定オブジェクトをメインカメラ（ブラー）から外す
+  private keepObjectsSharpOnUiCamera(objects: Phaser.GameObjects.GameObject[]): void {
+    if (this.uiCamera === null) {
+      return
+    }
+    this.scene.cameras.main.ignore(objects)
   }
 
   // 役割: クレジット用の独立ボタン（menuButtons には入れない）
@@ -648,13 +718,13 @@ export class SettingsMenuSystem {
     const buttonView: MenuButtonView = { border, background, label, onClick }
 
     background.on('pointerover', () => {
-      if (this.isCreditsOpen) {
+      if (this.isCreditsOpen || this.isSfxPreviewOpen()) {
         return
       }
       this.selectMenuItem(buttonIndex)
     })
     background.on('pointerdown', () => {
-      if (this.isCreditsOpen) {
+      if (this.isCreditsOpen || this.isSfxPreviewOpen()) {
         return
       }
       this.selectMenuItem(buttonIndex)
@@ -713,7 +783,7 @@ export class SettingsMenuSystem {
   }
 
   private moveSelection(direction: number): void {
-    if (!this.isOpen || this.isTweening || this.isCreditsOpen) {
+    if (!this.isOpen || this.isTweening || this.isCreditsOpen || this.isSfxPreviewOpen()) {
       return
     }
     if (this.menuButtons.length <= 0) {
@@ -747,6 +817,10 @@ export class SettingsMenuSystem {
     // クレジット表示中は SPACE / ENTER で閉じる
     if (this.isCreditsOpen) {
       this.closeCredits()
+      return
+    }
+    // SFX プレビュー中は設定側では何もしない（プレビュー側が処理）
+    if (this.isSfxPreviewOpen()) {
       return
     }
 
@@ -848,6 +922,7 @@ export class SettingsMenuSystem {
   private destroyMenu(): void {
     this.clearKeyboard()
     this.destroyCredits()
+    this.destroySfxPreview()
     this.clearBackgroundBlur()
     if (this.overlay !== null) {
       this.overlay.destroy()
