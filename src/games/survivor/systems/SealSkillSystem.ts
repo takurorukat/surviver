@@ -17,6 +17,7 @@ import {
   SHOP_CARD_SELECTED_BORDER_COLOR,
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
+  RUNTIME_ENABLE_GOLD_AND_SHOP,
 } from '../GameConstants'
 import { isSkillUnlocked } from './AchievementSystem'
 import {
@@ -95,6 +96,10 @@ export class SealSkillSystem {
   }
 
   open(): void {
+    // Gold／Shop Runtime Disable: Seal も Shop 導線の一部として開かない
+    if (!RUNTIME_ENABLE_GOLD_AND_SHOP) {
+      return
+    }
     if (this.openState) {
       return
     }

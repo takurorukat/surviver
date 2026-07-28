@@ -112,6 +112,11 @@ export const TITLE_AREA_CONDITION_COLOR = '#fde68a'
 // false のあいだはタイトルから Shop / Seal Skills を隠し、
 // ショップ解放の吹き出し・結果画面の UNLOCKED: Shop も出さない
 export const TITLE_SHOW_SHOP_AND_SEAL = false
+// Version 1: Gold／Shop を完全削除せず Runtime から休止する。
+// false のあいだは Gold の生成・取得・報酬・HUD・演出・Shop 導線を止める。
+// セーブ上の gold／shopUpgrades の読み取りと既存強化の適用は維持する。
+// XP（Coin.ts）はこのフラグの対象外。
+export const RUNTIME_ENABLE_GOLD_AND_SHOP = false
 // 開発ビルド（vite dev / import.meta.env.DEV）だけ進行デバッグボタンを出す
 // 本番ビルド（npm run build）では必ず false
 export const TITLE_SHOW_DEBUG_PROGRESS = import.meta.env.DEV

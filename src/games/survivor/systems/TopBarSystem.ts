@@ -42,6 +42,7 @@ import {
   TOP_BAR_TOOLTIP_LABEL_ACHIEVEMENTS,
   TOP_BAR_TOOLTIP_LABEL_GOLD,
   FONT_FAMILY_UI,
+  RUNTIME_ENABLE_GOLD_AND_SHOP,
 } from '../GameConstants'
 import { createAchievementsPanelController } from './AchievementsPanelSystem'
 import { getGold } from './UnlockSaveSystem'
@@ -530,6 +531,10 @@ export function createTopBar(
   const refreshAchievementProgress = (): void => {}
 
   const refreshGold = (): void => {
+    if (!RUNTIME_ENABLE_GOLD_AND_SHOP) {
+      goldText.setText('')
+      return
+    }
     goldText.setText(`${getGold()} G`)
   }
 
@@ -568,6 +573,16 @@ export function createTopBar(
   })
 
   refreshGold()
+
+  // Gold／Shop Runtime Disable: 所持金表示とホバーを隠す（ウィジェットは残す）
+  if (!RUNTIME_ENABLE_GOLD_AND_SHOP) {
+    goldIcon.setVisible(false)
+    goldText.setVisible(false)
+    goldHit.disableInteractive()
+    goldHit.setVisible(false)
+    goldSelectBorder.setVisible(false)
+    goldSelectFill.setVisible(false)
+  }
 
   return {
     background,

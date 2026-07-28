@@ -24,6 +24,7 @@ import {
   CLEAR_GOLD_COIN_FALL_MS,
   PLAINS_FLOOR_TILE_DISPLAY_SIZE,
   TITLE_SHOW_SHOP_AND_SEAL,
+  RUNTIME_ENABLE_GOLD_AND_SHOP,
   isFinalStage,
   calculateStageClearGold,
   type StageAreaId,
@@ -206,7 +207,9 @@ export function beginStageClearSequence(
           ctx.remainingSeconds,
         )
         const totalBonusXp = baseBonusXp + timeBonusXp
-        const hasNoDamageGoldBonus = !ctx.tookDamageThisStage
+        // Gold 休止中は NO DAMAGE · GOLD ×2 行も出さない（XP 行は維持）
+        const hasNoDamageGoldBonus =
+          RUNTIME_ENABLE_GOLD_AND_SHOP && !ctx.tookDamageThisStage
         playAllEnemiesRewardBanner(
           ctx.scene,
           ctx.remainingSeconds,
@@ -262,28 +265,31 @@ export function awardStageClearRewards(
     }
   }
 
-  const finalStage = isFinalStage(ctx.stageNumber, ctx.areaStageCount)
-  const noDamageAllEnemiesClear =
-    didClearAllEnemiesBeforeTimeUp && !ctx.tookDamageThisStage
-  const awardedGold = calculateStageClearGold(
-    ctx.areaId,
-    finalStage,
-    noDamageAllEnemiesClear,
-  )
-  // ゴールドは即時加算せず、上から落として吸引時に取得する
-  if (awardedGold > 0) {
-    const goldFallHeight =
-      PLAINS_FLOOR_TILE_DISPLAY_SIZE * CLEAR_GOLD_COIN_FALL_TILES
-    spawnClearGoldCoinRain(
-      ctx.scene,
-      ctx.goldCoinGroup,
-      PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH / 2,
-      PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT / 2,
-      awardedGold,
-      goldFallHeight,
-      CLEAR_GOLD_COIN_SPREAD_RADIUS,
-      CLEAR_GOLD_COIN_FALL_MS,
+  // Gold／Shop Runtime Disable: クリア Gold 雨は落とさない（XP コインは上で維持）
+  if (RUNTIME_ENABLE_GOLD_AND_SHOP) {
+    const finalStage = isFinalStage(ctx.stageNumber, ctx.areaStageCount)
+    const noDamageAllEnemiesClear =
+      didClearAllEnemiesBeforeTimeUp && !ctx.tookDamageThisStage
+    const awardedGold = calculateStageClearGold(
+      ctx.areaId,
+      finalStage,
+      noDamageAllEnemiesClear,
     )
+    // ゴールドは即時加算せず、上から落として吸引時に取得する
+    if (awardedGold > 0) {
+      const goldFallHeight =
+        PLAINS_FLOOR_TILE_DISPLAY_SIZE * CLEAR_GOLD_COIN_FALL_TILES
+      spawnClearGoldCoinRain(
+        ctx.scene,
+        ctx.goldCoinGroup,
+        PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH / 2,
+        PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT / 2,
+        awardedGold,
+        goldFallHeight,
+        CLEAR_GOLD_COIN_SPREAD_RADIUS,
+        CLEAR_GOLD_COIN_FALL_MS,
+      )
+    }
   }
 
   const rewardEffectDurationMs = Math.max(
@@ -397,7 +403,11 @@ export function showStageClearResult(ctx: StageClearFlowContext): void {
   // ただし Shop は Stage1 クリアのゴールド取得で開くので、そのときは結果画面に出す
   // （タイトルに Shop を出していないあいだは Shop 解放案内も出さない）
   let unlockLines: string[] = []
-  if (TITLE_SHOW_SHOP_AND_SEAL && ctx.getPendingShopUnlockNotify()) {
+  if (
+    RUNTIME_ENABLE_GOLD_AND_SHOP &&
+    TITLE_SHOW_SHOP_AND_SEAL &&
+    ctx.getPendingShopUnlockNotify()
+  ) {
     unlockLines = formatShopUnlockNotificationLines()
     ctx.setPendingShopUnlockNotify(false)
   } else if (ctx.getPendingShopUnlockNotify()) {

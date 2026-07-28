@@ -29,6 +29,13 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
+- 実施内容: Gold／Shop Runtime Disable。`RUNTIME_ENABLE_GOLD_AND_SHOP = false` を追加し、Gold 生成・取得・クリア報酬・HUD・+GOLD 演出・Shop／Seal 導線を Runtime から休止。全スキル上限時は報酬なしで自動レベルアップ（空 UI／無限待ち防止）。セーブの gold／shopUpgrades 読み取りと既存強化適用は維持。Coin.ts／XP は未変更。Audio／SFX Catalog／ステージ／クリア条件は未変更。
+- 変更ファイル: `constants/ui.ts`、`GameScene.ts`、`StageClearFlowSystem.ts`、`TopBarSystem.ts`、`TitleScene.ts`、`ShopSystem.ts`、`SealSkillSystem.ts`、`LevelUpChoiceSystem.ts`、`goldShopRuntime.test.ts`、`docs/AI_HANDOFF.md`、`TODO.md`
+- 検証: typecheck OK、関連25／全120テスト OK、build OK、git diff --check OK。ブラウザ実耳確認は手動。
+- 次の開発タスク: **Final Stage Completion Rules**（未着手）。
+
+### 2026-07-28 — Cursor
+
 - 実施内容: Audio Phase Final Verification and Freeze。Combat Core 3音の Adopt↔Runtime SHA-256 一致再確認。発火経路（cast=didFire+powerOrb、impact=powerOrb命中のみ、defeat=弾/Blast/Orb+60ms gate）をコード確認。typecheck / 音響テスト27 / 全テスト117 / build 成功。dist に3 Runtime 音源あり。コード・Runtime ファイルは未変更。Audio Phase: **FROZEN**。
 - 採用: cast=`skill.power.cast-external-03`→`player_fire_power.ogg` / impact=`skill.power.impact-external-01`→`player_hit_power.ogg` / defeat=`enemy.defeat-external-02`→`library/kenney/enemy_defeat_candidate.ogg`
 - 変更ファイル: `docs/AI_HANDOFF.md`、`TODO.md`（Later/Polish 追記のみ）

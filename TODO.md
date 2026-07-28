@@ -19,9 +19,11 @@
 - [x] CC0の既存音声ライブラリを自動同期する開発ツールとライセンス台帳を導入する。既存の正式音源を上書きせず、Kenney RPG Audio / Impact Sounds / Interface Soundsの試聴候補を同期する。2026-07-25に導入・検証済み。
 - [x] BGM検査ツールを用いて title / plains / forest / volcano / ruins の無音末尾とループ境界を記録する。結果をドキュメント化し、各曲の正しい `loopStart` / `loopEnd` を決めるために必要な素材情報を明確にする。正式OGGは変更しない。
 - [x] `SoundManager` のBGMフェード、ループ境界、SE同時発音制御を単体テストと実装の両面で確認する。不整合があれば、音源データを変えずに再生制御だけを最小限修正する。2026-07-25に再生制御を修正し、型チェック・70件のテスト・ビルドで確認済み。
+- [x] Gold／Shop Runtime Disable: Version 1 向けに Gold 生成・取得・報酬・HUD・演出・Shop／Seal 導線を休止（完全削除しない）。`RUNTIME_ENABLE_GOLD_AND_SHOP = false`。セーブ互換・既存 Shop 強化適用・XP は維持。2026-07-28 実装・検証済み。
+- [ ] Final Stage Completion Rules（Version 1 向けクリア条件の最終化）。
 - [ ] Earth Dungeon Stage 2 の Burrower を、`docs/EARTH_DUNGEON_DESIGN.md` の確定済み仕様だけに従って実装し、敵選択・出現条件のテストを追加する。
 - [ ] Rune Pillar と Ruins 混成Stageを、確定済み設計だけに従って実装し、出現ロジックのテストを追加する。
-- [ ] Shop / Seal Skills の公開導線を、既存仕様とUIを変えずに確認し、公開フラグと到達導線のテストを追加する。
+- [ ] Shop / Seal Skills の公開導線を、既存仕様とUIを変えずに確認し、公開フラグと到達導線のテストを追加する。（Gold／Shop Runtime 再有効化後）
 - [ ] Volcano 除外中の `armored` / `charger`: 呼吸スプライト（または walk 有効化）で見た目を完成させ、表示確認後に `pickEnemyKind.ts` の Stage2 / Stage5 重みへ再追加する。
 - [ ] Volcano 除外中の `runner` / `shielded`: 敵画像追加・テクスチャ登録・スプライト接続・表示確認後に `pickEnemyKind.ts` の Stage4 / Stage5 重みへ再追加する。
 

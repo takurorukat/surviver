@@ -46,6 +46,7 @@ import {
   TITLE_AREA_CONDITION_COLOR,
   TITLE_SHOW_SHOP_AND_SEAL,
   TITLE_SHOW_DEBUG_PROGRESS,
+  RUNTIME_ENABLE_GOLD_AND_SHOP,
   TITLE_SHOP_PANEL_WIDTH,
   TITLE_SHOP_PANEL_HEIGHT,
   TITLE_SHOP_PANEL_CENTER_Y,
@@ -288,6 +289,9 @@ export class TitleScene extends Phaser.Scene {
       this.selectMenuItem(this.getSettingsSelectionIndex())
     })
     this.topBarView.goldHit.on('pointerover', () => {
+      if (!RUNTIME_ENABLE_GOLD_AND_SHOP) {
+        return
+      }
       if (
         this.confirmDialogSystem.isOpen() ||
         this.shopSystem.isOpen() ||
@@ -417,12 +421,20 @@ export class TitleScene extends Phaser.Scene {
     this.bgmToggleButton?.refresh()
   }
 
-  // 選択番号: エリア → (Shop → Seal Skills) → Gold → 実績 → Settings → BGM
+  // 選択番号: エリア → (Shop → Seal Skills) → (Gold) → 実績 → Settings → BGM
   // Shop / Seal は TITLE_SHOW_SHOP_AND_SEAL が false のとき番号に含めない
+  // Gold は RUNTIME_ENABLE_GOLD_AND_SHOP が false のとき番号に含めない
   // 縦移動では実績を飛ばし、実績は Settings から左右キーだけ
   private getShopSealMenuOffset(): number {
     if (TITLE_SHOW_SHOP_AND_SEAL) {
       return 2
+    }
+    return 0
+  }
+
+  private getGoldMenuOffset(): number {
+    if (RUNTIME_ENABLE_GOLD_AND_SHOP) {
+      return 1
     }
     return 0
   }
@@ -436,15 +448,29 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private getAchievementSelectionIndex(): number {
-    return this.panelViews.length + this.getShopSealMenuOffset() + 1
+    return (
+      this.panelViews.length +
+      this.getShopSealMenuOffset() +
+      this.getGoldMenuOffset()
+    )
   }
 
   private getSettingsSelectionIndex(): number {
-    return this.panelViews.length + this.getShopSealMenuOffset() + 2
+    return (
+      this.panelViews.length +
+      this.getShopSealMenuOffset() +
+      this.getGoldMenuOffset() +
+      1
+    )
   }
 
   private getBgmSelectionIndex(): number {
-    return this.panelViews.length + this.getShopSealMenuOffset() + 3
+    return (
+      this.panelViews.length +
+      this.getShopSealMenuOffset() +
+      this.getGoldMenuOffset() +
+      2
+    )
   }
 
   // BGM の左隣（TITLE_SHOW_DEBUG_PROGRESS のときだけ使う）
@@ -523,6 +549,9 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private isGoldSelected(): boolean {
+    if (!RUNTIME_ENABLE_GOLD_AND_SHOP) {
+      return false
+    }
     return this.selectedIndex === this.getGoldSelectionIndex()
   }
 
@@ -1209,7 +1238,9 @@ export class TitleScene extends Phaser.Scene {
     }
     if (this.isAchievementsSelected()) {
       if (direction < 0) {
-        this.selectMenuItem(this.getGoldSelectionIndex())
+        if (RUNTIME_ENABLE_GOLD_AND_SHOP) {
+          this.selectMenuItem(this.getGoldSelectionIndex())
+        }
       } else {
         this.selectMenuItem(this.getSettingsSelectionIndex())
       }
@@ -1685,10 +1716,17 @@ export class TitleScene extends Phaser.Scene {
     }
 
     if (this.isSettingsSelected()) {
-      this.applyConditionText(
-        '← / A: Gold · Achievements  ·  SPACE: Settings',
-        TITLE_AREA_SUB_COLOR,
-      )
+      if (RUNTIME_ENABLE_GOLD_AND_SHOP) {
+        this.applyConditionText(
+          '← / A: Gold · Achievements  ·  SPACE: Settings',
+          TITLE_AREA_SUB_COLOR,
+        )
+      } else {
+        this.applyConditionText(
+          '← / A: Achievements  ·  SPACE: Settings',
+          TITLE_AREA_SUB_COLOR,
+        )
+      }
       return
     }
 
@@ -1751,6 +1789,9 @@ export class TitleScene extends Phaser.Scene {
 
   // 役割: ショップを開き、購入と同じ決定音を鳴らす
   private openShopMenu(): void {
+    if (!RUNTIME_ENABLE_GOLD_AND_SHOP) {
+      return
+    }
     if (!this.isShopMenuUnlocked()) {
       this.playLockedActionDenied(this.shopPreviewView?.lockIcon ?? null)
       return
@@ -1892,6 +1933,9 @@ export class TitleScene extends Phaser.Scene {
 
   // 役割: シールスキル画面を開き、購入と同じ決定音を鳴らす
   private openSealSkillsMenu(): void {
+    if (!RUNTIME_ENABLE_GOLD_AND_SHOP) {
+      return
+    }
     this.titleAudioSystem.playShopPurchase()
     this.clearAllAreaPanelHovers()
     this.sealSkillSystem.open()

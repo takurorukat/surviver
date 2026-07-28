@@ -51,6 +51,7 @@ import {
   LEVEL_UP_SKILL_ICON_SCALE,
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
+  RUNTIME_ENABLE_GOLD_AND_SHOP,
   isSkillIconId,
   type SkillIconId,
 } from '../GameConstants'
@@ -165,6 +166,10 @@ function pickRandomLevelUpChoices(
   }
 
   if (picked.length === 0) {
+    // Gold 休止中は空配列（GameScene 側で自動解決する想定）
+    if (!RUNTIME_ENABLE_GOLD_AND_SHOP) {
+      return []
+    }
     return [GOLD_FALLBACK_CHOICE]
   }
 
@@ -255,6 +260,14 @@ export class LevelUpChoiceSystem {
       requiredChoiceId,
       maxedChoiceIds,
     )
+    // Gold 休止かつ通常候補なし: UI を出さず選択コールバックへ（無限待ち防止）
+    if (this.shownChoices.length === 0) {
+      this.isVisible = false
+      this.onChoiceSelected = null
+      this.comboPreviewStats = null
+      onChoice('gold')
+      return
+    }
     // 通常3択は中央、Goldだけのときは唯一のパネルを選択
     this.selectedIndex = Math.floor(this.shownChoices.length / 2)
     this.createOverlay()

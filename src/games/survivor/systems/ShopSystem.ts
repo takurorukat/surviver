@@ -29,6 +29,7 @@ import {
   INITIAL_PRIMARY_SKILL_LEVEL_CAP,
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
+  RUNTIME_ENABLE_GOLD_AND_SHOP,
 } from '../GameConstants'
 import {
   getGold,
@@ -144,6 +145,10 @@ export class ShopSystem {
   }
 
   open(): void {
+    // Gold／Shop Runtime Disable: パネルを開かない
+    if (!RUNTIME_ENABLE_GOLD_AND_SHOP) {
+      return
+    }
     if (this.openState) {
       return
     }

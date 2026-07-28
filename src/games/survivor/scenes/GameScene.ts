@@ -34,6 +34,7 @@ import {
   FINAL_WAVE_REMAINING_SECONDS,
   getAreaStageCount,
   AUTO_GOLD_LEVEL_UP_CHAIN_DELAY_MS,
+  RUNTIME_ENABLE_GOLD_AND_SHOP,
   calculatePierceLevelFromMoveAndSpeed,
   calculateBlastLevelFromPowerAndRange,
   calculateOrbitingOrbLevelFromMoveAndPickup,
@@ -1546,6 +1547,13 @@ export class GameScene extends Phaser.Scene {
 
   // 役割: クリア用ゴールドコイン取得 → 保存 → 上部バーへキラキラ
   private handleGoldCoinPickup(coin: GoldCoinView): void {
+    // Gold／Shop Runtime Disable: 拾っても加算しない
+    if (!RUNTIME_ENABLE_GOLD_AND_SHOP) {
+      if (coin.active) {
+        coin.destroy()
+      }
+      return
+    }
     if (!coin.active || this.isPlayerDead || this.isStageSettled) {
       return
     }
@@ -1635,7 +1643,7 @@ export class GameScene extends Phaser.Scene {
   // 役割: 次のレベルアップ選択 UI を開き、ゲームを一時停止する
   // 呼び出し元: checkAndQueueLevelUps / applyLevelUpChoice / finishClearCoinVacuum
   // 呼び出し先: pauseGameForLevelUp, levelUpChoiceSystem.show → applyLevelUpChoice
-  //             または applyAutoGoldLevelUp（能力上限でゴールドだけのとき）
+  //             または applyAutoExhaustedLevelUp（能力上限で通常候補が無いとき）
   private beginNextLevelUpChoice(): void {
     if (this.pendingLevelUps <= 0 || this.isPlayerDead || this.isStageSettled) {
       return
@@ -1646,9 +1654,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     const maxedChoiceIds = this.getMaxedLevelUpChoiceIds()
-    // 通常強化が残っていない＝ゴールドしか選べない → 画面を止めず自動付与
+    // 通常強化が残っていない → 画面を止めず自動解決（Gold 休止中は報酬なし）
     if (hasNoNormalLevelUpChoices(maxedChoiceIds)) {
-      this.applyAutoGoldLevelUp()
+      this.applyAutoExhaustedLevelUp()
       return
     }
 
@@ -1687,12 +1695,15 @@ export class GameScene extends Phaser.Scene {
     )
   }
 
-  // 役割: 能力が全部上限のとき、選択 UI なしで 1G を付与してプレイ継続
+  // 役割: 能力が全部上限のとき、選択 UI なしでレベルだけ進めてプレイ継続
+  // Gold 有効時のみ +1G。無効時は報酬なし（空 UI／無限ループを避ける）
   // 呼び出し元: beginNextLevelUpChoice
-  private applyAutoGoldLevelUp(): void {
-    const goldResult = addGold(1)
-    if (goldResult.shopJustUnlocked) {
-      this.pendingShopUnlockNotify = true
+  private applyAutoExhaustedLevelUp(): void {
+    if (RUNTIME_ENABLE_GOLD_AND_SHOP) {
+      const goldResult = addGold(1)
+      if (goldResult.shopJustUnlocked) {
+        this.pendingShopUnlockNotify = true
+      }
     }
 
     this.currentLevel = this.currentLevel + 1
@@ -1711,20 +1722,22 @@ export class GameScene extends Phaser.Scene {
     this.refreshPlayerStatsHud()
     this.hudSystem.refreshGold()
 
-    // 止めずに「LEVEL UP」＋ゴールドが上へ浮かぶ演出
+    // 止めずに「LEVEL UP」。Gold 有効時のみコイン音と +GOLD 演出
     this.gameAudioSystem.playLevelUp()
-    this.gameAudioSystem.playCoinPickup()
     playAutoGoldLevelUpText(this, this.player.x, this.player.y)
-    playGoldGainVisualEffect(
-      this,
-      this.hudSystem,
-      this.player.x,
-      this.player.y - 10,
-      1,
-    )
+    if (RUNTIME_ENABLE_GOLD_AND_SHOP) {
+      this.gameAudioSystem.playCoinPickup()
+      playGoldGainVisualEffect(
+        this,
+        this.hudSystem,
+        this.player.x,
+        this.player.y - 10,
+        1,
+      )
+    }
 
     if (this.pendingLevelUps > 0) {
-      // 連続時は少し間を空けて、ゴールドが飛んでいくのが見えるようにする
+      // 連続時は少し間を空けて、演出が重なりすぎないようにする
       this.time.delayedCall(AUTO_GOLD_LEVEL_UP_CHAIN_DELAY_MS, () => {
         if (this.isPlayerDead || this.isStageSettled) {
           return
@@ -1876,7 +1889,8 @@ export class GameScene extends Phaser.Scene {
     })
 
     // 全能力が上限のときだけ現れる代替報酬。能力値は変えず、1Gを即保存する。
-    if (choiceId === 'gold') {
+    // Gold 休止中は何も加算しない（選択 UI 自体も通常は出さない）。
+    if (choiceId === 'gold' && RUNTIME_ENABLE_GOLD_AND_SHOP) {
       const goldResult = addGold(1)
       if (goldResult.shopJustUnlocked) {
         this.pendingShopUnlockNotify = true
