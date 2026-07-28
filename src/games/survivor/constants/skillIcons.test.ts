@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CORE_SKILL_ICON_ASSETS,
+  CORE_SKILL_ICON_IDS,
+  CORE_SKILL_ICONS,
   SKILL_ICON_BASE_SIZE,
   SKILL_ICON_DEFINITIONS,
   getSkillIconDefinition,
@@ -9,6 +12,10 @@ import {
 } from './skillIcons'
 
 const ALL_SKILL_ICON_IDS: SkillIconId[] = [
+  'wind',
+  'water',
+  'fire',
+  'earth',
   'damage',
   'fireRate',
   'range',
@@ -35,7 +42,28 @@ describe('skill icon definitions', () => {
     expect(SKILL_ICON_DEFINITIONS.blast.symbol).toBe('✸')
     expect(SKILL_ICON_DEFINITIONS.ricochet.symbol).toBe('↯')
     expect(SKILL_ICON_DEFINITIONS.xpBonus.symbol).toBe('❖')
-    expect(Object.keys(SKILL_ICON_DEFINITIONS)).toHaveLength(11)
+    expect(Object.keys(SKILL_ICON_DEFINITIONS)).toHaveLength(15)
+  })
+
+  it('7種類の統一アイコンを同じSSoTから参照する', () => {
+    expect(CORE_SKILL_ICON_IDS).toEqual([
+      'wind',
+      'water',
+      'fire',
+      'earth',
+      'speed',
+      'power',
+      'range',
+    ])
+    expect(SKILL_ICON_DEFINITIONS.damage).toBe(CORE_SKILL_ICONS.power)
+    expect(SKILL_ICON_DEFINITIONS.fireRate).toBe(CORE_SKILL_ICONS.speed)
+    expect(SKILL_ICON_DEFINITIONS.range).toBe(CORE_SKILL_ICONS.range)
+
+    const assetKeys = CORE_SKILL_ICON_ASSETS.map((asset) => asset.key)
+    const assetPaths = CORE_SKILL_ICON_ASSETS.map((asset) => asset.path)
+    expect(new Set(assetKeys).size).toBe(7)
+    expect(new Set(assetPaths).size).toBe(7)
+    expect(assetPaths.every((path) => path.endsWith('.svg'))).toBe(true)
   })
 
   it('既知の skillId は isSkillIconId / getSkillIconDefinition で扱える', () => {

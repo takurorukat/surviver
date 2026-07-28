@@ -219,7 +219,10 @@ type UnlockStatusIcon = {
   container: Phaser.GameObjects.Container
   border: Phaser.GameObjects.Rectangle
   fill: Phaser.GameObjects.Rectangle
-  symbol: Phaser.GameObjects.Text | Phaser.GameObjects.Graphics
+  symbol:
+    | Phaser.GameObjects.Text
+    | Phaser.GameObjects.Graphics
+    | Phaser.GameObjects.Image
   // シール中: 青白い凍り幕
   frostVeil: Phaser.GameObjects.Rectangle
   // シール中: 時々きらめく小さな氷のかけら（2つ）
@@ -593,6 +596,8 @@ export class HudSystem {
     icon.symbol.setAlpha(alpha)
     if (icon.symbol instanceof Phaser.GameObjects.Text) {
       icon.symbol.setColor(letterColor)
+    } else if (icon.symbol instanceof Phaser.GameObjects.Image) {
+      icon.symbol.setTint(Number.parseInt(letterColor.slice(1), 16))
     }
 
     // さらに薄い白の氷幕を重ねる（色は透けてスキルごとに違って見える）

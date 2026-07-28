@@ -1,9 +1,13 @@
 /**
  * Survivor のスキルアイコン原本。
  *
- * 全UIはこの記号・色と基準寸法を倍率だけ変えて使用する。
+ * 全UIはこの画像／記号・色と基準寸法を倍率だけ変えて使用する。
  */
 export type SkillIconId =
+  | 'wind'
+  | 'water'
+  | 'fire'
+  | 'earth'
   | 'damage'
   | 'fireRate'
   | 'range'
@@ -19,12 +23,90 @@ export type SkillIconId =
 export type SkillIconDefinition = {
   symbol: string
   color: number
+  assetKey?: string
+  assetPath?: string
 }
 
+export type CoreSkillIconId =
+  | 'wind'
+  | 'water'
+  | 'fire'
+  | 'earth'
+  | 'speed'
+  | 'power'
+  | 'range'
+
+export const CORE_SKILL_ICON_IDS: CoreSkillIconId[] = [
+  'wind',
+  'water',
+  'fire',
+  'earth',
+  'speed',
+  'power',
+  'range',
+]
+
+export const CORE_SKILL_ICONS: Record<CoreSkillIconId, SkillIconDefinition> = {
+  wind: {
+    symbol: '〰',
+    color: 0x2dd4bf,
+    assetKey: 'skill-icon-wind',
+    assetPath: 'assets/icons/skills/unified/wind.svg',
+  },
+  water: {
+    symbol: '●',
+    color: 0x38bdf8,
+    assetKey: 'skill-icon-water',
+    assetPath: 'assets/icons/skills/unified/water.svg',
+  },
+  fire: {
+    symbol: '▲',
+    color: 0xf97316,
+    assetKey: 'skill-icon-fire',
+    assetPath: 'assets/icons/skills/unified/fire.svg',
+  },
+  earth: {
+    symbol: '◆',
+    color: 0xb88952,
+    assetKey: 'skill-icon-earth',
+    assetPath: 'assets/icons/skills/unified/earth.svg',
+  },
+  speed: {
+    symbol: '⚡',
+    color: 0x67e8f9,
+    assetKey: 'skill-icon-speed',
+    assetPath: 'assets/icons/skills/unified/speed.svg',
+  },
+  power: {
+    symbol: '⚔',
+    color: 0xfbbf24,
+    assetKey: 'skill-icon-power',
+    assetPath: 'assets/icons/skills/unified/power.svg',
+  },
+  range: {
+    symbol: '◎',
+    color: 0xc084fc,
+    assetKey: 'skill-icon-range',
+    assetPath: 'assets/icons/skills/unified/range.svg',
+  },
+}
+
+export const CORE_SKILL_ICON_ASSETS = CORE_SKILL_ICON_IDS.map((id) => {
+  const definition = CORE_SKILL_ICONS[id]
+  return {
+    key: definition.assetKey as string,
+    path: definition.assetPath as string,
+  }
+})
+
 export const SKILL_ICON_DEFINITIONS: Record<SkillIconId, SkillIconDefinition> = {
-  damage: { symbol: '⚔', color: 0xef4444 },
-  fireRate: { symbol: '⚡', color: 0xf97316 },
-  range: { symbol: '◎', color: 0x3b82f6 },
+  wind: CORE_SKILL_ICONS.wind,
+  water: CORE_SKILL_ICONS.water,
+  fire: CORE_SKILL_ICONS.fire,
+  earth: CORE_SKILL_ICONS.earth,
+  damage: CORE_SKILL_ICONS.power,
+  fireRate: CORE_SKILL_ICONS.speed,
+  range: CORE_SKILL_ICONS.range,
   move: { symbol: '〰', color: 0x5eead4 },
   magnet: { symbol: '≋', color: 0x38bdf8 },
   hp: { symbol: '♥', color: 0xfb7185 },

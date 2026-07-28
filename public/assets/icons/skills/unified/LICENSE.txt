@@ -1,0 +1,20 @@
+Unified core skill icons
+
+Original icons: Whirlwind, Drop, Small fire, Rock, Sprint, Fist, On target
+Author: Lorc
+Source: https://game-icons.net/
+License: Creative Commons Attribution 3.0 Unported (CC BY 3.0)
+License URL: https://creativecommons.org/licenses/by/3.0/
+
+Required attribution:
+Icons by Lorc. Available on https://game-icons.net
+
+Runtime changes:
+- normalized from a 512x512 viewBox to a 64x64 viewBox
+- common 6-unit safe padding
+- transparent background
+- white single-color symbol
+- no shadow or gradient
+
+Detailed source URLs and SHA-256 checksums:
+docs/licenses/skill-icons.md

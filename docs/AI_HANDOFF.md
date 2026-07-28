@@ -27,6 +27,14 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ## 直近の作業記録
 
+### 2026-07-28 — Codex
+
+- 実施内容: Wind / Water / Fire / Earth / Speed / Power / Range の7アイコンを、Game-icons.net の同一作者 Lorc（CC BY 3.0）へ統一。原本SVGを `assets-source/icons/skills/unified/`、64×64のRuntime SVGを `public/assets/icons/skills/unified/` に保存し、`skillIcons.ts` をSSoTとしてManifest・HUD・Level Up・Achievements/複合表示へ反映した。Creditsと詳細ライセンス記録も追加。
+- 表示範囲: Power（内部ID `damage`）/ Speed（`fireRate`）/ Range は既存HUD・Level Upへ反映。4属性は現在、独立した取得枠を持たないためSSoTとpreloadへの登録までとし、ゲーム仕様や表示枠は追加していない。既存固有スキルアイコンは変更なし。
+- 検証: typecheck OK、tests 223 OK、build OK、git diff --check OK。実ブラウザでHUD・Level Up・Credits、7 SVGのHTTP 200とconsole errorなしを確認。16/24/32/48px比較画像はgitignoredの `test-results/icon-review/` に保存。
+- 未解決: 24px以下の最終的な判別性は人間による確認が必要。旧文字glyphは画像ロード失敗時の互換fallbackとして保持。
+- 次の開発タスク: **Full Game Verification**（本タスクでは未着手）。
+
 ### 2026-07-28 — Cursor
 
 - 実施内容: Run Result Data Foundation。エリア通算 elapsed / run kills / clear|defeat 確定 / bossDefeated(finalBossConfig) / Stage間維持。メモリ上 `RunResultStore` が SSoT。Save・Best Time・Result UI・Achievements・Audio・Ending 未変更。並行のアイコン未コミット差分は保護・コミット対象外。

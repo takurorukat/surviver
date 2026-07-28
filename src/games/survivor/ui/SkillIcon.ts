@@ -11,7 +11,10 @@ export type SkillIconView = {
   container: Phaser.GameObjects.Container
   border: Phaser.GameObjects.Rectangle
   fill: Phaser.GameObjects.Rectangle
-  symbol: Phaser.GameObjects.Text | Phaser.GameObjects.Graphics
+  symbol:
+    | Phaser.GameObjects.Text
+    | Phaser.GameObjects.Graphics
+    | Phaser.GameObjects.Image
 }
 
 /**
@@ -44,8 +47,20 @@ export function createSkillIcon(
     definition.color,
   )
 
-  let symbol: Phaser.GameObjects.Text | Phaser.GameObjects.Graphics
-  if (id === 'orbitingOrb') {
+  let symbol:
+    | Phaser.GameObjects.Text
+    | Phaser.GameObjects.Graphics
+    | Phaser.GameObjects.Image
+  if (definition.assetKey !== undefined) {
+    const symbolImage = scene.add.image(
+      metrics.symbolOffsetX,
+      metrics.symbolOffsetY,
+      definition.assetKey,
+    )
+    symbolImage.setDisplaySize(metrics.size, metrics.size)
+    symbolImage.setTint(0x0f172a)
+    symbol = symbolImage
+  } else if (id === 'orbitingOrb') {
     symbol = drawOrbitingOrbIconSymbol(scene, metrics.size, definition.color)
   } else {
     const symbolText = scene.add.text(
