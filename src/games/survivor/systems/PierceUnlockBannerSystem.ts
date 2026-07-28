@@ -2,7 +2,7 @@
 // PierceUnlockBannerSystem.ts
 // ------------------------------------------------------------
 // Move+1 かつ Speed+1 で Pierce を自動取得したとき、
-// 大きなアイコン＋「PIERCE OBTAINED」を出してからプレイ再開する。
+// 大きなアイコン＋「PIERCE GET!」を出してからプレイ再開する。
 //
 // レベルアップ中は scene.time.paused = true なので、
 // delayedCall は使わず、再開カウントダウンと同じ tweens.chain で進める。

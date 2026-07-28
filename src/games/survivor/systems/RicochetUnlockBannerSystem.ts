@@ -2,7 +2,7 @@
 // RicochetUnlockBannerSystem.ts
 // ------------------------------------------------------------
 // XP Bonus + Pickup + Speed で Ricochet を自動取得したとき、
-// 大きなアイコン＋「RICOCHET OBTAINED」を出してからプレイ再開する。
+// 大きなアイコン＋「RICOCHET GET!」を出してからプレイ再開する。
 // ============================================================
 
 import Phaser from 'phaser'

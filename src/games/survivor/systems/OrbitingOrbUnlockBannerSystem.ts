@@ -2,7 +2,7 @@
 // OrbitingOrbUnlockBannerSystem.ts
 // ------------------------------------------------------------
 // Move + Pickup で Orbiting Orb を自動取得したとき、
-// 大きなアイコン＋「ORBITING ORB OBTAINED」を出してからプレイ再開する。
+// 大きなアイコン＋「ORBIT GET!」を出してからプレイ再開する。
 // ============================================================
 
 import Phaser from 'phaser'

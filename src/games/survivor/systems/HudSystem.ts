@@ -976,7 +976,7 @@ export class HudSystem {
       { key: 'hp', label: 'HP MAX' },
       { key: 'penetrate', label: 'PIERCE' },
       { key: 'blast', label: 'BLAST' },
-      { key: 'orbitingOrb', label: 'ORB' },
+      { key: 'orbitingOrb', label: 'ORBIT' },
       { key: 'ricochet', label: 'RICOCHET' },
       { key: 'xpBonus', label: 'XP 2X' },
     ]

@@ -39,7 +39,7 @@ export const ACHIEVEMENT_TITLE_FOREST_CLEAR = 'Volcano'
 export const ACHIEVEMENT_TITLE_MOVE = 'Move'
 export const ACHIEVEMENT_TITLE_MAGNET = 'Pickup'
 export const ACHIEVEMENT_TITLE_RICOCHET = 'Ricochet'
-export const ACHIEVEMENT_TITLE_ORBITING_ORB = 'Orbiting Orb'
+export const ACHIEVEMENT_TITLE_ORBITING_ORB = 'Orbit'
 export const ACHIEVEMENT_TITLE_XP_BONUS = 'XP Bonus'
 export const ACHIEVEMENT_CONDITION_UNTOUCHED = 'Clear Windy Plains with no damage'
 export const ACHIEVEMENT_CONDITION_PURE_POWER =
@@ -56,7 +56,7 @@ export const ACHIEVEMENT_CONDITION_BLAST =
 export const ACHIEVEMENT_CONDITION_RICOCHET =
   'Raise XP Bonus, Pickup and Speed (Ricochet = min of Pickup-1, Speed-1, XP Bonus)'
 export const ACHIEVEMENT_CONDITION_ORBITING_ORB =
-  'Raise Move and Pickup (Orbiting Orb = lower level - 1)'
+  'Raise Move and Pickup (Orbit = lower level - 1)'
 export const ACHIEVEMENT_TITLE_VOLCANO_UNTOUCHED = 'Volcano Untouched'
 export const UNLOCK_SKILL_LABEL_POWER = 'Power'
 export const UNLOCK_SKILL_LABEL_SPEED = 'Speed'
@@ -64,7 +64,7 @@ export const UNLOCK_SKILL_LABEL_RANGE = 'Range'
 export const UNLOCK_SKILL_LABEL_PIERCE = 'Pierce'
 export const UNLOCK_SKILL_LABEL_BLAST = 'Blast'
 export const UNLOCK_SKILL_LABEL_RICOCHET = 'Ricochet'
-export const UNLOCK_SKILL_LABEL_ORBITING_ORB = 'Orbiting Orb'
+export const UNLOCK_SKILL_LABEL_ORBITING_ORB = 'Orbit'
 export const UNLOCK_SKILL_LABEL_MOVE = 'Move'
 // Vampire Survivors ではステータス名 Magnet / アイテム Attractorb。
 // 説明文は "Pickup range" なので、表示名は分かりやすい Pickup にする
@@ -87,7 +87,7 @@ export const UNLOCK_SKILL_DESC_BLAST =
 export const UNLOCK_SKILL_DESC_RICOCHET =
   'XP Bonus + Pickup + Speed → Ricochet'
 export const UNLOCK_SKILL_DESC_ORBITING_ORB =
-  'Move + Pickup → Orbiting Orb (Orbiting Orb = lower level - 1)'
+  'Move + Pickup → Orbit (Orbit = lower level - 1)'
 export const UNLOCK_CONDITION_TBD = 'Unlock condition: TBD'
 
 // --- 経験値（累計 XP からレベル内の進捗を計算）---

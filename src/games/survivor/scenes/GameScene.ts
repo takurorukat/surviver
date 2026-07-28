@@ -1997,8 +1997,8 @@ export class GameScene extends Phaser.Scene {
       this.continueAfterLevelUpChoiceResolved()
     }
 
-    // 初回は大きな OBTAINED、レベル上昇は控えめな Lv.N
-    // 表示順: Pierce → Blast → Orbiting Orb → Ricochet
+    // 初回は大きな GET!、レベル上昇は控えめな Lv.N
+    // 表示順: Pierce → Blast → Orbit → Ricochet
     const runRicochetBannerIfNeeded = (thenFn: () => void) => {
       if (ricochetSyncResult === 'firstUnlock') {
         playRicochetUnlockBanner(this, thenFn, this.currentRicochetLevel)

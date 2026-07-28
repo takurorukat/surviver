@@ -2,7 +2,7 @@
 // BlastUnlockBannerSystem.ts
 // ------------------------------------------------------------
 // Power+1 かつ Range+1 で Blast を自動取得したとき、
-// 大きなアイコン＋「BLAST OBTAINED」を出してからプレイ再開する。
+// 大きなアイコン＋「BLAST GET!」を出してからプレイ再開する。
 //
 // レベルアップ中は scene.time.paused = true なので、
 // delayedCall は使わず、再開カウントダウンと同じ tweens.chain で進む。
@@ -118,7 +118,7 @@ export function playBlastUnlockBanner(
 
 /**
  * Blast レベル上昇の控えめな通知（例: BLAST Lv.2）。
- * 初回 OBTAINED より小さく・短く出す。
+ * 初回 GET! より小さく・短く出す。
  */
 export function playBlastLevelUpBanner(
   scene: Phaser.Scene,

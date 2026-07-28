@@ -192,7 +192,7 @@ describe('既存複合スキル条件の維持', () => {
       moveLevel: 1,
       magnetLevel: 2,
     })
-    expect(movePreview.some((preview) => preview.skillName === 'Orbiting Orb')).toBe(
+    expect(movePreview.some((preview) => preview.skillName === 'Orbit')).toBe(
       true,
     )
 
@@ -201,7 +201,7 @@ describe('既存複合スキル条件の維持', () => {
       moveLevel: 2,
       magnetLevel: 1,
     })
-    expect(magnetPreview.some((preview) => preview.skillName === 'Orbiting Orb')).toBe(
+    expect(magnetPreview.some((preview) => preview.skillName === 'Orbit')).toBe(
       true,
     )
   })

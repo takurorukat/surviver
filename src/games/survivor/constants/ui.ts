@@ -298,7 +298,7 @@ export const LEVEL_UP_CHOICE_COMBO_COLOR = '#fde68a'
 export const LEVEL_UP_CHOICE_COMBO_BLOCK_GAP = 8
 export const LEVEL_UP_UI_DEPTH = 400
 // --- Move+1 かつ Speed+1 で Pierce を自動取得したときの大きな通知 ---
-export const PIERCE_UNLOCK_BANNER_TITLE = 'PIERCE OBTAINED'
+export const PIERCE_UNLOCK_BANNER_TITLE = 'PIERCE GET!'
 export const PIERCE_UNLOCK_BANNER_SUBTITLE = 'Bullets pierce through enemies'
 export const PIERCE_UNLOCK_BANNER_TITLE_FONT_SIZE = '48px'
 export const PIERCE_UNLOCK_BANNER_SUBTITLE_FONT_SIZE = '20px'
@@ -312,7 +312,7 @@ export const PIERCE_UNLOCK_BANNER_HOLD_MS = 1100
 export const PIERCE_UNLOCK_BANNER_FADE_MS = 320
 
 // --- Power+1 かつ Range+1 で Blast を自動取得したときの大きな通知 ---
-export const BLAST_UNLOCK_BANNER_TITLE = 'BLAST OBTAINED'
+export const BLAST_UNLOCK_BANNER_TITLE = 'BLAST GET!'
 export const BLAST_UNLOCK_BANNER_SUBTITLE = 'Damages nearby enemies on hit'
 export const BLAST_UNLOCK_BANNER_TITLE_FONT_SIZE = '48px'
 export const BLAST_UNLOCK_BANNER_SUBTITLE_FONT_SIZE = '20px'
@@ -326,7 +326,7 @@ export const BLAST_UNLOCK_BANNER_HOLD_MS = 1100
 export const BLAST_UNLOCK_BANNER_FADE_MS = 320
 
 // --- Pickup+1 かつ Power+1 かつ Speed+1 で Ricochet を自動取得 ---
-export const RICOCHET_UNLOCK_BANNER_TITLE = 'RICOCHET OBTAINED'
+export const RICOCHET_UNLOCK_BANNER_TITLE = 'RICOCHET GET!'
 export const RICOCHET_UNLOCK_BANNER_SUBTITLE = 'Bullets bounce to nearby enemies'
 export const RICOCHET_UNLOCK_BANNER_TITLE_FONT_SIZE = '48px'
 export const RICOCHET_UNLOCK_BANNER_SUBTITLE_FONT_SIZE = '20px'
@@ -339,7 +339,7 @@ export const RICOCHET_UNLOCK_BANNER_POP_MS = 280
 export const RICOCHET_UNLOCK_BANNER_HOLD_MS = 1100
 export const RICOCHET_UNLOCK_BANNER_FADE_MS = 320
 
-// Blast / Pierce / Ricochet のレベル上昇時（初回 OBTAINED より控えめ）
+// Blast / Pierce / Ricochet のレベル上昇時（初回 GET! より控えめ）
 export const SKILL_LEVEL_UP_BANNER_TITLE_FONT_SIZE = '28px'
 export const SKILL_LEVEL_UP_BANNER_SUBTITLE_FONT_SIZE = '16px'
 export const SKILL_LEVEL_UP_BANNER_DEPTH = 430
@@ -354,10 +354,10 @@ export const PIERCE_LEVEL_UP_BANNER_SUBTITLE = 'Move + Speed'
 export const RICOCHET_LEVEL_UP_BANNER_TITLE_PREFIX = 'RICOCHET Lv.'
 export const RICOCHET_LEVEL_UP_BANNER_SUBTITLE = 'XP Bonus + Pickup + Speed'
 
-export const ORBITING_ORB_UNLOCK_BANNER_TITLE = 'ORBITING ORB OBTAINED'
+export const ORBITING_ORB_UNLOCK_BANNER_TITLE = 'ORBIT GET!'
 export const ORBITING_ORB_UNLOCK_BANNER_SUBTITLE =
   'Ice orbs orbit, hit enemies, and shatter projectiles'
-export const ORBITING_ORB_UNLOCK_BANNER_TITLE_FONT_SIZE = '42px'
+export const ORBITING_ORB_UNLOCK_BANNER_TITLE_FONT_SIZE = '48px'
 export const ORBITING_ORB_UNLOCK_BANNER_SUBTITLE_FONT_SIZE = '20px'
 export const ORBITING_ORB_UNLOCK_BANNER_TITLE_COLOR = '#7dd3fc'
 export const ORBITING_ORB_UNLOCK_BANNER_SUBTITLE_COLOR = '#e0f2fe'
@@ -367,7 +367,7 @@ export const ORBITING_ORB_UNLOCK_BANNER_DEPTH = 435
 export const ORBITING_ORB_UNLOCK_BANNER_POP_MS = 280
 export const ORBITING_ORB_UNLOCK_BANNER_HOLD_MS = 1100
 export const ORBITING_ORB_UNLOCK_BANNER_FADE_MS = 320
-export const ORBITING_ORB_LEVEL_UP_BANNER_TITLE_PREFIX = 'ORBITING ORB Lv.'
+export const ORBITING_ORB_LEVEL_UP_BANNER_TITLE_PREFIX = 'ORBIT Lv.'
 export const ORBITING_ORB_LEVEL_UP_BANNER_SUBTITLE = 'Move + Pickup'
 
 // --- ステージ結果（クリア／失敗／ゲームクリア）パネル ---
