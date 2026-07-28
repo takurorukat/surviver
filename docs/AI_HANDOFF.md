@@ -29,6 +29,37 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
+- 実施内容: Four-Area Ending Sequence。Victory → Final Ascent → Title。`isFourAreaCompletion` / `endingSeen` / `EndingScene` / Area Clear Continue 後に遷移 / タイトル左下 VIEW ENDING。画像は加工なし配置。Audio・Boss・Gold／Shop・Result Data 未変更。
+- 変更ファイル: ending 定数・画像2枚 / EndingScene / fourAreaCompletion / endingSequence / UnlockSaveSystem(endingSeen v8) / StageClearFlow / StageResult / TitleScene / bootstrap / assetManifest / tests / docs
+- 検証: typecheck OK、tests 184 OK、build OK、git diff --check OK
+- 未解決: ブラウザでの4エリア実クリア導線は未確認（手動手順を報告）。マグマ岩など前回の未コミット差分は保護・別扱い。
+- 次の開発タスク: Area Clear Result UI または Full Game Verification（未着手）
+
+## 直近の作業記録
+
+### 2026-07-28 — Cursor
+
+- 実施内容: Four Area Final Boss 最終確認。採用済み runtime 画像は HTTP 200。未参照の旧案 `enemy_earth_golem_boss.png` / `_clean.png` を削除（clean は dungeon boss と同一SHA、どちらも code/manifest 未参照・未コミット）。ブラウザでの4ボス実プレイ確認は Autoplay が Stage ジャンプ非対応のため未実施。他の未コミット差分（Stage3 final wave / ボス拡大）は保護・未コミット。
+- 変更ファイル: 未追跡 PNG 2件削除のみ（git に載っていたものはなし）
+- 検証: typecheck / finalBoss 関連テスト / build
+- 次の開発タスク: **Run Result Data**（未着手）
+
+### 2026-07-28 — Cursor
+
+- 実施内容: Earth Dungeon Stage3 のファイナルウェーブ後スポーン停止。通常バーストを経過15秒まで、残り10秒で FINAL WAVE、以降は新規スポーン／リトライ禁止。
+- 変更ファイル: `difficulty.ts` / `WaveSystem.ts` / `ruinsStage3FinalWave.test.ts` / docs
+- 検証: typecheck・関連テスト
+- 次の開発タスク: Run Result Data（未着手）
+
+### 2026-07-28 — Cursor
+
+- 実施内容: Earth Dungeon Stage5 ボス表示・当たり判定スケールを 2 → 5（旧サイズの 2.5 倍）に変更。
+- 変更ファイル: `constants/enemies.ts`（`ENEMY_EARTH_DUNGEON_BOSS_SIZE_SCALE`）
+- 検証: typecheck OK、earthDungeonBoss テスト OK
+- 次の開発タスク: Run Result Data（未着手）
+
+### 2026-07-28 — Cursor
+
 - 実施内容: Version 1 の4エリア最終ボスを統合。`finalBossConfig` SSoT（finalStage / bossId / defeat-boss）。Forest gravestone・Volcano chaosElemental に `isBoss` 付与。最終ステージはタイマー0ではクリアせずボス撃破必須。Wind／Earth は既存実装を維持しつつ出現判定を SSoT 経由に統一。プレイヤー基準スポーン。Audio／Gold／Shop／Result／Ending 未変更。
 - 変更ファイル: `finalBossConfig.ts` / `stageClearRules.ts` / `spawnEnemyCommon.ts` / `updateSpecialEnemySpawns.ts` / `EnemySummonSystem.ts` / tests / docs / TODO
 - 検証: typecheck OK、tests 153 OK、build OK、git diff --check OK

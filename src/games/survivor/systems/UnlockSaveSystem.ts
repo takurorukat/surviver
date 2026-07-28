@@ -33,7 +33,7 @@ import {
   type StageAreaDef,
 } from '../GameConstants'
 
-const SAVE_DATA_VERSION = 7
+const SAVE_DATA_VERSION = 8
 
 export type ShopUpgradeId =
   | 'maxHp'
@@ -78,6 +78,8 @@ export type GameSaveData = {
   /** 常に null。旧データ互換のためフィールドだけ残す */
   run: null
   lifetimeStats: LifetimeStats
+  /** 4エリア全クリア Ending を最後まで見たかどうか（無い旧セーブは false） */
+  endingSeen: boolean
 }
 
 // 旧形式（version / run なし）との互換用
@@ -121,6 +123,7 @@ function createEmptyGameSaveData(): GameSaveData {
     sealedSkillIds: [],
     run: null,
     lifetimeStats: createEmptyLifetimeStats(),
+    endingSeen: false,
   }
 }
 
@@ -277,6 +280,8 @@ function parseGameSaveData(parsed: unknown): GameSaveData {
     // 途中再開はやめたので、旧 run があっても捨てる
     run: null,
     lifetimeStats: parseLifetimeStats(parsed.lifetimeStats),
+    // 旧セーブに無い場合は未視聴扱い
+    endingSeen: parsed.endingSeen === true,
   }
 }
 
@@ -422,6 +427,25 @@ export function markAreaCleared(areaId: string): boolean {
   data.clearedAreaIds.push(areaId)
   saveGameSaveData(data)
   return true
+}
+
+/** Ending を最後まで見たことを保存する（既に true なら何もしない） */
+export function markEndingSeen(): void {
+  const data = loadGameSaveData()
+  if (data.endingSeen) {
+    return
+  }
+  data.endingSeen = true
+  saveGameSaveData(data)
+}
+
+export function hasSeenEnding(): boolean {
+  return loadGameSaveData().endingSeen === true
+}
+
+/** 現在のセーブの clearedAreaIds を返す（コピー） */
+export function getClearedAreaIds(): string[] {
+  return [...loadGameSaveData().clearedAreaIds]
 }
 
 /** デバッグ用: タイトルからエリア進行を一括で上書きする */

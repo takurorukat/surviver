@@ -20,7 +20,7 @@ describe('loadGameSaveData（移行・破損復元）', () => {
 
   it('セーブが無いときは空データ', () => {
     const data = loadGameSaveData()
-    expect(data.version).toBe(7)
+    expect(data.version).toBe(8)
     expect(data.gold).toBe(0)
     expect(data.clearedAreaIds).toEqual([])
     expect(data.shopUnlocked).toBe(false)
@@ -32,7 +32,7 @@ describe('loadGameSaveData（移行・破損復元）', () => {
     const data = loadGameSaveData()
     expect(data.gold).toBe(0)
     expect(data.clearedAreaIds).toEqual([])
-    expect(data.version).toBe(7)
+    expect(data.version).toBe(8)
   })
 
   it('オブジェクトでない JSON も空データへ復元する', () => {
@@ -53,7 +53,7 @@ describe('loadGameSaveData（移行・破損復元）', () => {
     const data = loadGameSaveData()
     expect(data.unlockedAchievementIds).toContain(ACHIEVEMENT_ID_PLAINS_CLEAR)
     expect(data.shopUnlocked).toBe(true)
-    expect(data.version).toBe(7)
+    expect(data.version).toBe(8)
   })
 
   it('旧実績 ID を現行 ID へ移行する', () => {

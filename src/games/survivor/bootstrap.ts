@@ -8,6 +8,7 @@ import {
 import { BootScene } from './scenes/BootScene'
 import { PreloadScene } from './scenes/PreloadScene'
 import { TitleScene } from './scenes/TitleScene'
+import { EndingScene } from './scenes/EndingScene'
 
 /**
  * Survivor Stage の Phaser ゲームを起動する。
@@ -42,7 +43,7 @@ export function startSurvivorGame(): Phaser.Game {
     audio: {
       disableWebAudio: false,
     },
-    scene: [BootScene, PreloadScene, TitleScene],
+    scene: [BootScene, PreloadScene, TitleScene, EndingScene],
   }
 
   return new Phaser.Game(gameConfig)

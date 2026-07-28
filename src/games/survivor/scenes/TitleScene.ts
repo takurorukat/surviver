@@ -71,6 +71,7 @@ import {
   type StageAreaId,
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
+  TITLE_VIEW_ENDING_LABEL,
 } from '../GameConstants'
 import {
   isAreaPlayable,
@@ -82,7 +83,9 @@ import {
   isShopUnlocked,
   shouldShowShopUnlockTip,
   markShopUnlockTipSeen,
+  getClearedAreaIds,
 } from '../systems/UnlockSaveSystem'
+import { isFourAreaCompletion } from '../systems/fourAreaCompletion'
 import { createTopBar, type TopBarView } from '../systems/TopBarSystem'
 import { GameAudioSystem } from '../systems/GameAudioSystem'
 import {
@@ -177,6 +180,8 @@ export class TitleScene extends Phaser.Scene {
   private bgmToggleButton: BgmToggleButtonView | null = null
   private debugProgressButton: DebugProgressButtonView | null = null
   private orientationGuide: OrientationGuideView | null = null
+  private viewEndingHit: Phaser.GameObjects.Rectangle | null = null
+  private viewEndingText: Phaser.GameObjects.Text | null = null
 
   constructor() {
     super({ key: 'TitleScene' })
@@ -349,6 +354,7 @@ export class TitleScene extends Phaser.Scene {
     )
     hintText.setOrigin(0.5)
     shrinkTextToFitWidth(hintText, GAME_WIDTH - 64)
+    this.createOrRefreshViewEndingButton()
     this.bgmToggleButton = createBgmToggleButton(this, this.titleAudioSystem, () => {
       if (
         this.confirmDialogSystem.isOpen() ||
@@ -557,6 +563,69 @@ export class TitleScene extends Phaser.Scene {
 
   private isSettingsSelected(): boolean {
     return this.selectedIndex === this.getSettingsSelectionIndex()
+  }
+
+  /**
+   * 4エリア全クリア済みなら左下に VIEW ENDING を出す。
+   * endingSeen の真偽は問わない。押してもセーブは変えない。
+   */
+  private createOrRefreshViewEndingButton(): void {
+    const shouldShow = isFourAreaCompletion(getClearedAreaIds())
+
+    if (!shouldShow) {
+      if (this.viewEndingHit !== null) {
+        this.viewEndingHit.destroy()
+        this.viewEndingHit = null
+      }
+      if (this.viewEndingText !== null) {
+        this.viewEndingText.destroy()
+        this.viewEndingText = null
+      }
+      return
+    }
+
+    if (this.viewEndingText !== null && this.viewEndingHit !== null) {
+      this.viewEndingHit.setVisible(true)
+      this.viewEndingText.setVisible(true)
+      return
+    }
+
+    // BGM ボタンの反対側（左下）。中央のヒント文言と重ならない位置
+    const centerX = 88
+    const centerY = GAME_HEIGHT - 30
+    const depth = 520
+
+    this.viewEndingHit = this.add.rectangle(centerX, centerY, 120, 36, 0x1e293b, 0.9)
+    this.viewEndingHit.setStrokeStyle(2, 0xd4d4d8)
+    this.viewEndingHit.setInteractive({ useHandCursor: true })
+    this.viewEndingHit.setDepth(depth)
+
+    this.viewEndingText = this.add.text(centerX, centerY, TITLE_VIEW_ENDING_LABEL, {
+      fontFamily: FONT_FAMILY_UI,
+      fontSize: '12px',
+      color: '#e5e7eb',
+      fontStyle: 'bold',
+    })
+    this.viewEndingText.setOrigin(0.5)
+    this.viewEndingText.setDepth(depth + 1)
+    shrinkTextToFitWidth(this.viewEndingText, 112)
+
+    this.viewEndingHit.on('pointerdown', () => {
+      if (this.hasStarted) {
+        return
+      }
+      if (
+        this.confirmDialogSystem.isOpen() ||
+        this.shopSystem.isOpen() ||
+        this.sealSkillSystem.isOpen() ||
+        this.settingsMenuSystem.isMenuOpen()
+      ) {
+        return
+      }
+      this.hasStarted = true
+      // 再表示では endingSeen を変えない
+      this.scene.start('EndingScene', { markSeenOnComplete: false })
+    })
   }
 
   private createAreaPanels(): void {
@@ -1407,6 +1476,8 @@ export class TitleScene extends Phaser.Scene {
     ) {
       this.selectedIndex = this.findLastSelectableAreaIndex()
     }
+
+    this.createOrRefreshViewEndingButton()
 
     for (let index = 0; index < this.panelViews.length; index++) {
       const panel = this.panelViews[index]

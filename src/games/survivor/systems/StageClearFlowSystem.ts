@@ -62,7 +62,9 @@ import {
   clearRunProgress,
   recordStageCleared,
   recordGameClear,
+  getClearedAreaIds,
 } from './UnlockSaveSystem'
+import { shouldStartEndingAfterAreaClear } from './endingLaunch'
 import type { CarriedProgress } from '../types/CarriedProgress'
 import type { WaveSystem } from './WaveSystem'
 import type { HudSystem } from './HudSystem'
@@ -469,15 +471,22 @@ export function showStageClearResult(ctx: StageClearFlowContext): void {
   }
 
   if (isGameClear) {
+    const launchEnding = shouldStartEndingAfterAreaClear(getClearedAreaIds())
     ctx.stageResultSystem.show(
       'gameClear',
       ctx.stageNumber,
       () => {
         ctx.scene.time.paused = false
         ctx.gameAudioSystem.stopAllSounds()
+        if (launchEnding) {
+          // Area Clear 表示のあとに Ending。GameScene は start で置き換わる
+          ctx.scene.scene.start('EndingScene', { markSeenOnComplete: true })
+          return
+        }
         ctx.scene.scene.start('TitleScene')
       },
       unlockLines,
+      launchEnding ? { confirmLabel: 'CONTINUE' } : undefined,
     )
     return
   }

@@ -92,6 +92,7 @@ export class StageResultSystem {
     stageNumber: number,
     onConfirm: () => void,
     unlockLines: string[] = [],
+    options?: { confirmLabel?: string },
   ): void {
     if (this.isVisible) {
       return
@@ -105,7 +106,7 @@ export class StageResultSystem {
     this.createTitle(kind)
     this.createSubtitle(kind, stageNumber)
     this.createUnlockText()
-    this.createButton(kind)
+    this.createButton(kind, options?.confirmLabel)
     this.createHintText()
     this.setupKeyboard()
   }
@@ -315,11 +316,14 @@ export class StageResultSystem {
     })
   }
 
-  /** kind に応じたボタン（NEXT STAGE / TITLE）を作る。選択肢は1つなので最初から選択状態にする。 */
-  private createButton(kind: StageResultKind): void {
+  /** kind に応じたボタン（NEXT STAGE / TITLE / CONTINUE）を作る。選択肢は1つなので最初から選択状態にする。 */
+  private createButton(kind: StageResultKind, confirmLabel?: string): void {
     let label = 'NEXT STAGE'
     if (kind === 'gameClear' || kind === 'defeat') {
       label = 'TITLE'
+    }
+    if (confirmLabel !== undefined && confirmLabel !== '') {
+      label = confirmLabel
     }
 
     const buttonY = this.getPanelBottomY() - 52
