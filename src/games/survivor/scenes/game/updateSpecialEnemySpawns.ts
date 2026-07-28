@@ -1,11 +1,13 @@
 /**
- * 特殊敵の召喚更新とエリアボスの初回スポーン。
+ * 特殊敵の召喚更新とエリア最終ボスの初回スポーン。
  * GameScene.update / beginStageWithCountdown から呼ぶ薄いまとめ役。
+ * 最終ボスの Stage／ID は finalBossConfig SSoT を参照する。
  */
 import Phaser from 'phaser'
+import { getFinalBossEnemyIdForStage } from '../../constants/finalBossConfig'
 import {
-  spawnForestStage5Gravestone,
-  spawnVolcanoStage5ChaosElemental,
+  spawnGravestoneEnemy,
+  spawnChaosElementalEnemy,
   spawnWindHiveBossEnemy,
   spawnEarthDungeonBossEnemy,
   getRandomInsideSpawnPosition,
@@ -27,12 +29,12 @@ export type SpecialEnemySpawnContext = {
   areaStageCount: number
   enemyGroup: Phaser.Physics.Arcade.Group
   nowMs: number
-  // Plains Stage3 ボス配置用。無い場合は中央付近へフォールバック
+  // ボス配置用。無い場合は中央付近へフォールバック
   getPlayerPosition?: () => { x: number; y: number }
 }
 
 /**
- * 切り株・燃え木・枝・墓石・混沌エレメンタル・竜巻ボスなどの毎フレーム召喚更新。
+ * 切り株・燃え木・枝・墓石・混沌エレメンタル・各最終ボスなどの毎フレーム召喚更新。
  */
 export function updateSpecialEnemySpawns(ctx: SpecialEnemySpawnContext): void {
   updateStumpMushroomSpawns(
@@ -70,17 +72,21 @@ export function updateSpecialEnemySpawns(ctx: SpecialEnemySpawnContext): void {
     ctx.areaStageCount,
     ctx.nowMs,
   )
+
+  const playerPosition =
+    ctx.getPlayerPosition !== undefined
+      ? ctx.getPlayerPosition()
+      : { x: 0, y: 0 }
+
   updateWindHiveBossBeeSpawns(
     ctx.scene,
     ctx.enemyGroup,
     ctx.stageNumber,
     ctx.areaStageCount,
     ctx.nowMs,
+    playerPosition.x,
+    playerPosition.y,
   )
-  const playerPosition =
-    ctx.getPlayerPosition !== undefined
-      ? ctx.getPlayerPosition()
-      : { x: 0, y: 0 }
   updateEarthDungeonBossMinionSpawns(
     ctx.scene,
     ctx.enemyGroup,
@@ -93,24 +99,44 @@ export function updateSpecialEnemySpawns(ctx: SpecialEnemySpawnContext): void {
 }
 
 /**
- * エリアボスを Stage 開始直後に1体だけ出す。条件外なら何もしない。
- * Forest 墓石 / Volcano 混沌エレメンタル / Plains 竜巻ボス / Earth ゴーレム。
+ * エリア最終ボスを Stage 開始直後に1体だけ出す。条件外なら何もしない。
+ * 出現判定は finalBossConfig（エリア最終ステージ＋ボス ID）に従う。
  */
 export function spawnAreaBossIfNeeded(ctx: SpecialEnemySpawnContext): void {
-  if (ctx.areaId === 'forest' && ctx.stageNumber === 5) {
-    spawnForestStage5Gravestone(ctx.scene, ctx.enemyGroup)
+  const bossEnemyId = getFinalBossEnemyIdForStage(
+    ctx.areaId,
+    ctx.stageNumber,
+    ctx.areaStageCount,
+  )
+  if (bossEnemyId === null) {
     return
   }
-  if (ctx.areaId === 'volcano' && ctx.stageNumber === 5) {
-    spawnVolcanoStage5ChaosElemental(ctx.scene, ctx.enemyGroup)
+
+  const playerPosition =
+    ctx.getPlayerPosition !== undefined
+      ? ctx.getPlayerPosition()
+      : getRandomInsideSpawnPosition()
+  const spawnPosition = getRandomInsideSpawnPosition(playerPosition)
+
+  if (bossEnemyId === 'gravestone') {
+    spawnGravestoneEnemy(
+      ctx.scene,
+      ctx.enemyGroup,
+      spawnPosition.x,
+      spawnPosition.y,
+    )
     return
   }
-  if (ctx.areaId === 'plains' && ctx.stageNumber === 3) {
-    const playerPosition =
-      ctx.getPlayerPosition !== undefined
-        ? ctx.getPlayerPosition()
-        : getRandomInsideSpawnPosition()
-    const spawnPosition = getRandomInsideSpawnPosition(playerPosition)
+  if (bossEnemyId === 'chaosElemental') {
+    spawnChaosElementalEnemy(
+      ctx.scene,
+      ctx.enemyGroup,
+      spawnPosition.x,
+      spawnPosition.y,
+    )
+    return
+  }
+  if (bossEnemyId === 'windHiveBoss') {
     spawnWindHiveBossEnemy(
       ctx.scene,
       ctx.enemyGroup,
@@ -119,12 +145,7 @@ export function spawnAreaBossIfNeeded(ctx: SpecialEnemySpawnContext): void {
     )
     return
   }
-  if (ctx.areaId === 'ruins' && ctx.stageNumber === 5) {
-    const playerPosition =
-      ctx.getPlayerPosition !== undefined
-        ? ctx.getPlayerPosition()
-        : getRandomInsideSpawnPosition()
-    const spawnPosition = getRandomInsideSpawnPosition(playerPosition)
+  if (bossEnemyId === 'earthDungeonBoss') {
     spawnEarthDungeonBossEnemy(
       ctx.scene,
       ctx.enemyGroup,

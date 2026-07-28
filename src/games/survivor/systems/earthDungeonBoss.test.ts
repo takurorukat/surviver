@@ -49,12 +49,12 @@ describe('Earth Dungeon Stage5 earthDungeonBoss', () => {
     expect(found).toBe(true)
   })
 
-  it('Ruins Stage5 だけ defeat-boss、他エリア最終は従来どおり', () => {
+  it('Ruins Stage5 と他エリア最終は defeat-boss', () => {
     expect(getStageCompletionRule('ruins', 5, 5)).toBe('defeat-boss')
     expect(getStageCompletionRule('ruins', 4, 5)).toBe('survive-or-clear-all')
     expect(getStageCompletionRule('plains', 3, 3)).toBe('defeat-boss')
-    expect(getStageCompletionRule('forest', 5, 5)).toBe('survive-or-clear-all')
-    expect(getStageCompletionRule('volcano', 5, 5)).toBe('survive-or-clear-all')
+    expect(getStageCompletionRule('forest', 5, 5)).toBe('defeat-boss')
+    expect(getStageCompletionRule('volcano', 5, 5)).toBe('defeat-boss')
   })
 
   it('ボス生存中はクリアせず、撃破後はクリアできる', () => {

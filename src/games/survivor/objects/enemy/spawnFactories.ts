@@ -293,7 +293,8 @@ export function spawnAshKnightEnemy(
 
 /**
  * Volcano Stage5 の混沌エレメンタルを1体スポーンする。
- * HP は固定50。速度0で動かない。2秒ごとに下位ステージの敵を出す。
+ * HP は ENEMY_CHAOS_ELEMENTAL_HP（現行 150）。速度0で動かない。
+ * 2秒ごとに下位ステージの敵を出す。
  */
 export function spawnChaosElementalEnemy(
   scene: Phaser.Scene,

@@ -321,6 +321,7 @@ export function spawnEnemyCommon(
   }
   if (enemyKind === 'chaosElemental') {
     enemy.setData('isStationary', true)
+    enemy.setData('isBoss', true)
     // 出現直後はすぐ出さず、2秒後から下位ステージの敵を出す
     enemy.setData(
       'nextChaosElementalSpawnAtMs',
@@ -336,6 +337,7 @@ export function spawnEnemyCommon(
   }
   if (enemyKind === 'gravestone') {
     enemy.setData('isStationary', true)
+    enemy.setData('isBoss', true)
     // 出現直後はすぐ出さず、3秒後から切り株と枝を出す
     enemy.setData(
       'nextGravestoneSpawnAtMs',

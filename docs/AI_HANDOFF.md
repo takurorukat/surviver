@@ -29,6 +29,13 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
+- 実施内容: Version 1 の4エリア最終ボスを統合。`finalBossConfig` SSoT（finalStage / bossId / defeat-boss）。Forest gravestone・Volcano chaosElemental に `isBoss` 付与。最終ステージはタイマー0ではクリアせずボス撃破必須。Wind／Earth は既存実装を維持しつつ出現判定を SSoT 経由に統一。プレイヤー基準スポーン。Audio／Gold／Shop／Result／Ending 未変更。
+- 変更ファイル: `finalBossConfig.ts` / `stageClearRules.ts` / `spawnEnemyCommon.ts` / `updateSpecialEnemySpawns.ts` / `EnemySummonSystem.ts` / tests / docs / TODO
+- 検証: typecheck OK、tests 153 OK、build OK、git diff --check OK
+- 次の開発タスク: **Run Result Data**（未着手）
+
+### 2026-07-28 — Cursor
+
 - 実施内容: Earth Dungeon Stage 5 に最終ボス `earthDungeonBoss` を追加。HP100・速度=スライム×0.5・XP×20・呼吸スプライト。1秒ごとに Earth 通常敵（slime/rock/skeleton）を召喚（上限8・召喚敵XP0）。5秒ごとに既存小石弾を5連射（200ms間隔・発射時照準）。クリア条件はボス撃破のみ（`defeat-boss`）。Audio／Gold／Shop／Result／Ending／他エリアボスは未変更。
 - 変更ファイル: `enemies.ts` / `difficulty.ts` / `assetManifest.ts` / `enemySprites` / `spawnFactories` / `spawnEnemyCommon` / `pickEnemyKind` / `EnemySummonSystem` / `EnemyAttackSystem` / `updateSpecialEnemySpawns` / `GameScene` / `stageClearRules` / `earthDungeonBoss*.ts` / `enemy_earth_dungeon_boss.png` / docs
 - 検証: typecheck OK、tests 143 OK、build OK、git diff --check OK

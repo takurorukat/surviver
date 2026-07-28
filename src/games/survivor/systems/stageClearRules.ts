@@ -1,25 +1,44 @@
 /**
  * ステージクリア条件の純粋ヘルパー。
- * Plains Stage3 はボス撃破のみ。他は従来どおり時間切れ or 全撃破。
+ * Version 1 の4エリア最終ステージはすべて defeat-boss（finalBossConfig SSoT）。
+ * それ以外は従来どおり時間切れ or 全撃破。
  */
-import { isFinalStage, type StageAreaId } from '../constants/areas'
+import { isFinalStage } from '../constants/areas'
+import {
+  getAreaFinalBossConfig,
+  type FinalStageCompletionRule,
+} from '../constants/finalBossConfig'
 
 export type StageCompletionRule = 'survive-or-clear-all' | 'defeat-boss'
 
 /**
  * エリア／ステージに応じたクリアルールを返す。
+ * 最終ステージかつ finalBossConfig がある場合はその completionRule を使う。
  */
 export function getStageCompletionRule(
-  areaId: StageAreaId | string,
+  areaId: string,
   stageNumber: number,
   totalStages: number,
 ): StageCompletionRule {
-  if (areaId === 'plains' && isFinalStage(stageNumber, totalStages)) {
+  if (!isFinalStage(stageNumber, totalStages)) {
+    return 'survive-or-clear-all'
+  }
+
+  const finalBoss = getAreaFinalBossConfig(areaId)
+  if (finalBoss === null) {
+    return 'survive-or-clear-all'
+  }
+
+  return mapFinalRuleToStageRule(finalBoss.completionRule)
+}
+
+function mapFinalRuleToStageRule(
+  rule: FinalStageCompletionRule,
+): StageCompletionRule {
+  if (rule === 'defeat-boss') {
     return 'defeat-boss'
   }
-  if (areaId === 'ruins' && isFinalStage(stageNumber, totalStages)) {
-    return 'defeat-boss'
-  }
+  // Version 1 では survive / clear-wave は未使用。将来用にフォールバック。
   return 'survive-or-clear-all'
 }
 

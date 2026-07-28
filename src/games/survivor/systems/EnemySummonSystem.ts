@@ -436,6 +436,8 @@ export function updateWindHiveBossBeeSpawns(
   stageNumber: number,
   totalStages: number,
   nowMs: number,
+  playerX: number = 0,
+  playerY: number = 0,
 ): void {
   const children = enemyGroup.getChildren()
 
@@ -479,7 +481,12 @@ export function updateWindHiveBossBeeSpawns(
       continue
     }
 
-    const spawnPosition = getWindHiveBossBeeSpawnPosition(boss.x, boss.y)
+    const spawnPosition = getWindHiveBossBeeSpawnPosition(
+      boss.x,
+      boss.y,
+      playerX,
+      playerY,
+    )
     const bee = spawnRangedEnemy(
       scene,
       enemyGroup,
@@ -795,16 +802,38 @@ function getStumpMushroomSpawnPosition(
 function getWindHiveBossBeeSpawnPosition(
   bossX: number,
   bossY: number,
+  playerX: number,
+  playerY: number,
 ): SpawnPosition {
-  const angle = Math.random() * Math.PI * 2
-  const distance =
-    ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_OFFSET_MIN +
-    Math.random() *
-      (ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_OFFSET_MAX -
-        ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_OFFSET_MIN)
-  const spawnX = bossX + Math.cos(angle) * distance
-  const spawnY = bossY + Math.sin(angle) * distance
-  return clampSpawnToPlayArea(spawnX, spawnY)
+  const horizontalTolerance = ENEMY_WIDTH * 1.5
+  let chosen: SpawnPosition = { x: bossX, y: bossY }
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const angle = Math.random() * Math.PI * 2
+    const distance =
+      ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_OFFSET_MIN +
+      Math.random() *
+        (ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_OFFSET_MAX -
+          ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_OFFSET_MIN)
+    const candidate = clampSpawnToPlayArea(
+      bossX + Math.cos(angle) * distance,
+      bossY + Math.sin(angle) * distance,
+    )
+    chosen = candidate
+    if (
+      !isSpawnDirectlyAbovePlayer({
+        spawnX: candidate.x,
+        spawnY: candidate.y,
+        playerX,
+        playerY,
+        horizontalTolerance,
+      })
+    ) {
+      return candidate
+    }
+  }
+
+  return chosen
 }
 
 /**
