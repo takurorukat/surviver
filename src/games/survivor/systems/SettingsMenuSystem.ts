@@ -28,6 +28,13 @@ import {
   SETTINGS_CREDITS_TITLE,
   SETTINGS_CREDITS_CREATED_BY,
   SETTINGS_CREDITS_BODY,
+  CREDITS_PANEL_WIDTH,
+  CREDITS_BODY_PADDING_X,
+  CREDITS_BODY_FONT_SIZE,
+  CREDITS_BODY_MIN_FONT_SIZE,
+  CREDITS_BODY_LINE_SPACING,
+  calculateCreditsPanelHeight,
+  calculateCreditsBodyMaxScroll,
   CREDITS_ROSSO_ARGINE_LOGO_KEY,
   CREDITS_ROSSO_ARGINE_LOGO_DISPLAY_WIDTH,
   FONT_FAMILY_HEADING,
@@ -63,9 +70,6 @@ type MenuButtonView = {
 const BUTTON_BORDER_NORMAL = 0x475569
 const BUTTON_BG_NORMAL = 0x334155
 const BUTTON_BG_HOVER = 0x475569
-const CREDITS_PANEL_WIDTH = 420
-const CREDITS_PANEL_HEIGHT = 420
-const CREDITS_BODY_PADDING_X = 36
 const CREDITS_DEPTH = SETTINGS_MENU_DEPTH + 20
 
 export class SettingsMenuSystem {
@@ -92,7 +96,15 @@ export class SettingsMenuSystem {
   private creditsCreatedByText: Phaser.GameObjects.Text | null = null
   private creditsLogo: Phaser.GameObjects.Image | null = null
   private creditsBodyText: Phaser.GameObjects.Text | null = null
+  private creditsBodyMaskGraphics: Phaser.GameObjects.Graphics | null = null
+  private creditsBodyHitArea: Phaser.GameObjects.Rectangle | null = null
   private creditsBackButton: MenuButtonView | null = null
+  private creditsBodyBaseY = 0
+  private creditsBodyMaxScroll = 0
+  private creditsBodyScrollY = 0
+  private creditsBodyDragStartY = 0
+  private creditsBodyScrollAtDragStart = 0
+  private isCreditsBodyDragging = false
 
   private keyW: Phaser.Input.Keyboard.Key | null = null
   private keyS: Phaser.Input.Keyboard.Key | null = null
@@ -378,10 +390,14 @@ export class SettingsMenuSystem {
       return
     }
     this.isCreditsOpen = true
+    this.creditsBodyScrollY = 0
+    this.creditsBodyMaxScroll = 0
+    this.isCreditsBodyDragging = false
 
+    const panelHeight = calculateCreditsPanelHeight(GAME_HEIGHT)
     const panelCenterY = GAME_HEIGHT / 2
-    const panelTopY = panelCenterY - CREDITS_PANEL_HEIGHT / 2
-    const panelBottomY = panelCenterY + CREDITS_PANEL_HEIGHT / 2
+    const panelTopY = panelCenterY - panelHeight / 2
+    const panelBottomY = panelCenterY + panelHeight / 2
 
     this.creditsOverlay = this.scene.add.rectangle(
       GAME_WIDTH / 2,
@@ -402,7 +418,7 @@ export class SettingsMenuSystem {
       GAME_WIDTH / 2,
       panelCenterY,
       CREDITS_PANEL_WIDTH + 4,
-      CREDITS_PANEL_HEIGHT + 4,
+      panelHeight + 4,
       SETTINGS_MENU_BORDER_COLOR,
     )
     this.creditsBorder.setDepth(CREDITS_DEPTH + 1)
@@ -412,7 +428,7 @@ export class SettingsMenuSystem {
       GAME_WIDTH / 2,
       panelCenterY,
       CREDITS_PANEL_WIDTH,
-      CREDITS_PANEL_HEIGHT,
+      panelHeight,
       SETTINGS_MENU_PANEL_COLOR,
     )
     this.creditsPanel.setDepth(CREDITS_DEPTH + 2)
@@ -422,7 +438,7 @@ export class SettingsMenuSystem {
 
     this.creditsTitleText = this.scene.add.text(
       GAME_WIDTH / 2,
-      panelTopY + 28,
+      panelTopY + 24,
       SETTINGS_CREDITS_TITLE,
       {
         fontFamily: FONT_FAMILY_HEADING,
@@ -438,7 +454,7 @@ export class SettingsMenuSystem {
     // created by + ROSSO ARGINE ロゴ
     this.creditsCreatedByText = this.scene.add.text(
       GAME_WIDTH / 2,
-      panelTopY + 56,
+      panelTopY + 48,
       SETTINGS_CREDITS_CREATED_BY,
       {
         fontFamily: FONT_FAMILY_UI,
@@ -450,7 +466,7 @@ export class SettingsMenuSystem {
     this.creditsCreatedByText.setDepth(CREDITS_DEPTH + 3)
     this.creditsCreatedByText.setScrollFactor(0)
 
-    let logoBottomY = panelTopY + 56 + this.creditsCreatedByText.height + 8
+    let logoBottomY = panelTopY + 48 + this.creditsCreatedByText.height + 6
     if (this.scene.textures.exists(CREDITS_ROSSO_ARGINE_LOGO_KEY)) {
       this.creditsLogo = this.scene.add.image(
         GAME_WIDTH / 2,
@@ -468,16 +484,17 @@ export class SettingsMenuSystem {
       this.creditsLogo.setDisplaySize(displayWidth, displayHeight)
       this.creditsLogo.setDepth(CREDITS_DEPTH + 3)
       this.creditsLogo.setScrollFactor(0)
-      logoBottomY = logoBottomY + displayHeight + 12
+      logoBottomY = logoBottomY + displayHeight + 10
     } else {
       // アセット未読込時の最低限フォールバック
       this.creditsCreatedByText.setText('created by ROSSO ARGINE')
-      logoBottomY = logoBottomY + 8
+      logoBottomY = logoBottomY + 6
     }
 
-    const backButtonY = panelBottomY - 36
+    const backButtonY = panelBottomY - 34
     const bodyTopY = logoBottomY
-    const bodyMaxHeight = backButtonY - SETTINGS_MENU_BUTTON_HEIGHT / 2 - 12 - bodyTopY
+    const bodyMaxHeight =
+      backButtonY - SETTINGS_MENU_BUTTON_HEIGHT / 2 - 10 - bodyTopY
 
     this.creditsBodyText = this.scene.add.text(
       GAME_WIDTH / 2,
@@ -485,17 +502,17 @@ export class SettingsMenuSystem {
       SETTINGS_CREDITS_BODY,
       {
         fontFamily: FONT_FAMILY_UI,
-        fontSize: '13px',
+        fontSize: `${CREDITS_BODY_FONT_SIZE}px`,
         color: '#e2e8f0',
         align: 'center',
-        lineSpacing: 4,
+        lineSpacing: CREDITS_BODY_LINE_SPACING,
         wordWrap: { width: CREDITS_PANEL_WIDTH - CREDITS_BODY_PADDING_X },
       },
     )
     this.creditsBodyText.setOrigin(0.5, 0)
     this.creditsBodyText.setDepth(CREDITS_DEPTH + 3)
     this.creditsBodyText.setScrollFactor(0)
-    this.fitCreditsBodyToPanel(this.creditsBodyText, bodyTopY, bodyMaxHeight)
+    this.layoutCreditsBody(this.creditsBodyText, bodyTopY, bodyMaxHeight)
 
     this.creditsBackButton = this.createStandaloneButton(
       GAME_WIDTH / 2,
@@ -504,7 +521,7 @@ export class SettingsMenuSystem {
       () => {
         this.closeCredits()
       },
-      CREDITS_DEPTH + 3,
+      CREDITS_DEPTH + 4,
     )
     // クレジット中は Back だけ選択中表示にする
     this.creditsBackButton.border.setFillStyle(SETTINGS_MENU_BORDER_COLOR)
@@ -513,23 +530,22 @@ export class SettingsMenuSystem {
     this.keepCreditsSharpOnUiCamera()
   }
 
-  // 役割: クレジット本文をパネル幅・高さの中に収める（折り返し＋必要なら文字を小さく）
-  private fitCreditsBodyToPanel(
+  // 役割: クレジット本文を読みやすいサイズで配置し、収まらないときだけマスク＋スクロール
+  private layoutCreditsBody(
     bodyText: Phaser.GameObjects.Text,
     topY: number,
     maxHeight: number,
   ): void {
     const maxWidth = CREDITS_PANEL_WIDTH - CREDITS_BODY_PADDING_X
-    let fontSize = 13
-    const minFontSize = 10
+    let fontSize = CREDITS_BODY_FONT_SIZE
 
-    while (fontSize >= minFontSize) {
+    while (fontSize >= CREDITS_BODY_MIN_FONT_SIZE) {
       bodyText.setStyle({
         fontFamily: FONT_FAMILY_UI,
         fontSize: `${fontSize}px`,
         color: '#e2e8f0',
         align: 'center',
-        lineSpacing: 4,
+        lineSpacing: CREDITS_BODY_LINE_SPACING,
         wordWrap: { width: maxWidth },
       })
       if (bodyText.height <= maxHeight) {
@@ -538,8 +554,89 @@ export class SettingsMenuSystem {
       fontSize = fontSize - 1
     }
 
+    this.creditsBodyBaseY = topY
+    this.creditsBodyScrollY = 0
+    this.creditsBodyMaxScroll = calculateCreditsBodyMaxScroll(
+      bodyText.height,
+      maxHeight,
+    )
     bodyText.setOrigin(0.5, 0)
     bodyText.setPosition(GAME_WIDTH / 2, topY)
+
+    if (this.creditsBodyMaxScroll <= 0) {
+      return
+    }
+
+    // 本文領域だけマスクして、Back と重ならないようにする
+    const maskLeft = GAME_WIDTH / 2 - maxWidth / 2
+    this.creditsBodyMaskGraphics = this.scene.make.graphics({ x: 0, y: 0 })
+    this.creditsBodyMaskGraphics.fillStyle(0xffffff)
+    this.creditsBodyMaskGraphics.fillRect(maskLeft, topY, maxWidth, maxHeight)
+    bodyText.setMask(this.creditsBodyMaskGraphics.createGeometryMask())
+
+    this.creditsBodyHitArea = this.scene.add.rectangle(
+      GAME_WIDTH / 2,
+      topY + maxHeight / 2,
+      maxWidth,
+      maxHeight,
+      0x000000,
+      0,
+    )
+    this.creditsBodyHitArea.setDepth(CREDITS_DEPTH + 3)
+    this.creditsBodyHitArea.setScrollFactor(0)
+    this.creditsBodyHitArea.setInteractive(
+      new Phaser.Geom.Rectangle(
+        -maxWidth / 2,
+        -maxHeight / 2,
+        maxWidth,
+        maxHeight,
+      ),
+      Phaser.Geom.Rectangle.Contains,
+    )
+    this.creditsBodyHitArea.on(
+      'wheel',
+      (_pointer: Phaser.Input.Pointer, _dx: number, dy: number) => {
+        this.scrollCreditsBodyBy(dy)
+      },
+    )
+    this.creditsBodyHitArea.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.isCreditsBodyDragging = true
+      this.creditsBodyDragStartY = pointer.y
+      this.creditsBodyScrollAtDragStart = this.creditsBodyScrollY
+    })
+    this.scene.input.on('pointermove', this.onCreditsBodyPointerMove, this)
+    this.scene.input.on('pointerup', this.onCreditsBodyPointerUp, this)
+  }
+
+  private onCreditsBodyPointerMove(pointer: Phaser.Input.Pointer): void {
+    if (!this.isCreditsBodyDragging) {
+      return
+    }
+    const deltaY = this.creditsBodyDragStartY - pointer.y
+    this.setCreditsBodyScroll(this.creditsBodyScrollAtDragStart + deltaY)
+  }
+
+  private onCreditsBodyPointerUp(): void {
+    this.isCreditsBodyDragging = false
+  }
+
+  private scrollCreditsBodyBy(deltaY: number): void {
+    this.setCreditsBodyScroll(this.creditsBodyScrollY + deltaY)
+  }
+
+  private setCreditsBodyScroll(nextScrollY: number): void {
+    if (this.creditsBodyText === null) {
+      return
+    }
+    let clamped = nextScrollY
+    if (clamped < 0) {
+      clamped = 0
+    }
+    if (clamped > this.creditsBodyMaxScroll) {
+      clamped = this.creditsBodyMaxScroll
+    }
+    this.creditsBodyScrollY = clamped
+    this.creditsBodyText.setY(this.creditsBodyBaseY - this.creditsBodyScrollY)
   }
 
   // 役割: クレジット用オブジェクトをメインカメラ（ブラー）から外し、くっきり見せる
@@ -566,6 +663,9 @@ export class SettingsMenuSystem {
     if (this.creditsBodyText !== null) {
       creditsObjects.push(this.creditsBodyText)
     }
+    if (this.creditsBodyHitArea !== null) {
+      creditsObjects.push(this.creditsBodyHitArea)
+    }
     if (this.creditsBackButton !== null) {
       creditsObjects.push(
         this.creditsBackButton.border,
@@ -586,6 +686,12 @@ export class SettingsMenuSystem {
 
   private destroyCredits(): void {
     this.isCreditsOpen = false
+    this.isCreditsBodyDragging = false
+    this.creditsBodyScrollY = 0
+    this.creditsBodyMaxScroll = 0
+
+    this.scene.input.off('pointermove', this.onCreditsBodyPointerMove, this)
+    this.scene.input.off('pointerup', this.onCreditsBodyPointerUp, this)
 
     if (this.creditsOverlay !== null) {
       this.creditsOverlay.destroy()
@@ -612,8 +718,15 @@ export class SettingsMenuSystem {
       this.creditsLogo = null
     }
     if (this.creditsBodyText !== null) {
+      this.creditsBodyText.clearMask(true)
       this.creditsBodyText.destroy()
       this.creditsBodyText = null
+    }
+    // clearMask(true) が Graphics も破棄するため、参照だけ外す
+    this.creditsBodyMaskGraphics = null
+    if (this.creditsBodyHitArea !== null) {
+      this.creditsBodyHitArea.destroy()
+      this.creditsBodyHitArea = null
     }
     if (this.creditsBackButton !== null) {
       this.creditsBackButton.border.destroy()

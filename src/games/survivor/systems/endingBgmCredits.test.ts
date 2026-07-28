@@ -45,17 +45,11 @@ describe('Music Credits', () => {
   })
 
   it('obscure music (Gichco) と CC0 / OpenGameArt が表示される', () => {
-    expect(SETTINGS_CREDITS_BODY.includes('Pack of loopable game music')).toBe(
-      true,
-    )
     expect(SETTINGS_CREDITS_BODY.includes('obscure music (Gichco)')).toBe(true)
+    expect(SETTINGS_CREDITS_BODY.includes('Music by')).toBe(true)
     expect(SETTINGS_CREDITS_BODY.includes('CC0')).toBe(true)
     expect(SETTINGS_CREDITS_BODY.includes('OpenGameArt')).toBe(true)
-    expect(
-      SETTINGS_CREDITS_BODY.includes(
-        'https://opengameart.org/content/pack-of-loopable-game-music',
-      ),
-    ).toBe(true)
+    expect(SETTINGS_CREDITS_BODY.includes('https://')).toBe(false)
     expect(SETTINGS_CREDITS_BODY.includes('TMFactory')).toBe(false)
   })
 })

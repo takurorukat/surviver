@@ -17,19 +17,55 @@ export const SETTINGS_MENU_BUTTON_GAP = 12
 export const SETTINGS_CREDITS_TITLE = 'Credits'
 /** ロゴの上に出す短い一文（ロゴ自体に ROSSO ARGINE が入っている） */
 export const SETTINGS_CREDITS_CREATED_BY = 'created by'
+/**
+ * Credits 画面用の短い帰属（SSoT）。
+ * URL・SHA・個別ファイル名・加工詳細は docs/licenses と public 配下のライセンス文書へ。
+ */
 export const SETTINGS_CREDITS_BODY = [
   'MUSIC',
-  '"Pack of loopable game music"',
-  'by obscure music (Gichco)',
-  'Source: OpenGameArt.org',
-  'License: CC0 1.0 / Public Domain',
-  'https://opengameart.org/content/pack-of-loopable-game-music',
+  'Music by obscure music (Gichco)',
+  'Source: OpenGameArt',
+  'License: CC0',
   '',
   'SKILL ICONS',
   'Icons by Lorc',
-  'Source: game-icons.net',
+  'Source: Game-icons.net',
   'License: CC BY 3.0',
 ].join('\n')
+/** Credits パネル幅（ゲーム座標） */
+export const CREDITS_PANEL_WIDTH = 400
+/** Credits パネルの上限高さ（画面内マージンを確保） */
+export const CREDITS_PANEL_MAX_HEIGHT = 420
+export const CREDITS_PANEL_MARGIN_Y = 24
+export const CREDITS_BODY_PADDING_X = 36
+export const CREDITS_BODY_FONT_SIZE = 13
+export const CREDITS_BODY_MIN_FONT_SIZE = 12
+export const CREDITS_BODY_LINE_SPACING = 2
+
+/**
+ * 画面高さに収まる Credits パネル高さを返す。
+ * Python: min(max_height, game_height - margin * 2) に相当
+ */
+export function calculateCreditsPanelHeight(gameHeight: number): number {
+  const capped = gameHeight - CREDITS_PANEL_MARGIN_Y * 2
+  if (capped < CREDITS_PANEL_MAX_HEIGHT) {
+    return capped
+  }
+  return CREDITS_PANEL_MAX_HEIGHT
+}
+
+/**
+ * 本文が可視領域より高いとき、スクロール上限（下方向の最大オフセット）を返す。
+ */
+export function calculateCreditsBodyMaxScroll(
+  bodyHeight: number,
+  visibleHeight: number,
+): number {
+  if (bodyHeight <= visibleHeight) {
+    return 0
+  }
+  return bodyHeight - visibleHeight
+}
 // Phaser postFX.addBlur(quality, x, y, strength, color, steps)
 export const SETTINGS_MENU_BLUR_QUALITY = 1
 export const SETTINGS_MENU_BLUR_OFFSET = 2

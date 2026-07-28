@@ -1,8 +1,15 @@
 Pack of loopable game music
 Author: obscure music (Gichco)
-Source: https://opengameart.org/content/pack-of-loopable-game-music
+Source: OpenGameArt
+Source URL: https://opengameart.org/content/pack-of-loopable-game-music
 License: CC0 / Public Domain
+License note: The source page states that this pack is released under public domain
+and contains loopable music.
 
-The source page states that this pack is released under public domain and
-contains loopable music. Converted OGG files in ../library/cc0-loop-pack/
-are derived from the original WAV files without musical edits.
+Runtime usage:
+- Title / Plains / Forest / Volcano / Ruins BGM (and Ending reuse of Plains / Ruins)
+- Converted OGG files in ../library/cc0-loop-pack/ are derived from the original
+  WAV files without musical edits.
+
+UI Credits shows a short form (author / source / license only).
+Pack title, source URL, and conversion notes remain in this file.

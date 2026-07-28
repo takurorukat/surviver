@@ -35,6 +35,7 @@
 - [x] SFX Preview を Production から分離（独立 `tools/sfx_preview`、公開 dist から除外）。2026-07-28 実装・検証済み。
 - [x] 複合スキル取得文言 OBTAINED→GET!、表示名 Orbiting Orb→Orbit（内部ID維持）。2026-07-28 実装・検証済み。
 - [x] 基本スキル表示名を効果名へ整理＋根拠ある属性タグのみ（Move/Pickup/XP）。2026-07-28 実装・検証済み。
+- [x] Credits はみ出し修正（帰属短文化＋レイアウト／小画面スクロール）。2026-07-28 実装・検証済み。
 - [ ] Area Clear Result UI（Version 1）。
 - [ ] Production Build Asset Audit。
 - [ ] Full Game Verification。

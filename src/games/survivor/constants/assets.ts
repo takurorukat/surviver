@@ -8,8 +8,8 @@ export const UI_LOCK_ICON_PATH = 'assets/sprites/ui_lock_icon.png'
 /** Credits: created by ROSSO ARGINE ロゴ（添付 PNG） */
 export const CREDITS_ROSSO_ARGINE_LOGO_KEY = 'credits-rosso-argine'
 export const CREDITS_ROSSO_ARGINE_LOGO_PATH = 'assets/images/credits_rosso_argine.png'
-/** Credits パネル内の表示幅（元画像 300×150） */
-export const CREDITS_ROSSO_ARGINE_LOGO_DISPLAY_WIDTH = 220
+/** Credits パネル内の表示幅（元画像 300×150。縦スペース確保のためやや控えめ） */
+export const CREDITS_ROSSO_ARGINE_LOGO_DISPLAY_WIDTH = 180
 // --- プレイヤー見た目（静止絵3コマ。歩行アニメなし）---
 // コマ0=正面、コマ1=右向き横顔（左は flipX）、コマ2=背中
 // 動きは敵と同じ黒枠＋呼吸だけ

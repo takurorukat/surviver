@@ -29,6 +29,14 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
+- 実施内容: Credits はみ出し修正。UI本文を作者／配布元／ライセンスの短文に整理（URL・パック名等はライセンス文書へ）。パネル高さの画面内クランプ、行間縮小、ロゴ幅180、収まらない場合のみ本文スクロール。Back固定。
+- 変更ファイル: ui.ts / assets.ts / SettingsMenuSystem.ts / creditsAttribution.test.ts / endingBgmCredits.test.ts / unifiedSkillIcons.test.ts / opengameart-cc0-loop-pack.txt / credits-display.spec.ts / docs
+- 検証: typecheck OK、tests 250 OK、build OK、git diff --check OK。Playwright で Credits 表示確認（tmp/credits-screenshots/*.png）。
+- 未解決: なし（小画面でも短縮本文がスクロールなしで収まっている）
+- 次の開発タスク: Full Game Verification / Area Clear Result UI（未着手）
+
+### 2026-07-28 — Cursor
+
 - 実施内容: Windy Plains Stage 3 ボス（`windHiveBoss`）強化。HP 25→75（×3）、表示 scale 1.5→2.25（×1.5）、2秒ごとに Hero 向け風の玉1発（標準敵弾速度／ダメージ、ホーミングなし）。蜂召喚・クリア条件・他ボスは未変更。
 - 変更ファイル: enemies.ts / EnemyBullet.ts / EnemyAttackSystem.ts / windHiveBossLogic.ts / windHiveBoss.test.ts / spawnEnemyCommon.ts / spawnFactories.ts / GameScene.ts / TODO.md / docs/AI_HANDOFF.md
 - 検証: typecheck OK、tests 247 OK、build OK、git diff --check OK。ブラウザ実機は未実施（手順は完了報告に記載）。
