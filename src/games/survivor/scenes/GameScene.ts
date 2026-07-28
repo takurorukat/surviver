@@ -176,6 +176,12 @@ import {
   getPurchasedXpBonusCap,
   unlockAchievement,
 } from '../systems/UnlockSaveSystem'
+import {
+  startAreaRun,
+  resetAreaRun,
+  addRunElapsedMs,
+  finalizeRunAsDefeat,
+} from '../systems/RunResultStore'
 import type { CarriedProgress } from '../types/CarriedProgress'
 import { playFinalWaveBanner } from '../systems/FinalWaveBannerSystem'
 import { playPierceUnlockBanner, playPierceLevelUpBanner } from '../systems/PierceUnlockBannerSystem'
@@ -594,6 +600,8 @@ export class GameScene extends Phaser.Scene {
     // Stage 1 の新規開始だけトライ回数に数える（次ステージ引き継ぎは数えない）
     if (this.stageNumber === 1 && this.carriedProgress === null) {
       recordRunStart()
+      // エリア通算の Run Progress をリセット（Stage 間引き継ぎでは呼ばない）
+      startAreaRun(this.areaId)
     }
   }
 
@@ -658,6 +666,7 @@ export class GameScene extends Phaser.Scene {
     this.waveSystem.stopWaves()
     this.gameAudioSystem.stopAllSounds()
     clearRunProgress()
+    resetAreaRun()
     this.scene.start('TitleScene')
   }
 
@@ -1353,6 +1362,8 @@ export class GameScene extends Phaser.Scene {
   private updateStageTimer(): void {
     // レベルアップ中は呼ばれないので、ここでだけ経過を足す（再開時の飛び越え防止）
     this.stageElapsedMs = this.stageElapsedMs + this.game.loop.delta
+    // エリア通算時間も同じ delta で進める（Pause / Level Up / Result 中はここまで来ない）
+    addRunElapsedMs(this.game.loop.delta)
     const stageDurationSeconds = getStageDurationSeconds(this.stageNumber)
     const elapsedSeconds = this.stageElapsedMs / 1000
     this.remainingSeconds = Math.max(0, stageDurationSeconds - elapsedSeconds)
@@ -2422,9 +2433,12 @@ export class GameScene extends Phaser.Scene {
     this.gameAudioSystem.stopBgm()
     this.gameAudioSystem.playGameOver()
     recordPlayerDeath()
+    // Player Death 確定時に RunResult を1回だけ作る（clear と二重にしない）
+    finalizeRunAsDefeat(this.currentLevel)
     this.stageResultSystem.show('defeat', this.stageNumber, () => {
       this.time.paused = false
       clearRunProgress()
+      resetAreaRun()
       // タイトル create 前にゲームオーバー音などを止める
       this.gameAudioSystem.stopAllSounds()
       this.scene.start('TitleScene')
@@ -2508,6 +2522,7 @@ export class GameScene extends Phaser.Scene {
       setTotalXp: (value) => {
         this.totalXp = value
       },
+      getCurrentLevel: () => this.currentLevel,
       getPendingLevelUps: () => this.pendingLevelUps,
       getPendingShopUnlockNotify: () => this.pendingShopUnlockNotify,
       setPendingShopUnlockNotify: (value) => {

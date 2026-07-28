@@ -85,6 +85,7 @@ import {
   markShopUnlockTipSeen,
   getClearedAreaIds,
 } from '../systems/UnlockSaveSystem'
+import { resetAreaRun } from '../systems/RunResultStore'
 import { isFourAreaCompletion } from '../systems/fourAreaCompletion'
 import { createTopBar, type TopBarView } from '../systems/TopBarSystem'
 import { GameAudioSystem } from '../systems/GameAudioSystem'
@@ -328,6 +329,7 @@ export class TitleScene extends Phaser.Scene {
 
     // 途中再開はしない（旧セーブに残っていても消す）
     clearRunProgress()
+    resetAreaRun()
     this.createAreaPanels()
     if (TITLE_SHOW_SHOP_AND_SEAL) {
       this.shopPreviewView = this.createShopPreviewPanel()
@@ -2152,6 +2154,7 @@ export class TitleScene extends Phaser.Scene {
     }
 
     clearRunProgress()
+    resetAreaRun()
 
     this.hasStarted = true
     // ユーザー操作の直後に音声ロックを外す（このタイミングが一番確実）

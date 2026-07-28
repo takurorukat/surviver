@@ -45,6 +45,10 @@ import {
   FONT_FAMILY_UI,
 } from '../GameConstants'
 import { shrinkTextToFitWidth, fitTextInBounds } from '../utils/fitTextToWidth'
+import {
+  getFinalizedRunResult,
+} from './RunResultStore'
+import type { RunResult } from '../types/RunResult'
 
 // clear=次ステージへ / gameClear=タイトルへ / defeat=リトライ
 export type StageResultKind = 'clear' | 'gameClear' | 'defeat'
@@ -81,6 +85,15 @@ export class StageResultSystem {
   /** 結果画面が開いているか。GameScene が入力・更新を止める判定に使う。 */
   isOpen(): boolean {
     return this.isVisible
+  }
+
+  /**
+   * 確定済み RunResult（Area Clear / Defeat）への読み取り窓口。
+   * SSoT は RunResultStore。次タスクの Area Clear Result UI がここから取る。
+   * 途中 Stage Clear では null。
+   */
+  getFinalizedRunResult(): RunResult | null {
+    return getFinalizedRunResult()
   }
 
   /**

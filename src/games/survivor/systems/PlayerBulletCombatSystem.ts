@@ -40,6 +40,7 @@ import {
   playEnemyBlockedShield,
 } from './CombatFeedbackSystem'
 import { recordEnemyDefeated } from './UnlockSaveSystem'
+import { recordRunEnemyDefeated } from './RunResultStore'
 
 /** GameScene から渡す命中処理用の文脈（複雑なジェネリクスは使わない） */
 export type PlayerBulletCombatContext = {
@@ -246,6 +247,8 @@ export function handleBulletEnemyHit(
 
   if (isDead) {
     recordEnemyDefeated()
+    const enemyKind = enemy.getData('enemyKind')
+    recordRunEnemyDefeated(typeof enemyKind === 'string' ? enemyKind : '')
     clearLockedTargetIfEnemyDestroyed(ctx.attackState, enemy)
     const xpDropMultiplier = getEnemyXpDropMultiplier(enemy)
     ctx.playEnemyDefeat()
@@ -355,6 +358,8 @@ function applyHitBlastIfUnlocked(
       continue
     }
     recordEnemyDefeated()
+    const enemyKind = damaged.enemy.getData('enemyKind')
+    recordRunEnemyDefeated(typeof enemyKind === 'string' ? enemyKind : '')
     clearLockedTargetIfEnemyDestroyed(ctx.attackState, damaged.enemy)
     const xpDropMultiplier = getEnemyXpDropMultiplier(damaged.enemy)
     ctx.playEnemyDefeat()

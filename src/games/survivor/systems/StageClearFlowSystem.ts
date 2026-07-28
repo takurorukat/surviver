@@ -64,6 +64,7 @@ import {
   recordGameClear,
   getClearedAreaIds,
 } from './UnlockSaveSystem'
+import { finalizeRunAsClear } from './RunResultStore'
 import { shouldStartEndingAfterAreaClear } from './endingLaunch'
 import type { CarriedProgress } from '../types/CarriedProgress'
 import type { WaveSystem } from './WaveSystem'
@@ -106,6 +107,7 @@ export type StageClearFlowContext = {
   setClearCoinVacuumEmptySinceMs: (value: number) => void
   getTotalXp: () => number
   setTotalXp: (value: number) => void
+  getCurrentLevel: () => number
   getPendingLevelUps: () => number
   getPendingShopUnlockNotify: () => boolean
   setPendingShopUnlockNotify: (value: boolean) => void
@@ -449,6 +451,8 @@ export function showStageClearResult(ctx: StageClearFlowContext): void {
     ctx.setPendingShopUnlockNotify(false)
   }
   if (isGameClear) {
+    // Area Clear 確定時に RunResult を1回だけ作る（途中 Stage Clear では作らない）
+    finalizeRunAsClear(ctx.getCurrentLevel())
     recordGameClear()
     clearRunProgress()
     // 実績解放を先に行う（後で markAreaCleared すると、旧セーブ移行が

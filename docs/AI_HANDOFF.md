@@ -29,6 +29,14 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
+- 実施内容: Run Result Data Foundation。エリア通算 elapsed / run kills / clear|defeat 確定 / bossDefeated(finalBossConfig) / Stage間維持。メモリ上 `RunResultStore` が SSoT。Save・Best Time・Result UI・Achievements・Audio・Ending 未変更。並行のアイコン未コミット差分は保護・コミット対象外。
+- 変更ファイル: `types/RunResult.ts` / `RunResultStore.ts` / GameScene・TitleScene・StageClearFlow・StageResult・撃破3箇所 / `runResultData.test.ts` / docs
+- 検証: typecheck OK、tests 223 OK、build OK、git diff --check OK
+- 未解決: ブラウザ実プレイ未確認（手動手順を報告）
+- 次の開発タスク: Area Clear Result UI（未着手）
+
+### 2026-07-28 — Cursor
+
 - 実施内容: Ending BGM（Victory=Plains 0.11 / Final Ascent=Ruins 0.09、fade 400/600ms）＋ Music Credits を obscure music (Gichco) CC0 へ修正。出所不明の `area_clear_bgm.ogg` を Runtime／manifest／ファイルから削除（短い Area Clear SFX は維持）。`stopSharedBgm({ fadeMs })` の最小拡張のみ。新音源なし。
 - 変更ファイル: EndingScene / GameAudioSystem / SoundManager / ending・audio・ui・assetManifest / endingBgmCredits.test.ts / area_clear_bgm.ogg 削除 / AUDIO_ASSET_LIBRARY・GAME_SPEC
 - 検証: typecheck OK、tests 203 OK、build OK、git diff --check OK、dist に plains/ruins あり・area_clear_bgm なし・area_clear.ogg あり

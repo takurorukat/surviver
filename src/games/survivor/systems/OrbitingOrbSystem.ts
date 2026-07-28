@@ -37,6 +37,7 @@ import { clearLockedTargetIfEnemyDestroyed } from './PlayerAttackSystem'
 import { spawnExperienceCoinsAt } from './PlayerBulletCombatSystem'
 import type { PlayerBulletCombatContext } from './PlayerBulletCombatSystem'
 import { recordEnemyDefeated } from './UnlockSaveSystem'
+import { recordRunEnemyDefeated } from './RunResultStore'
 
 export type OrbitingOrbAudioHooks = {
   playObtain: () => void
@@ -368,6 +369,8 @@ export class OrbitingOrbSystem {
 
     if (isDead) {
       recordEnemyDefeated()
+      const enemyKind = enemy.getData('enemyKind')
+      recordRunEnemyDefeated(typeof enemyKind === 'string' ? enemyKind : '')
       clearLockedTargetIfEnemyDestroyed(ctx.attackState, enemy)
       const xpDropMultiplier = getEnemyXpDropMultiplier(enemy)
       ctx.playEnemyDefeat()
