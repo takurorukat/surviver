@@ -29,11 +29,19 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
+- 実施内容: SFX Preview を Production から完全分離。Settings の Preview ボタン／静的 import を削除。`SfxPreviewSystem`・Catalog・ReviewStore・候補音源を `tools/sfx_preview/` へ移設。未使用／バックアップ音源は `tools/audio_archive/` へ退避。起動は `npm run dev:sfx-preview`（:5174）。
+- 変更ファイル: SettingsMenuSystem / ui.ts / package.json / .gitignore / tools/sfx_preview/** / tools/audio_archive/** / public audio 候補・未使用の移動 / settingsNoSfxPreview.test.ts / docs
+- 検証: typecheck OK、tests 232 OK、test:sfx-preview 6 OK、build OK、dist に Preview 文字列・candidates・softsynth なし。dist 42.26MB→4.62MB。Preview ツール HTTP 200（index / runtime / candidates）
+- 未解決: ブラウザでの聴感・SFX トグルは元々 Settings に無し（BGM/Credits/Back のみ）
+- 次の開発タスク: Production Build Asset Audit（未着手）
+
+### 2026-07-28 — Cursor
+
 - 実施内容: Credits に「created by」＋ ROSSO ARGINE ロゴ画像を表示。旧「Created by TMFactory」文言を削除。アセットは添付 PNG（`public/assets/images/credits_rosso_argine.png`）を preload。
 - 変更ファイル: assets.ts / ui.ts / assetManifest / SettingsMenuSystem / creditsRossoArgine.test.ts / 関連 Credits テスト
 - 検証: typecheck OK、関連テスト OK、build OK、dist にロゴあり
 - 未解決: ブラウザでの見た目確認は未実施（Settings → Credits）
-- 次の開発タスク: ユーザー確認待ち（コミット未作成）
+- 次の開発タスク: （完了・コミット済み）
 
 ### 2026-07-28 — Cursor
 

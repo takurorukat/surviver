@@ -1,18 +1,17 @@
 // ============================================================
 // SfxPreviewSystem.ts
 // ------------------------------------------------------------
-// Settings → SFX Preview から開く SFX Catalog（Review All 専用）。
-// Manifest: constants/sfxCatalog.ts
+// 独立ツール tools/sfx_preview 用の SFX Catalog（Review All）。
+// Manifest: ./sfxCatalog.ts
 // ============================================================
 
 import Phaser from 'phaser'
 import {
   GAME_WIDTH,
   GAME_HEIGHT,
-  SFX_PREVIEW_DEPTH,
-  SFX_VOLUME,
-} from '../GameConstants'
-import { GameAudioSystem } from './GameAudioSystem'
+} from '../../../src/games/survivor/GameConstants'
+import { SFX_VOLUME } from '../../../src/games/survivor/constants/audio'
+import { SFX_PREVIEW_DEPTH } from './previewUi'
 import {
   SFX_CATALOG,
   findCatalogEntry,
@@ -25,7 +24,7 @@ import {
   type SfxCatalogEntryStatus,
   type SfxCatalogRecommendation,
   type SfxCatalogVariant,
-} from '../constants/sfxCatalog'
+} from './sfxCatalog'
 import {
   buildAdoptionExportJson,
   buildAdoptionSummaryText,
@@ -40,8 +39,12 @@ import {
   setVariantReviewStatus,
 } from './SfxCatalogReviewStore'
 
+export type SfxPreviewAudioUnlock = {
+  unlock: () => void
+}
+
 export type SfxPreviewCallbacks = {
-  audioSystem: GameAudioSystem
+  audioSystem: SfxPreviewAudioUnlock
   onUiObjectsReady?: (objects: Phaser.GameObjects.GameObject[]) => void
   onClose?: () => void
   onCancelled?: () => void

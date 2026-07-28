@@ -59,13 +59,13 @@ import {
   ENEMY_DEFEAT_SFX_COOLDOWN_MS,
   ORBITING_ORB_HIT_SFX_COOLDOWN_MS,
   ORBITING_ORB_SHATTER_SFX_COOLDOWN_MS,
-} from './audio'
-import { SFX_CANDIDATE_DIR } from './ui'
+} from '../../../src/games/survivor/constants/audio'
+import { SFX_CANDIDATE_DIR } from './previewUi'
 import {
   COMBAT_CORE_SFX_EVENT_IDS,
   SURVIVOR_SFX_EVENT_IDS,
   type SurvivorSfxEventId,
-} from '../audio/sfxEvents'
+} from '../../../src/games/survivor/audio/sfxEvents'
 import {
   COMBAT_CORE_EXTERNAL_CAST_RECOMMENDATIONS,
   COMBAT_CORE_EXTERNAL_CAST_VARIANTS,

@@ -4,7 +4,7 @@ import {
   isSurvivorSfxEventId,
   resolveCombatCoreSfxEventPath,
   resolveSurvivorSfxEventKey,
-} from '../audio/sfxEvents'
+} from '../../../src/games/survivor/audio/sfxEvents'
 import {
   countCandidateVariants,
   findCatalogEntry,

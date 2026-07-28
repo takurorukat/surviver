@@ -11,11 +11,13 @@ Combat Core（`skill.power.cast` / `skill.power.impact` / `enemy.defeat`）の
 
 ## 1. Catalog で Adopt する
 
-1. Settings → SFX Preview → Review All を開く
-2. Category: `combat-core` または先頭の 3 Entry を確認
-3. 各 Entry で Runtime / Candidate を試聴し、Adopt を選ぶ
-4. Reload 後も Adopt が残ることを確認
-5. **Export Adoption JSON** を押して JSON を保存
+1. リポジトリルートで `npm run dev:sfx-preview` を起動し、`http://localhost:5174/` を開く
+   （Production Settings には SFX Preview は無い。独立開発ツール）
+2. Review All を開く
+3. Category: `combat-core` または先頭の 3 Entry を確認
+4. 各 Entry で Runtime / Candidate を試聴し、Adopt を選ぶ
+5. Reload 後も Adopt が残ることを確認
+6. **Export Adoption JSON** を押して JSON を保存
 
 ## 2. Export JSON の形
 

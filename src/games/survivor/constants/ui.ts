@@ -211,18 +211,6 @@ export const RESUME_COUNTDOWN_POP_IN_MS = START_COUNTDOWN_POP_IN_MS
 export const RESUME_COUNTDOWN_HOLD_MS = START_COUNTDOWN_HOLD_MS
 export const RESUME_COUNTDOWN_FADE_OUT_MS = START_COUNTDOWN_FADE_OUT_MS
 
-// --- 効果音プレビュー（Settings → SFX Preview）---
-// 画面 960x540 にほぼ全面表示し、比較ボタンを1画面に収める
-export const SFX_PREVIEW_PANEL_WIDTH = 900
-export const SFX_PREVIEW_PANEL_HEIGHT = 500
-export const SFX_PREVIEW_DEPTH = 470
-export const SFX_PREVIEW_ROW_HEIGHT = 22
-export const SFX_PREVIEW_COMPARE_BUTTON_HEIGHT = 40
-export const SFX_PREVIEW_VOLUME_STEP = 0.05
-// 波形合成の a/b/c 候補（regen_element_bullet_sfx.py --preview-pack）
-export const SFX_CANDIDATE_DIR = 'assets/audio/candidates'
-export const SFX_CANDIDATE_VARIANTS = ['a', 'b', 'c'] as const
-export type SfxCandidateVariant = (typeof SFX_CANDIDATE_VARIANTS)[number]
 // --- ステージクリア大型バナー演出 ---
 export const STAGE_CLEAR_BANNER_FONT_SIZE = '56px'
 export const STAGE_CLEAR_BANNER_COLOR = '#86efac'

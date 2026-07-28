@@ -6,12 +6,12 @@
 // ゲーム本編の runtime 再生には一切影響しない。
 // ============================================================
 
-import type { SfxCatalogEntry, SfxCatalogVariant } from '../constants/sfxCatalog'
-import { findCatalogVariant } from '../constants/sfxCatalog'
+import type { SfxCatalogEntry, SfxCatalogVariant } from './sfxCatalog'
+import { findCatalogVariant } from './sfxCatalog'
 import {
   resolveSurvivorSfxEventKey,
   type SurvivorSfxEventId,
-} from '../audio/sfxEvents'
+} from '../../../src/games/survivor/audio/sfxEvents'
 
 const REVIEW_STORE_KEY = 'mage-survivor-sfx-catalog-review-v1'
 const REVIEW_STORE_VERSION = 1

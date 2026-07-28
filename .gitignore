@@ -24,8 +24,14 @@ dist-ssr
 *.sln
 *.sw?
 
-# SoftSynth audio backups (local restore only)
+# SoftSynth audio backups (local restore only; not shipped)
 public/assets/audio/_softsynth_backup/
+tools/audio_archive/_softsynth_backup/
+tools/audio_archive/public_audio_unused/*_backup.ogg
+tools/audio_archive/public_audio_unused/*_backup.mp3
+tools/audio_archive/public_audio_unused/*_before_hum.ogg
+tools/audio_archive/public_audio_unused/*_prev.ogg
+tools/audio_archive/public_audio_unused/_audio_renderer.txt
 public/assets/audio/_audio_renderer.txt
 public/assets/audio/*_backup.ogg
 public/assets/audio/*_backup.mp3
@@ -34,6 +40,17 @@ public/assets/audio/*_prev.ogg
 # 波形合成 SE の a/b/c 候補（regen_element_bullet_sfx.py --preview-pack）
 # および大量のローカル候補は追跡しない。
 # Combat Core の外部 CC0 候補（Catalog Review 用）だけ例外で追跡する。
+# Preview 候補は tools/sfx_preview/public へ移した（Production public には置かない）。
+tools/sfx_preview/public/assets/audio/candidates/*
+!tools/sfx_preview/public/assets/audio/candidates/external/
+tools/sfx_preview/public/assets/audio/candidates/external/*
+!tools/sfx_preview/public/assets/audio/candidates/external/skill-power-cast/
+!tools/sfx_preview/public/assets/audio/candidates/external/skill-power-cast/**
+!tools/sfx_preview/public/assets/audio/candidates/external/skill-power-impact/
+!tools/sfx_preview/public/assets/audio/candidates/external/skill-power-impact/**
+!tools/sfx_preview/public/assets/audio/candidates/external/enemy-defeat/
+!tools/sfx_preview/public/assets/audio/candidates/external/enemy-defeat/**
+# 旧パス（誤って戻した場合の保険）
 public/assets/audio/candidates/*
 !public/assets/audio/candidates/external/
 public/assets/audio/candidates/external/*

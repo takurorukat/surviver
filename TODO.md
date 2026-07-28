@@ -31,7 +31,9 @@
 - [x] Run Result Data（エリア通算時間・撃破数・clear/defeat 確定・Stage間維持。Save/UIなし）。2026-07-28 実装・検証済み。
 - [x] Unified Seven Skill Icons（Wind / Water / Fire / Earth / Speed / Power / Range）。Lorc の同一アイコンファミリーへ統一し、SSoT・Manifest・Credits・小サイズ表示を2026-07-28に実装・検証済み。
 - [x] Skill Unlock 表示同期（HUD／Level Up が同じ isSkillUnlocked。合成スキルの誤ロック解消）。2026-07-28 修正・検証済み。
+- [x] SFX Preview を Production から分離（独立 `tools/sfx_preview`、公開 dist から除外）。2026-07-28 実装・検証済み。
 - [ ] Area Clear Result UI（Version 1）。
+- [ ] Production Build Asset Audit。
 - [x] Final Stage Completion Rules（4エリア最終の `defeat-boss` を `finalBossConfig` で統合済み）。
 - [ ] Earth Dungeon Stage 2 の Burrower を、`docs/EARTH_DUNGEON_DESIGN.md` の確定済み仕様だけに従って実装し、敵選択・出現条件のテストを追加する。
 - [ ] Rune Pillar と Ruins 混成Stageを、確定済み設計だけに従って実装し、出現ロジックのテストを追加する。

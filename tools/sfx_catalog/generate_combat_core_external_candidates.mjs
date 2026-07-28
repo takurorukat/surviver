@@ -17,7 +17,7 @@ const rootDir = path.resolve(__dirname, '../..')
 const manifestPath = path.join(rootDir, 'docs/audio/sfx-external-import.json')
 const outPath = path.join(
   rootDir,
-  'src/games/survivor/constants/combatCoreExternalCandidates.ts',
+  'tools/sfx_preview/src/combatCoreExternalCandidates.ts',
 )
 
 const ENTRY_SPECS = [
