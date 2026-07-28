@@ -29,6 +29,14 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
+- 実施内容: Wind / Fire スキルアイコン色を直感的な属性色へ変更（Wind `#22C55E`、Fire `#EF4444`）。SSoT は `CORE_SKILL_ICONS` のみ。SVG・他スキル色・性能は未変更。
+- 変更ファイル: skillIcons.ts / skillIcons.test.ts / docs
+- 検証: typecheck OK、tests 234 OK、build OK、git diff --check OK。HUD/Level Up は SkillIcon→SSoT 参照。
+- 未解決: 実ブラウザでの色味確認は人間向け
+- 次の開発タスク: Area Clear Result UI または Production Build Asset Audit（未着手）
+
+### 2026-07-28 — Cursor
+
 - 実施内容: 複合スキル取得バナーの「OBTAINED」→「GET!」。プレイヤー向け表示名「Orbiting Orb」→「Orbit」（内部ID・Save・性能は未変更）。HUD短縮ラベルは ORB→ORBIT。
 - 変更ファイル: ui.ts / progression.ts / HudSystem / bannerコメント / orbitingOrb.test / compoundSkillWording.test / docs
 - 検証: typecheck OK、tests 234 OK、build OK、git diff --check OK
@@ -37,7 +45,7 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
-- 実施内容: SFX Preview を Production から完全分離。Settings の Preview ボタン／静的 import を削除。`SfxPreviewSystem`・Catalog・ReviewStore・候補音源を `tools/sfx_preview/` へ移設。未使用／バックアップ音源は `tools/audio_archive/` へ退避。起動は `npm run dev:sfx-preview`（:5174）。
+- 実施内容: SFX Preview を Production から完全分離。
 - 変更ファイル: SettingsMenuSystem / ui.ts / package.json / .gitignore / tools/sfx_preview/** / tools/audio_archive/** / public audio 候補・未使用の移動 / settingsNoSfxPreview.test.ts / docs
 - 検証: typecheck OK、tests 232 OK、test:sfx-preview 6 OK、build OK、dist に Preview 文字列・candidates・softsynth なし。dist 42.26MB→4.62MB。Preview ツール HTTP 200（index / runtime / candidates）
 - 未解決: ブラウザでの聴感・SFX トグルは元々 Settings に無し（BGM/Credits/Back のみ）

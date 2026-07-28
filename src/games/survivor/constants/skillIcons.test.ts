@@ -55,6 +55,15 @@ describe('skill icon definitions', () => {
       'power',
       'range',
     ])
+    expect(CORE_SKILL_ICONS.wind.color).toBe(0x22c55e)
+    expect(CORE_SKILL_ICONS.fire.color).toBe(0xef4444)
+    expect(CORE_SKILL_ICONS.water.color).toBe(0x38bdf8)
+    expect(CORE_SKILL_ICONS.earth.color).toBe(0xb88952)
+    expect(CORE_SKILL_ICONS.speed.color).toBe(0x67e8f9)
+    expect(CORE_SKILL_ICONS.power.color).toBe(0xfbbf24)
+    expect(CORE_SKILL_ICONS.range.color).toBe(0xc084fc)
+    expect(SKILL_ICON_DEFINITIONS.wind.color).toBe(CORE_SKILL_ICONS.wind.color)
+    expect(SKILL_ICON_DEFINITIONS.fire.color).toBe(CORE_SKILL_ICONS.fire.color)
     expect(SKILL_ICON_DEFINITIONS.damage).toBe(CORE_SKILL_ICONS.power)
     expect(SKILL_ICON_DEFINITIONS.fireRate).toBe(CORE_SKILL_ICONS.speed)
     expect(SKILL_ICON_DEFINITIONS.range).toBe(CORE_SKILL_ICONS.range)

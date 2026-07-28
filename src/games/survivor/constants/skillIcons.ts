@@ -49,7 +49,7 @@ export const CORE_SKILL_ICON_IDS: CoreSkillIconId[] = [
 export const CORE_SKILL_ICONS: Record<CoreSkillIconId, SkillIconDefinition> = {
   wind: {
     symbol: '〰',
-    color: 0x2dd4bf,
+    color: 0x22c55e,
     assetKey: 'skill-icon-wind',
     assetPath: 'assets/icons/skills/unified/wind.svg',
   },
@@ -61,7 +61,7 @@ export const CORE_SKILL_ICONS: Record<CoreSkillIconId, SkillIconDefinition> = {
   },
   fire: {
     symbol: '▲',
-    color: 0xf97316,
+    color: 0xef4444,
     assetKey: 'skill-icon-fire',
     assetPath: 'assets/icons/skills/unified/fire.svg',
   },
