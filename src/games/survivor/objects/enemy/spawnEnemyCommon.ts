@@ -74,6 +74,7 @@ import {
   ENEMY_WIND_HIVE_BOSS_HEIGHT,
   ENEMY_WIND_HIVE_BOSS_RADIUS,
   ENEMY_WIND_HIVE_BOSS_WIDTH,
+  ENEMY_WIND_HIVE_BOSS_WIND_ORB_INTERVAL_MS,
   ENEMY_WIND_HIVE_BOSS_XP_DROP_MULTIPLIER,
   ENEMY_EARTH_DUNGEON_BOSS_HEIGHT,
   ENEMY_EARTH_DUNGEON_BOSS_RADIUS,
@@ -371,6 +372,11 @@ export function spawnEnemyCommon(
     enemy.setData(
       'nextBeeSummonAtMs',
       scene.time.now + ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_INTERVAL_MS,
+    )
+    // 出現から 2 秒後に最初の風の玉を撃つ
+    enemy.setData(
+      'nextWindOrbShotAtMs',
+      scene.time.now + ENEMY_WIND_HIVE_BOSS_WIND_ORB_INTERVAL_MS,
     )
   }
   if (enemyKind === 'earthDungeonBoss') {

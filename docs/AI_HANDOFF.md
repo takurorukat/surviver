@@ -29,6 +29,14 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
+- 実施内容: Windy Plains Stage 3 ボス（`windHiveBoss`）強化。HP 25→75（×3）、表示 scale 1.5→2.25（×1.5）、2秒ごとに Hero 向け風の玉1発（標準敵弾速度／ダメージ、ホーミングなし）。蜂召喚・クリア条件・他ボスは未変更。
+- 変更ファイル: enemies.ts / EnemyBullet.ts / EnemyAttackSystem.ts / windHiveBossLogic.ts / windHiveBoss.test.ts / spawnEnemyCommon.ts / spawnFactories.ts / GameScene.ts / TODO.md / docs/AI_HANDOFF.md
+- 検証: typecheck OK、tests 247 OK、build OK、git diff --check OK。ブラウザ実機は未実施（手順は完了報告に記載）。
+- 未解決: ブラウザでの見た目・発射タイミングの人間確認
+- 次の開発タスク: Full Game Verification（未着手）
+
+### 2026-07-28 — Cursor
+
 - 実施内容: 基本スキルのプレイヤー向け表示名を効果名へ整理（Move Speed / Pickup Range / Attack Speed / Attack Range 等）。Level Up に属性タグ（Move=WIND・Pickup=WATER・XP=FIRE、根拠は SKILL_CATALOG）。Power／Attack Speed／Attack Range は属性未定義のためタグなし。内部ID・性能未変更。
 - 変更ファイル: progression.ts / skillIcons.ts / ui.ts / LevelUpChoicePool / LevelUpChoiceSystem / HudSystem / SealSkillSystem / skillDisplayNames.test.ts / docs
 - 検証: typecheck OK、tests 239 OK、build OK、git diff --check OK

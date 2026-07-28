@@ -21,6 +21,7 @@
 - [x] `SoundManager` のBGMフェード、ループ境界、SE同時発音制御を単体テストと実装の両面で確認する。不整合があれば、音源データを変えずに再生制御だけを最小限修正する。2026-07-25に再生制御を修正し、型チェック・70件のテスト・ビルドで確認済み。
 - [x] Gold／Shop Runtime Disable: Version 1 向けに Gold 生成・取得・報酬・HUD・演出・Shop／Seal 導線を休止（完全削除しない）。`RUNTIME_ENABLE_GOLD_AND_SHOP = false`。セーブ互換・既存 Shop 強化適用・XP は維持。2026-07-28 実装・検証済み。
 - [x] Wind Plains Stage 3 召喚ボス（`windHiveBoss`）: Stage開始時1体・蜂召喚・撃破でArea Clear。2026-07-28 実装・検証済み。
+- [x] Strengthen Windy Plains Stage 3 Boss: HP×3・表示1.5倍・2秒間隔風の玉。2026-07-28 実装・検証済み。
 - [x] Earth Dungeon Stage 5 召喚ボス（`earthDungeonBoss`）: Stage開始時1体・Earth敵召喚・小石5連射・撃破でArea Clear。2026-07-28 実装・検証済み。
 - [x] Four Area Final Boss: 4エリア最終に `defeat-boss`＋`finalBossConfig` SSoT。Forest gravestone／Volcano chaosElemental を正式最終ボス化（isBoss）。2026-07-28 実装・検証済み。
 - [x] Earth Dungeon Stage 4 `earthMagmaRock`（6方向小石・混成抽選20〜25%・同時上限4）。2026-07-28 実装・検証済み。

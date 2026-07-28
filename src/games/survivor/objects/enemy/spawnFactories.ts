@@ -488,7 +488,7 @@ export function spawnForestStage5Gravestone(
 
 /**
  * Wind Plains Stage3 ボスを1体スポーンする。
- * HP 25。速度は通常スライムの 0.5 倍。プレイヤーを追う。
+ * HP は ENEMY_WIND_HIVE_BOSS_HP。速度は通常スライムの 0.5 倍。プレイヤーを追う。
  */
 export function spawnWindHiveBossEnemy(
   scene: Phaser.Scene,

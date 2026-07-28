@@ -20,11 +20,13 @@ import {
   ENEMY_EARTH_MAGMA_ROCK_WINDUP_MS,
   ENEMY_EARTH_ROCK_PEBBLE_INTERVAL_MS,
   ENEMY_RANGED_ATTACK_INTERVAL_MS,
+  ENEMY_WIND_HIVE_BOSS_WIND_ORB_INTERVAL_MS,
 } from '../GameConstants'
 import {
   fireEnemyBullet,
   firePebbleEnemyBullet,
   firePebbleEnemyBulletInDirection,
+  fireWindOrbEnemyBullet,
 } from '../objects/EnemyBullet'
 import { enemyBreathingSpriteMap } from '../objects/enemy/enemyInternal'
 import {
@@ -32,6 +34,10 @@ import {
   shouldFireEarthDungeonBossRockShot,
   shouldStartEarthDungeonBossRockBurst,
 } from './earthDungeonBossLogic'
+import {
+  advanceWindHiveBossWindOrbShotAtMs,
+  shouldFireWindHiveBossWindOrb,
+} from './windHiveBossLogic'
 
 // 射撃型敵がプレイヤーへ弾を撃つ（グループ内の全敵を走査）
 // 各敵の nextShotAtMs（次に撃ってよい時刻）を getData/setData で管理
@@ -139,6 +145,66 @@ export function updateEarthRockAttacks(
       enemy.setData(
         'nextPebbleShotAtMs',
         nowMs + ENEMY_EARTH_ROCK_PEBBLE_INTERVAL_MS,
+      )
+    }
+  }
+}
+
+/**
+ * Wind Plains Stage3 ボス: 2秒ごとに Hero 現在位置へ風の玉を1発。
+ * 出現直後は撃たず、初弾は出現から 2000ms 後。発射後は直進。
+ * Pause / Level Up 中は GameScene 側でこの更新自体が止まると時間も進まない。
+ */
+export function updateWindHiveBossWindOrbAttacks(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  enemyBulletGroup: Phaser.Physics.Arcade.Group,
+  playerX: number,
+  playerY: number,
+  nowMs: number,
+): void {
+  const children = enemyGroup.getChildren()
+
+  for (let index = 0; index < children.length; index++) {
+    const boss = children[index] as Phaser.GameObjects.Rectangle
+    if (!boss.active) {
+      continue
+    }
+    if (boss.getData('isDefeated') === true) {
+      continue
+    }
+    if (boss.getData('enemyKind') !== 'windHiveBoss') {
+      continue
+    }
+
+    let nextWindOrbShotAtMs = boss.getData('nextWindOrbShotAtMs') as number
+    if (typeof nextWindOrbShotAtMs !== 'number') {
+      nextWindOrbShotAtMs = nowMs + ENEMY_WIND_HIVE_BOSS_WIND_ORB_INTERVAL_MS
+      boss.setData('nextWindOrbShotAtMs', nextWindOrbShotAtMs)
+    }
+
+    if (
+      !shouldFireWindHiveBossWindOrb({
+        nowMs,
+        nextShotAtMs: nextWindOrbShotAtMs,
+      })
+    ) {
+      continue
+    }
+
+    const bullet = fireWindOrbEnemyBullet(
+      scene,
+      enemyBulletGroup,
+      boss.x,
+      boss.y,
+      playerX,
+      playerY,
+    )
+
+    if (bullet !== null) {
+      boss.setData(
+        'nextWindOrbShotAtMs',
+        advanceWindHiveBossWindOrbShotAtMs(nowMs),
       )
     }
   }

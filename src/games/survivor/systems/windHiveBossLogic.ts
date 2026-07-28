@@ -5,6 +5,7 @@
 import {
   ENEMY_BASE_SPEED,
   ENEMY_WIND_HIVE_BOSS_SPEED_FACTOR,
+  ENEMY_WIND_HIVE_BOSS_WIND_ORB_INTERVAL_MS,
 } from '../constants/enemies'
 
 /**
@@ -31,4 +32,42 @@ export function shouldSummonWindHiveBossBee(params: {
     return false
   }
   return true
+}
+
+/**
+ * 風の玉を今フレームで撃ってよいか（出現直後は nextShotAtMs まで待つ）。
+ */
+export function shouldFireWindHiveBossWindOrb(params: {
+  nowMs: number
+  nextShotAtMs: number
+}): boolean {
+  return params.nowMs >= params.nextShotAtMs
+}
+
+/**
+ * ボス中心から Hero 中心への単位方向。距離 0 なら null（NaN 防止）。
+ */
+export function calculateWindHiveBossWindOrbAimDirection(
+  bossX: number,
+  bossY: number,
+  heroX: number,
+  heroY: number,
+): { x: number; y: number } | null {
+  const dx = heroX - bossX
+  const dy = heroY - bossY
+  const distance = Math.sqrt(dx * dx + dy * dy)
+  if (distance === 0) {
+    return null
+  }
+  return {
+    x: dx / distance,
+    y: dy / distance,
+  }
+}
+
+/**
+ * 次弾までの時刻（間隔は ENEMY_WIND_HIVE_BOSS_WIND_ORB_INTERVAL_MS）。
+ */
+export function advanceWindHiveBossWindOrbShotAtMs(nowMs: number): number {
+  return nowMs + ENEMY_WIND_HIVE_BOSS_WIND_ORB_INTERVAL_MS
 }
