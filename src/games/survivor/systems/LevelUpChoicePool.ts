@@ -5,7 +5,17 @@
 // 封印・上限・未解放スキルを除外する。
 // ============================================================
 
-import { DAMAGE_BONUS_PER_LEVEL_UP } from '../GameConstants'
+import {
+  COIN_MAGNET_RADIUS_BONUS_PER_LEVEL,
+  DAMAGE_BONUS_PER_LEVEL_UP,
+  MOVE_SPEED_MULTIPLIER_STEP,
+  UNLOCK_SKILL_LABEL_MAGNET,
+  UNLOCK_SKILL_LABEL_MOVE,
+  UNLOCK_SKILL_LABEL_POWER,
+  UNLOCK_SKILL_LABEL_RANGE,
+  UNLOCK_SKILL_LABEL_SPEED,
+  UNLOCK_SKILL_LABEL_XP_BONUS,
+} from '../GameConstants'
 import { isSkillUnlocked } from './AchievementSystem'
 import { getSealedSkillIds } from './UnlockSaveSystem'
 
@@ -27,37 +37,39 @@ export type LevelUpChoice = {
   description: string
 }
 
+const MOVE_SPEED_BONUS_PERCENT = Math.round(MOVE_SPEED_MULTIPLIER_STEP * 100)
+
 const LEVEL_UP_CHOICE_POOL: LevelUpChoice[] = [
   {
     id: 'damage',
-    title: 'Power',
-    description: `Fire Damage +${DAMAGE_BONUS_PER_LEVEL_UP}`,
+    title: UNLOCK_SKILL_LABEL_POWER,
+    description: `Damage +${DAMAGE_BONUS_PER_LEVEL_UP}`,
   },
   {
     id: 'fireRate',
-    title: 'Speed',
-    description: 'Fire Speed +1',
+    title: UNLOCK_SKILL_LABEL_SPEED,
+    description: 'Attack Speed +1',
   },
   {
     id: 'range',
-    title: 'Range',
-    description: 'Fire Range +1',
+    title: UNLOCK_SKILL_LABEL_RANGE,
+    description: 'Attack Range +1',
   },
   {
     id: 'move',
-    title: 'Move',
-    description: 'Move speed +1',
+    title: UNLOCK_SKILL_LABEL_MOVE,
+    description: `Movement Speed +${MOVE_SPEED_BONUS_PERCENT}%`,
   },
   {
     id: 'magnet',
-    title: 'Pickup',
-    description: 'Coin pickup range +1',
+    title: UNLOCK_SKILL_LABEL_MAGNET,
+    description: `Pickup Radius +${COIN_MAGNET_RADIUS_BONUS_PER_LEVEL}px`,
   },
   // Pierce / Blast / Orbiting Orb / Ricochet はレベルアップ選択肢に出さない（他スキルの組み合わせで同期）
   {
     id: 'xpBonus',
-    title: 'XP Bonus',
-    description: 'Raise XP drop multiplier',
+    title: UNLOCK_SKILL_LABEL_XP_BONUS,
+    description: 'Experience Gain up',
   },
 ]
 

@@ -18,6 +18,12 @@ import {
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
   RUNTIME_ENABLE_GOLD_AND_SHOP,
+  UNLOCK_SKILL_LABEL_MAGNET,
+  UNLOCK_SKILL_LABEL_MOVE,
+  UNLOCK_SKILL_LABEL_POWER,
+  UNLOCK_SKILL_LABEL_RANGE,
+  UNLOCK_SKILL_LABEL_SPEED,
+  UNLOCK_SKILL_LABEL_XP_BONUS,
 } from '../GameConstants'
 import { isSkillUnlocked } from './AchievementSystem'
 import {
@@ -42,13 +48,13 @@ type SealCardView = {
 }
 
 const SEALABLE_SKILLS: SealableSkillDef[] = [
-  { id: 'damage', title: 'Power' },
-  { id: 'fireRate', title: 'Speed' },
-  { id: 'range', title: 'Range' },
-  { id: 'move', title: 'Move' },
-  { id: 'magnet', title: 'Pickup' },
+  { id: 'damage', title: UNLOCK_SKILL_LABEL_POWER },
+  { id: 'fireRate', title: UNLOCK_SKILL_LABEL_SPEED },
+  { id: 'range', title: UNLOCK_SKILL_LABEL_RANGE },
+  { id: 'move', title: UNLOCK_SKILL_LABEL_MOVE },
+  { id: 'magnet', title: UNLOCK_SKILL_LABEL_MAGNET },
   // Pierce / Blast / Ricochet はレベルアップ候補に出ないのでシール対象外
-  { id: 'xpBonus', title: 'XP Bonus' },
+  { id: 'xpBonus', title: UNLOCK_SKILL_LABEL_XP_BONUS },
 ]
 
 export type SealSkillSystemCallbacks = {

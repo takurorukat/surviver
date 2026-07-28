@@ -278,10 +278,10 @@ export const CLEAR_GOLD_COIN_PICKUP_DISTANCE = 18 * WORLD_ENTITY_SCALE
 export const LEVEL_UP_OVERLAY_COLOR = 0x000000
 export const LEVEL_UP_OVERLAY_ALPHA = 0.32
 export const LEVEL_UP_PANEL_WIDTH = 220
-export const LEVEL_UP_PANEL_HEIGHT = 90
-/** 複合スキル予告（1件・説明付き）があるときのパネル高さ。3択で揃える */
-export const LEVEL_UP_PANEL_HEIGHT_WITH_COMBO = 132
-/** 複合スキル予告が2件以上のとき、1件あたり足す高さ */
+export const LEVEL_UP_PANEL_HEIGHT = 108
+/** 複合スキル予告が1つあるときの高さ（基本＋予告1件分） */
+export const LEVEL_UP_PANEL_HEIGHT_WITH_COMBO = 150
+/** 複合予告が2件目以降、1件増えるごとの追加高さ */
 export const LEVEL_UP_PANEL_HEIGHT_PER_EXTRA_COMBO = 48
 export const LEVEL_UP_PANEL_GAP = 16
 export const LEVEL_UP_PANEL_COLOR = 0x1e293b
@@ -293,6 +293,8 @@ export const LEVEL_UP_PANEL_HOVER_TWEEN_MS = 120
 export const LEVEL_UP_TITLE_COLOR = '#fde68a'
 export const LEVEL_UP_CHOICE_TITLE_COLOR = '#ffffff'
 export const LEVEL_UP_CHOICE_DESC_COLOR = '#cbd5e1'
+/** Level Up の属性タグ（WIND など）。タイトルより小さく、説明より識別しやすく */
+export const LEVEL_UP_CHOICE_ELEMENT_TAG_FONT_SIZE = '12px'
 /** 複合スキル（Pierce / Blast / Ricochet）が付く予告の色（名前は通常タイトルと同サイズ） */
 export const LEVEL_UP_CHOICE_COMBO_COLOR = '#fde68a'
 export const LEVEL_UP_CHOICE_COMBO_BLOCK_GAP = 8
@@ -348,11 +350,11 @@ export const SKILL_LEVEL_UP_BANNER_HOLD_MS = 700
 export const SKILL_LEVEL_UP_BANNER_FADE_MS = 220
 export const SKILL_LEVEL_UP_BANNER_STROKE_THICKNESS = 5
 export const BLAST_LEVEL_UP_BANNER_TITLE_PREFIX = 'BLAST Lv.'
-export const BLAST_LEVEL_UP_BANNER_SUBTITLE = 'Power + Range'
+export const BLAST_LEVEL_UP_BANNER_SUBTITLE = 'Power + Attack Range'
 export const PIERCE_LEVEL_UP_BANNER_TITLE_PREFIX = 'PIERCE Lv.'
-export const PIERCE_LEVEL_UP_BANNER_SUBTITLE = 'Move + Speed'
+export const PIERCE_LEVEL_UP_BANNER_SUBTITLE = 'Move Speed + Attack Speed'
 export const RICOCHET_LEVEL_UP_BANNER_TITLE_PREFIX = 'RICOCHET Lv.'
-export const RICOCHET_LEVEL_UP_BANNER_SUBTITLE = 'XP Bonus + Pickup + Speed'
+export const RICOCHET_LEVEL_UP_BANNER_SUBTITLE = 'XP Bonus + Pickup Range + Attack Speed'
 
 export const ORBITING_ORB_UNLOCK_BANNER_TITLE = 'ORBIT GET!'
 export const ORBITING_ORB_UNLOCK_BANNER_SUBTITLE =
@@ -368,7 +370,7 @@ export const ORBITING_ORB_UNLOCK_BANNER_POP_MS = 280
 export const ORBITING_ORB_UNLOCK_BANNER_HOLD_MS = 1100
 export const ORBITING_ORB_UNLOCK_BANNER_FADE_MS = 320
 export const ORBITING_ORB_LEVEL_UP_BANNER_TITLE_PREFIX = 'ORBIT Lv.'
-export const ORBITING_ORB_LEVEL_UP_BANNER_SUBTITLE = 'Move + Pickup'
+export const ORBITING_ORB_LEVEL_UP_BANNER_SUBTITLE = 'Move Speed + Pickup Range'
 
 // --- ステージ結果（クリア／失敗／ゲームクリア）パネル ---
 export const STAGE_RESULT_OVERLAY_COLOR = 0x000000

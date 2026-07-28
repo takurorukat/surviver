@@ -182,3 +182,62 @@ export const UNLOCK_ICON_BLAST_LETTER = SKILL_ICON_DEFINITIONS.blast.symbol
 export const UNLOCK_ICON_ORBITING_ORB_LETTER = SKILL_ICON_DEFINITIONS.orbitingOrb.symbol
 export const UNLOCK_ICON_RICOCHET_LETTER = SKILL_ICON_DEFINITIONS.ricochet.symbol
 export const UNLOCK_ICON_XP_BONUS_LETTER = SKILL_ICON_DEFINITIONS.xpBonus.symbol
+
+/**
+ * 基本スキル → 属性タグ（docs/SKILL_CATALOG.md の「分類／属性」と弾属性対応が根拠）。
+ * Power / Attack Speed / Attack Range には風水火土の属性対応がないため未定義。
+ */
+export type SkillElementId = 'wind' | 'water' | 'fire' | 'earth'
+
+const SKILL_ELEMENT_BY_SKILL_ID: Partial<Record<SkillIconId, SkillElementId>> = {
+  move: 'wind',
+  magnet: 'water',
+  xpBonus: 'fire',
+}
+
+const SKILL_ELEMENT_TAG_LABEL: Record<SkillElementId, string> = {
+  wind: 'WIND',
+  water: 'WATER',
+  fire: 'FIRE',
+  earth: 'EARTH',
+}
+
+/** スキルに属性タグがあれば返す。なければ null（推測で付けない）。 */
+export function getSkillElementId(skillId: string): SkillElementId | null {
+  if (!isSkillIconId(skillId)) {
+    return null
+  }
+  const elementId = SKILL_ELEMENT_BY_SKILL_ID[skillId]
+  if (elementId === undefined) {
+    return null
+  }
+  return elementId
+}
+
+/** 属性タグの表示文字（WIND など）。属性未定義なら null。 */
+export function getSkillElementTagLabel(skillId: string): string | null {
+  const elementId = getSkillElementId(skillId)
+  if (elementId === null) {
+    return null
+  }
+  return SKILL_ELEMENT_TAG_LABEL[elementId]
+}
+
+/** 属性タグ色（CORE_SKILL_ICONS の色SSoT）。属性未定義なら null。 */
+export function getSkillElementTagColor(skillId: string): number | null {
+  const elementId = getSkillElementId(skillId)
+  if (elementId === null) {
+    return null
+  }
+  return CORE_SKILL_ICONS[elementId].color
+}
+
+/** Phaser Text 用に 0xRRGGBB を '#rrggbb' へ変換する。 */
+export function colorNumberToCssHex(color: number): string {
+  const safe = Math.max(0, Math.floor(color)) & 0xffffff
+  let hex = safe.toString(16)
+  while (hex.length < 6) {
+    hex = '0' + hex
+  }
+  return '#' + hex
+}

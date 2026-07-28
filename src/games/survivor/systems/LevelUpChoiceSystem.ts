@@ -43,6 +43,7 @@ import {
   LEVEL_UP_TITLE_COLOR,
   LEVEL_UP_CHOICE_TITLE_COLOR,
   LEVEL_UP_CHOICE_DESC_COLOR,
+  LEVEL_UP_CHOICE_ELEMENT_TAG_FONT_SIZE,
   LEVEL_UP_CHOICE_COMBO_COLOR,
   LEVEL_UP_CHOICE_COMBO_BLOCK_GAP,
   LEVEL_UP_UI_DEPTH,
@@ -52,6 +53,9 @@ import {
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
   RUNTIME_ENABLE_GOLD_AND_SHOP,
+  colorNumberToCssHex,
+  getSkillElementTagColor,
+  getSkillElementTagLabel,
   isSkillIconId,
   type SkillIconId,
 } from '../GameConstants'
@@ -555,6 +559,23 @@ export class LevelUpChoiceSystem {
 
     contentChildren.push(titleText)
     cursorY = cursorY + 22
+
+    const elementTagLabel =
+      skillIconId === null ? null : getSkillElementTagLabel(skillIconId)
+    const elementTagColor =
+      skillIconId === null ? null : getSkillElementTagColor(skillIconId)
+    if (elementTagLabel !== null && elementTagColor !== null) {
+      const elementText = this.scene.add.text(0, cursorY, elementTagLabel, {
+        fontFamily: FONT_FAMILY_UI,
+        fontSize: LEVEL_UP_CHOICE_ELEMENT_TAG_FONT_SIZE,
+        color: colorNumberToCssHex(elementTagColor),
+        fontStyle: 'bold',
+      })
+      elementText.setOrigin(0.5)
+      shrinkTextToFitWidth(elementText, LEVEL_UP_PANEL_WIDTH - 20)
+      contentChildren.push(elementText)
+      cursorY = cursorY + 16
+    }
 
     const descText = this.scene.add.text(0, cursorY, choice.description, {
       fontFamily: FONT_FAMILY_UI,

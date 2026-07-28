@@ -36,8 +36,8 @@ export const ACHIEVEMENT_ID_ORBITING_ORB_UNLOCK = 'orbiting_orb_unlock'
 export const ACHIEVEMENT_TITLE_UNTOUCHED = 'Pierce'
 export const ACHIEVEMENT_TITLE_PURE_POWER = 'Blast'
 export const ACHIEVEMENT_TITLE_FOREST_CLEAR = 'Volcano'
-export const ACHIEVEMENT_TITLE_MOVE = 'Move'
-export const ACHIEVEMENT_TITLE_MAGNET = 'Pickup'
+export const ACHIEVEMENT_TITLE_MOVE = 'Move Speed'
+export const ACHIEVEMENT_TITLE_MAGNET = 'Pickup Range'
 export const ACHIEVEMENT_TITLE_RICOCHET = 'Ricochet'
 export const ACHIEVEMENT_TITLE_ORBITING_ORB = 'Orbit'
 export const ACHIEVEMENT_TITLE_XP_BONUS = 'XP Bonus'
@@ -50,44 +50,44 @@ export const ACHIEVEMENT_CONDITION_FOREST_UNTOUCHED = 'Clear Water Forest with n
 export const ACHIEVEMENT_CONDITION_VOLCANO_CLEAR = 'Clear Fire Volcano'
 export const ACHIEVEMENT_CONDITION_VOLCANO_UNTOUCHED = 'Clear Fire Volcano with no damage'
 export const ACHIEVEMENT_CONDITION_PIERCE =
-  'Raise Move and Speed (Pierce = lower level - 1)'
+  'Raise Move Speed and Attack Speed (Pierce = lower level - 1)'
 export const ACHIEVEMENT_CONDITION_BLAST =
-  'Raise Power and Range (Blast = lower level - 1)'
+  'Raise Power and Attack Range (Blast = lower level - 1)'
 export const ACHIEVEMENT_CONDITION_RICOCHET =
-  'Raise XP Bonus, Pickup and Speed (Ricochet = min of Pickup-1, Speed-1, XP Bonus)'
+  'Raise XP Bonus, Pickup Range and Attack Speed (Ricochet = min of Pickup Range-1, Attack Speed-1, XP Bonus)'
 export const ACHIEVEMENT_CONDITION_ORBITING_ORB =
-  'Raise Move and Pickup (Orbit = lower level - 1)'
+  'Raise Move Speed and Pickup Range (Orbit = lower level - 1)'
 export const ACHIEVEMENT_TITLE_VOLCANO_UNTOUCHED = 'Volcano Untouched'
 export const UNLOCK_SKILL_LABEL_POWER = 'Power'
-export const UNLOCK_SKILL_LABEL_SPEED = 'Speed'
-export const UNLOCK_SKILL_LABEL_RANGE = 'Range'
+export const UNLOCK_SKILL_LABEL_SPEED = 'Attack Speed'
+export const UNLOCK_SKILL_LABEL_RANGE = 'Attack Range'
 export const UNLOCK_SKILL_LABEL_PIERCE = 'Pierce'
 export const UNLOCK_SKILL_LABEL_BLAST = 'Blast'
 export const UNLOCK_SKILL_LABEL_RICOCHET = 'Ricochet'
 export const UNLOCK_SKILL_LABEL_ORBITING_ORB = 'Orbit'
-export const UNLOCK_SKILL_LABEL_MOVE = 'Move'
+export const UNLOCK_SKILL_LABEL_MOVE = 'Move Speed'
 // Vampire Survivors ではステータス名 Magnet / アイテム Attractorb。
-// 説明文は "Pickup range" なので、表示名は分かりやすい Pickup にする
-export const UNLOCK_SKILL_LABEL_MAGNET = 'Pickup'
+// 説明文は "Pickup range" なので、表示名は分かりやすい Pickup Range にする
+export const UNLOCK_SKILL_LABEL_MAGNET = 'Pickup Range'
 export const UNLOCK_SKILL_LABEL_HP = 'HP'
-export const UNLOCK_SKILL_LABEL_FOREST_REWARDS = 'Pickup'
+export const UNLOCK_SKILL_LABEL_FOREST_REWARDS = 'Pickup Range'
 export const UNLOCK_SKILL_LABEL_XP_BONUS = 'XP Bonus'
 // スキルアイコン・実績画面用の短い効果説明（+1 や level-up は書かない）
 export const UNLOCK_SKILL_DESC_POWER = 'Increases bullet damage'
-export const UNLOCK_SKILL_DESC_SPEED = 'Increases fire speed'
-export const UNLOCK_SKILL_DESC_RANGE = 'Increases fire range'
-export const UNLOCK_SKILL_DESC_MOVE = 'Increases move speed'
-export const UNLOCK_SKILL_DESC_MAGNET = 'Increases coin pickup range'
+export const UNLOCK_SKILL_DESC_SPEED = 'Increases attack speed'
+export const UNLOCK_SKILL_DESC_RANGE = 'Increases attack range'
+export const UNLOCK_SKILL_DESC_MOVE = 'Increases movement speed'
+export const UNLOCK_SKILL_DESC_MAGNET = 'Increases coin pickup radius'
 export const UNLOCK_SKILL_DESC_HP = 'Increases max HP'
 export const UNLOCK_SKILL_DESC_XP_BONUS = 'Increases XP from coins'
 export const UNLOCK_SKILL_DESC_PIERCE =
-  'Move + Speed → Pierce (Pierce = lower level - 1)'
+  'Move Speed + Attack Speed → Pierce (Pierce = lower level - 1)'
 export const UNLOCK_SKILL_DESC_BLAST =
-  'Power + Range → Blast (Blast = lower level - 1)'
+  'Power + Attack Range → Blast (Blast = lower level - 1)'
 export const UNLOCK_SKILL_DESC_RICOCHET =
-  'XP Bonus + Pickup + Speed → Ricochet'
+  'XP Bonus + Pickup Range + Attack Speed → Ricochet'
 export const UNLOCK_SKILL_DESC_ORBITING_ORB =
-  'Move + Pickup → Orbit (Orbit = lower level - 1)'
+  'Move Speed + Pickup Range → Orbit (Orbit = lower level - 1)'
 export const UNLOCK_CONDITION_TBD = 'Unlock condition: TBD'
 
 // --- 経験値（累計 XP からレベル内の進捗を計算）---

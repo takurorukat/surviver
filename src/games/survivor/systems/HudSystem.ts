@@ -91,6 +91,16 @@ import {
   calculatePlayerStatAlpha,
   getCumulativeXpForLevel,
   FONT_FAMILY_UI,
+  UNLOCK_SKILL_LABEL_BLAST,
+  UNLOCK_SKILL_LABEL_MAGNET,
+  UNLOCK_SKILL_LABEL_MOVE,
+  UNLOCK_SKILL_LABEL_ORBITING_ORB,
+  UNLOCK_SKILL_LABEL_PIERCE,
+  UNLOCK_SKILL_LABEL_POWER,
+  UNLOCK_SKILL_LABEL_RANGE,
+  UNLOCK_SKILL_LABEL_RICOCHET,
+  UNLOCK_SKILL_LABEL_SPEED,
+  UNLOCK_SKILL_LABEL_XP_BONUS,
 } from '../GameConstants'
 import { formatRemainingSeconds } from '../utils/formatElapsedTime'
 import { shrinkTextToFitWidth } from '../utils/fitTextToWidth'
@@ -968,17 +978,17 @@ export class HudSystem {
     const statsY = PLAYER_STATS_TOP_OFFSET
 
     const lineDefs: { key: PlayerStatKey; label: string }[] = [
-      { key: 'power', label: 'POWER' },
-      { key: 'speed', label: 'SPEED' },
-      { key: 'range', label: 'RANGE' },
-      { key: 'move', label: 'MOVE' },
-      { key: 'magnet', label: 'PICKUP' },
+      { key: 'power', label: UNLOCK_SKILL_LABEL_POWER.toUpperCase() },
+      { key: 'speed', label: UNLOCK_SKILL_LABEL_SPEED.toUpperCase() },
+      { key: 'range', label: UNLOCK_SKILL_LABEL_RANGE.toUpperCase() },
+      { key: 'move', label: UNLOCK_SKILL_LABEL_MOVE.toUpperCase() },
+      { key: 'magnet', label: UNLOCK_SKILL_LABEL_MAGNET.toUpperCase() },
       { key: 'hp', label: 'HP MAX' },
-      { key: 'penetrate', label: 'PIERCE' },
-      { key: 'blast', label: 'BLAST' },
-      { key: 'orbitingOrb', label: 'ORBIT' },
-      { key: 'ricochet', label: 'RICOCHET' },
-      { key: 'xpBonus', label: 'XP 2X' },
+      { key: 'penetrate', label: UNLOCK_SKILL_LABEL_PIERCE.toUpperCase() },
+      { key: 'blast', label: UNLOCK_SKILL_LABEL_BLAST.toUpperCase() },
+      { key: 'orbitingOrb', label: UNLOCK_SKILL_LABEL_ORBITING_ORB.toUpperCase() },
+      { key: 'ricochet', label: UNLOCK_SKILL_LABEL_RICOCHET.toUpperCase() },
+      { key: 'xpBonus', label: UNLOCK_SKILL_LABEL_XP_BONUS.toUpperCase() },
     ]
 
     this.playerStatLines = []
@@ -1366,11 +1376,11 @@ export class HudSystem {
 
 /**
  * ラベル幅を揃えて、数字が縦一列になるようにする。
- * 例: POWER:1 / PIERCE:0
+ * 例: POWER:1 / ATTACK SPEED:2
  */
 function formatStatLine(label: string, value: number): string {
-  // いちばん長い "PIERCE:" に合わせて桁を揃える
-  const labelWithColon = `${label}:`.padEnd(7, ' ')
+  // いちばん長い "ATTACK SPEED:" / "PICKUP RANGE:" に合わせて桁を揃える
+  const labelWithColon = `${label}:`.padEnd(14, ' ')
   return `${labelWithColon}${value}`
 }
 

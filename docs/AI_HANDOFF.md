@@ -29,6 +29,24 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
+- 実施内容: 基本スキルのプレイヤー向け表示名を効果名へ整理（Move Speed / Pickup Range / Attack Speed / Attack Range 等）。Level Up に属性タグ（Move=WIND・Pickup=WATER・XP=FIRE、根拠は SKILL_CATALOG）。Power／Attack Speed／Attack Range は属性未定義のためタグなし。内部ID・性能未変更。
+- 変更ファイル: progression.ts / skillIcons.ts / ui.ts / LevelUpChoicePool / LevelUpChoiceSystem / HudSystem / SealSkillSystem / skillDisplayNames.test.ts / docs
+- 検証: typecheck OK、tests 239 OK、build OK、git diff --check OK
+- 未解決: HUD 長ラベルの実機読みやすさは人間確認
+- 次の開発タスク: Full Game Verification（未着手）
+
+### 2026-07-28 — Cursor
+
+- 実施内容: Wind / Fire スキルアイコン色を直感的な属性色へ変更（Wind `#22C55E`、Fire `#EF4444`）。SSoT は `CORE_SKILL_ICONS` のみ。SVG・他スキル色・性能は未変更。
+- 変更ファイル: skillIcons.ts / skillIcons.test.ts / docs
+- 検証: typecheck OK、tests 234 OK、build OK、git diff --check OK。HUD/Level Up は SkillIcon→SSoT 参照。
+- 未解決: 実ブラウザでの色味確認は人間向け
+- 次の開発タスク: Area Clear Result UI または Production Build Asset Audit（未着手）
+
+## 直近の作業記録
+
+### 2026-07-28 — Cursor
+
 - 実施内容: Wind / Fire スキルアイコン色を直感的な属性色へ変更（Wind `#22C55E`、Fire `#EF4444`）。SSoT は `CORE_SKILL_ICONS` のみ。SVG・他スキル色・性能は未変更。
 - 変更ファイル: skillIcons.ts / skillIcons.test.ts / docs
 - 検証: typecheck OK、tests 234 OK、build OK、git diff --check OK。HUD/Level Up は SkillIcon→SSoT 参照。
