@@ -33,6 +33,10 @@ import {
   ENEMY_EARTH_ROCK_BREATH_DISPLAY_HEIGHT,
   ENEMY_EARTH_ROCK_BREATH_SPRITE_KEY,
   ENEMY_EARTH_ROCK_COLOR,
+  ENEMY_EARTH_MAGMA_ROCK_BREATH_DISPLAY_HEIGHT,
+  ENEMY_EARTH_MAGMA_ROCK_BREATH_SPRITE_KEY,
+  ENEMY_EARTH_MAGMA_ROCK_COLOR,
+  ENEMY_EARTH_MAGMA_ROCK_MAX_ACTIVE,
   ENEMY_EARTH_SKELETON_BREATH_DISPLAY_HEIGHT,
   ENEMY_EARTH_SKELETON_BREATH_SPRITE_KEY,
   ENEMY_EARTH_SKELETON_COLOR,
@@ -84,6 +88,7 @@ import {
   calculateStumpSpeed,
   calculateStoneGuardSpeed,
   calculateEarthRockSpeed,
+  calculateEarthMagmaRockSpeed,
   calculateToughMeleeHp,
   calculateToughMeleeSpeed,
   isForestFinalStage,
@@ -99,6 +104,8 @@ import {
   pickEnemyKindForArea,
   pickForestStage5EnemyKind,
   pickVolcanoStage5EnemyKind,
+  pickRuinsStage4EnemyKind,
+  pickRuinsStage4EnemyKindWithoutMagmaRock,
 } from './pickEnemyKind'
 import {
   spawnMeleeEnemy,
@@ -106,6 +113,7 @@ import {
   spawnMushroomEnemy,
   spawnEarthSlimeEnemy,
   spawnEarthRockEnemy,
+  spawnEarthMagmaRockEnemy,
   spawnSpiritFireEnemy,
   spawnSpiritThunderEnemy,
   spawnBurningTreeEnemy,
@@ -127,6 +135,7 @@ function buildPackEnemyKinds(
   totalStages: number,
   spawnAsRanged: boolean,
   packSize: number,
+  enemyGroup: Phaser.Physics.Arcade.Group,
 ): EnemyKind[] {
   const kinds: EnemyKind[] = []
   if (isForestFinalStage(areaId, stageNumber, totalStages)) {
@@ -142,11 +151,51 @@ function buildPackEnemyKinds(
     return kinds
   }
 
+  // Ruins Stage4: 個体ごとに抽選。マグマ岩は同時4体まで
+  if (areaId === 'ruins' && stageNumber === 4) {
+    let magmaCount = countActiveEnemyKind(enemyGroup, 'earthMagmaRock')
+    for (let index = 0; index < packSize; index++) {
+      let kind = pickRuinsStage4EnemyKind()
+      if (
+        kind === 'earthMagmaRock' &&
+        magmaCount >= ENEMY_EARTH_MAGMA_ROCK_MAX_ACTIVE
+      ) {
+        kind = pickRuinsStage4EnemyKindWithoutMagmaRock()
+      }
+      if (kind === 'earthMagmaRock') {
+        magmaCount = magmaCount + 1
+      }
+      kinds.push(kind)
+    }
+    return kinds
+  }
+
   const enemyKind = pickEnemyKindForArea(areaId, stageNumber, spawnAsRanged)
   for (let index = 0; index < packSize; index++) {
     kinds.push(enemyKind)
   }
   return kinds
+}
+
+function countActiveEnemyKind(
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  enemyKind: EnemyKind,
+): number {
+  const children = enemyGroup.getChildren()
+  let count = 0
+  for (let index = 0; index < children.length; index++) {
+    const enemy = children[index] as Phaser.GameObjects.Rectangle
+    if (!enemy.active) {
+      continue
+    }
+    if (enemy.getData('isDefeated') === true) {
+      continue
+    }
+    if (enemy.getData('enemyKind') === enemyKind) {
+      count = count + 1
+    }
+  }
+  return count
 }
 
 /**
@@ -380,6 +429,18 @@ function spawnOneEnemyAtPosition(
     return
   }
 
+  // マグマ岩は固定 HP18・スライム×0.55・6方向放射
+  if (enemyKind === 'earthMagmaRock') {
+    spawnEarthMagmaRockEnemy(
+      scene,
+      enemyGroup,
+      spawnX,
+      spawnY,
+      calculateEarthMagmaRockSpeed(stageNumber, totalStages),
+    )
+    return
+  }
+
   // 火の精霊は緑スライムと同じ HP・速度
   if (enemyKind === 'spiritFire') {
     spawnSpiritFireEnemy(
@@ -580,6 +641,7 @@ export function startEnemyPackSpawnWithWarning(
     totalStages,
     spawnAsRanged,
     positions.length,
+    enemyGroup,
   )
   const isForestMixedStage = isForestFinalStage(areaId, stageNumber, totalStages)
   const representativeKind = packEnemyKinds[0]
@@ -599,6 +661,9 @@ export function startEnemyPackSpawnWithWarning(
     }
     if (enemyKind === 'earthRock') {
       return ENEMY_EARTH_ROCK_COLOR
+    }
+    if (enemyKind === 'earthMagmaRock') {
+      return ENEMY_EARTH_MAGMA_ROCK_COLOR
     }
     if (enemyKind === 'earthSkeleton') {
       return ENEMY_EARTH_SKELETON_COLOR
@@ -653,6 +718,7 @@ export function startEnemyPackSpawnWithWarning(
         enemyKind === 'mushroom' ||
         enemyKind === 'earthSlime' ||
         enemyKind === 'earthRock' ||
+        enemyKind === 'earthMagmaRock' ||
         enemyKind === 'earthSkeleton' ||
         enemyKind === 'spiritFire' ||
         enemyKind === 'spiritThunder' ||
@@ -672,6 +738,7 @@ export function startEnemyPackSpawnWithWarning(
         enemyKind === 'mushroom' ||
         enemyKind === 'earthSlime' ||
         enemyKind === 'earthRock' ||
+        enemyKind === 'earthMagmaRock' ||
         enemyKind === 'earthSkeleton' ||
         enemyKind === 'spiritFire' ||
         enemyKind === 'spiritThunder' ||
@@ -724,6 +791,10 @@ export function startEnemyPackSpawnWithWarning(
       } else if (enemyKind === 'earthRock' && ENEMY_BREATHING_SPRITES_ENABLED) {
         spriteKey = ENEMY_EARTH_ROCK_BREATH_SPRITE_KEY
         displayHeight = ENEMY_EARTH_ROCK_BREATH_DISPLAY_HEIGHT
+        useBreathImage = true
+      } else if (enemyKind === 'earthMagmaRock' && ENEMY_BREATHING_SPRITES_ENABLED) {
+        spriteKey = ENEMY_EARTH_MAGMA_ROCK_BREATH_SPRITE_KEY
+        displayHeight = ENEMY_EARTH_MAGMA_ROCK_BREATH_DISPLAY_HEIGHT
         useBreathImage = true
       } else if (enemyKind === 'earthSkeleton' && ENEMY_BREATHING_SPRITES_ENABLED) {
         spriteKey = ENEMY_EARTH_SKELETON_BREATH_SPRITE_KEY

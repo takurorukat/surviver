@@ -40,6 +40,10 @@ export class BreathingSprite {
   private breathTween: Phaser.Tweens.Tween | null = null
   private flipWithHorizontalMove: boolean
   private facesLeftByDefault: boolean
+  private breathScaleYMin: number
+  private breathScaleYMax: number
+  private breathDurationMs: number
+  private isAttackSwelling = false
 
   constructor(scene: Phaser.Scene, x: number, y: number, config: BreathingSpriteConfig) {
     this.scene = scene
@@ -49,6 +53,9 @@ export class BreathingSprite {
     const sourceHeight = source.height
     this.baseScale = config.displayHeight / sourceHeight
     this.outlineScaleMultiplier = config.outlineScale
+    this.breathScaleYMin = config.breathScaleYMin
+    this.breathScaleYMax = config.breathScaleYMax
+    this.breathDurationMs = config.breathDurationMs
     // 省略時は ON（新規敵は左向きPNG＋移動向き追従が標準）
     this.flipWithHorizontalMove = config.flipWithHorizontalMove !== false
     this.facesLeftByDefault = config.facesLeftByDefault !== false
@@ -66,6 +73,24 @@ export class BreathingSprite {
 
     this.syncOutlineToBody()
     this.startBreathing(config.breathScaleYMin, config.breathScaleYMax, config.breathDurationMs)
+  }
+
+  /**
+   * 攻撃予兆用に少し膨らませる／戻す。
+   * true: 呼吸を止めて拡大。false: 通常呼吸へ戻す。
+   */
+  setAttackSwellActive(active: boolean, swellScale: number): void {
+    if (active === this.isAttackSwelling) {
+      return
+    }
+    this.isAttackSwelling = active
+    if (active) {
+      this.stopBreathing()
+      this.body.setScale(this.baseScale * swellScale, this.baseScale * swellScale)
+      this.syncOutlineToBody()
+      return
+    }
+    this.startBreathing(this.breathScaleYMin, this.breathScaleYMax, this.breathDurationMs)
   }
 
   /** 敵の中心座標へ追従（足元は中心の少し下）。 */

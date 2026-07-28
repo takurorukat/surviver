@@ -58,13 +58,21 @@ describe('Orbiting Orb レベル別設定', () => {
     expect(getOrbitingOrbStatsForLevel(4).orbCount).toBe(4)
   })
 
+  it('角速度は変更前の2倍（周回時間は半分）', () => {
+    // 変更前: 1.8 / 2.15 / 2.55 / 3.0
+    expect(getOrbitingOrbStatsForLevel(1).angularSpeed).toBe(1.8 * 2)
+    expect(getOrbitingOrbStatsForLevel(2).angularSpeed).toBe(2.15 * 2)
+    expect(getOrbitingOrbStatsForLevel(3).angularSpeed).toBe(2.55 * 2)
+    expect(getOrbitingOrbStatsForLevel(4).angularSpeed).toBe(3.0 * 2)
+  })
+
   it('レベルが上がるほど角速度が段階的に速くなる', () => {
-    expect(getOrbitingOrbStatsForLevel(1).angularSpeed).toBe(1.8)
-    expect(getOrbitingOrbStatsForLevel(2).angularSpeed).toBe(2.15)
-    expect(getOrbitingOrbStatsForLevel(3).angularSpeed).toBe(2.55)
-    expect(getOrbitingOrbStatsForLevel(4).angularSpeed).toBe(3.0)
+    expect(getOrbitingOrbStatsForLevel(1).angularSpeed).toBe(3.6)
+    expect(getOrbitingOrbStatsForLevel(2).angularSpeed).toBe(4.3)
+    expect(getOrbitingOrbStatsForLevel(3).angularSpeed).toBe(5.1)
+    expect(getOrbitingOrbStatsForLevel(4).angularSpeed).toBe(6.0)
     // Lv4 超は Lv4 と同じ
-    expect(getOrbitingOrbStatsForLevel(5).angularSpeed).toBe(3.0)
+    expect(getOrbitingOrbStatsForLevel(5).angularSpeed).toBe(6.0)
   })
 
   it('半径とダメージ倍率は既存値を維持する', () => {

@@ -3,18 +3,29 @@
  * Wave / スポーン側から呼び、ユニットテストでもそのまま検証できる。
  */
 import type { StageAreaId } from '../../GameConstants'
+import {
+  ENEMY_EARTH_MAGMA_ROCK_STAGE4_WEIGHT,
+  ENEMY_EARTH_STAGE4_OTHER_WEIGHT,
+} from '../../GameConstants'
 import type { EnemyKind } from './types'
 
 const FOREST_STAGE5_ENEMY_KINDS: EnemyKind[] = ['mushroom', 'stump', 'beetle', 'branch']
 
+/** 重み付き抽選の1エントリ。weight は相対比率（合計が100でなくてよい）。 */
+export type WeightedEnemyKind = {
+  kind: EnemyKind
+  weight: number
+}
+
 /**
- * Earth Dungeon ボスが召喚できる通常敵（Stage1〜3 で使う種類）。
- * Stage4 専用通常敵は未実装のため含めない。ボス自身・特殊ボスは含めない。
+ * Earth Dungeon ボスが召喚できる通常敵（Stage1〜4）。
+ * ボス自身・特殊ボスは含めない。
  */
 export const EARTH_DUNGEON_SUMMONABLE_ENEMY_KINDS: readonly EnemyKind[] = [
   'earthSlime',
   'earthRock',
   'earthSkeleton',
+  'earthMagmaRock',
 ] as const
 
 /** Earth ボス召喚用: 候補から1種類をランダムに選ぶ。 */
@@ -22,10 +33,32 @@ export function pickEarthDungeonSummonEnemyKind(): EnemyKind {
   return pickRandomKind([...EARTH_DUNGEON_SUMMONABLE_ENEMY_KINDS])
 }
 
-/** 重み付き抽選の1エントリ。weight は相対比率（合計が100でなくてよい）。 */
-export type WeightedEnemyKind = {
-  kind: EnemyKind
-  weight: number
+/**
+ * Earth Dungeon Stage4: マグマ岩 20〜25%＋Stage1〜3 通常敵。
+ * 重み 22 : 26×3 → マグマ岩 ≈ 22%
+ */
+export const RUINS_STAGE4_WEIGHTS: WeightedEnemyKind[] = [
+  { kind: 'earthMagmaRock', weight: ENEMY_EARTH_MAGMA_ROCK_STAGE4_WEIGHT },
+  { kind: 'earthSlime', weight: ENEMY_EARTH_STAGE4_OTHER_WEIGHT },
+  { kind: 'earthRock', weight: ENEMY_EARTH_STAGE4_OTHER_WEIGHT },
+  { kind: 'earthSkeleton', weight: ENEMY_EARTH_STAGE4_OTHER_WEIGHT },
+]
+
+/** Stage4 抽選（マグマ岩上限は呼び出し側で別途制限）。 */
+export function pickRuinsStage4EnemyKind(): EnemyKind {
+  return pickWeightedEnemyKind(RUINS_STAGE4_WEIGHTS)
+}
+
+/** マグマ岩を除いた Stage4 候補から1つ選ぶ。 */
+export function pickRuinsStage4EnemyKindWithoutMagmaRock(): EnemyKind {
+  const withoutMagma: WeightedEnemyKind[] = []
+  for (let index = 0; index < RUINS_STAGE4_WEIGHTS.length; index++) {
+    const entry = RUINS_STAGE4_WEIGHTS[index]
+    if (entry.kind !== 'earthMagmaRock') {
+      withoutMagma.push(entry)
+    }
+  }
+  return pickWeightedEnemyKind(withoutMagma)
 }
 
 /**
@@ -182,6 +215,11 @@ export function pickEnemyKindForArea(
   // Ruins Stage 3 はスケルトンだけ（HP10・カブトムシと同じ突進）
   if (areaId === 'ruins' && stageNumber === 3) {
     return 'earthSkeleton'
+  }
+
+  // Ruins Stage 4: マグマ岩（放射攻撃）＋ Stage1〜3 通常敵の混成
+  if (areaId === 'ruins' && stageNumber === 4) {
+    return pickRuinsStage4EnemyKind()
   }
 
   // Plains Stage3+ の近接は Stage2 と同じ硬い泥スライム（射撃は蜂）

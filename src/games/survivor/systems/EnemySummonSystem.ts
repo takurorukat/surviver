@@ -28,6 +28,7 @@ import {
   PLAY_AREA_WIDTH,
   calculateBranchSpeed,
   calculateEarthRockSpeed,
+  calculateEarthMagmaRockSpeed,
   calculateEnemyHpForStage,
   calculateEnemySpeedForStage,
   calculateRangedEnemyHpForStage,
@@ -52,6 +53,7 @@ import {
   spawnRangedEnemy,
   spawnEarthSlimeEnemy,
   spawnEarthRockEnemy,
+  spawnEarthMagmaRockEnemy,
   spawnEarthSkeletonEnemy,
 } from '../objects/enemy/spawnFactories'
 import { shouldSummonWindHiveBossBee } from './windHiveBossLogic'
@@ -612,6 +614,16 @@ function spawnEarthDungeonSummonedEnemy(
       spawnX,
       spawnY,
       calculateEnemySpeedForStage(3, totalStages),
+    )
+  }
+
+  if (enemyKind === 'earthMagmaRock') {
+    return spawnEarthMagmaRockEnemy(
+      scene,
+      enemyGroup,
+      spawnX,
+      spawnY,
+      calculateEarthMagmaRockSpeed(4, totalStages),
     )
   }
 

@@ -65,14 +65,15 @@ function applyEnemyBulletBodySettings(
   hitRadius: number,
   hitWidth: number,
   hitHeight: number,
+  bulletSpeed: number = ENEMY_BULLET_SPEED,
 ): { flightVx: number; flightVy: number } {
   body.setAllowGravity(false)
   body.setCollideWorldBounds(false)
   body.enable = true
   body.moves = true
   setupCircleHitbox(body, hitRadius, hitWidth, hitHeight)
-  const flightVx = directionX * ENEMY_BULLET_SPEED
-  const flightVy = directionY * ENEMY_BULLET_SPEED
+  const flightVx = directionX * bulletSpeed
+  const flightVy = directionY * bulletSpeed
   body.setVelocity(flightVx, flightVy)
   return { flightVx, flightVy }
 }
@@ -277,23 +278,50 @@ export function firePebbleEnemyBullet(
   targetX: number,
   targetY: number,
 ): EnemyBulletVisual | null {
-  const activeBulletCount = countActiveEnemyBullets(bulletGroup)
-  if (activeBulletCount >= MAX_ENEMY_BULLETS) {
-    return null
-  }
-
   const dx = targetX - startX
   const dy = targetY - startY
   const distance = Math.sqrt(dx * dx + dy * dy)
   if (distance === 0) {
     return null
   }
+  return firePebbleEnemyBulletInDirection(
+    scene,
+    bulletGroup,
+    startX,
+    startY,
+    dx / distance,
+    dy / distance,
+    ENEMY_BULLET_SPEED,
+  )
+}
 
-  const directionX = dx / distance
-  const directionY = dy / distance
+/**
+ * 指定方向へ小石弾を1発撃つ（放射攻撃用）。
+ * speed を渡すとその速度で直進する。
+ */
+export function firePebbleEnemyBulletInDirection(
+  scene: Phaser.Scene,
+  bulletGroup: Phaser.Physics.Arcade.Group,
+  startX: number,
+  startY: number,
+  directionX: number,
+  directionY: number,
+  bulletSpeed: number,
+): EnemyBulletVisual | null {
+  const activeBulletCount = countActiveEnemyBullets(bulletGroup)
+  if (activeBulletCount >= MAX_ENEMY_BULLETS) {
+    return null
+  }
+
+  const length = Math.sqrt(directionX * directionX + directionY * directionY)
+  if (length === 0) {
+    return null
+  }
+  const unitX = directionX / length
+  const unitY = directionY / length
   const spawnOffset = ENEMY_WIDTH * 0.75 + 4
-  const bulletStartX = startX + directionX * spawnOffset
-  const bulletStartY = startY + directionY * spawnOffset
+  const bulletStartX = startX + unitX * spawnOffset
+  const bulletStartY = startY + unitY * spawnOffset
 
   ensurePebbleBulletTexture(scene)
   const bullet = scene.add.image(
@@ -313,11 +341,12 @@ export function firePebbleEnemyBullet(
   const size = ENEMY_PEBBLE_BULLET_SIZE
   const flight = applyEnemyBulletBodySettings(
     body,
-    directionX,
-    directionY,
+    unitX,
+    unitY,
     ENEMY_PEBBLE_BULLET_RADIUS,
     size,
     size,
+    bulletSpeed,
   )
   bullet.setData('flightVx', flight.flightVx)
   bullet.setData('flightVy', flight.flightVy)

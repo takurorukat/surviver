@@ -455,16 +455,16 @@ export function getOrbitingOrbStatsForLevel(orbitingOrbLevel: number): OrbitingO
     return { orbCount: 0, radius: 0, angularSpeed: 0, damageMultiplier: 0 }
   }
   if (safeLevel === 1) {
-    return { orbCount: 2, radius: 70, angularSpeed: 1.8, damageMultiplier: 0.5 }
+    return { orbCount: 2, radius: 70, angularSpeed: 3.6, damageMultiplier: 0.5 }
   }
   if (safeLevel === 2) {
-    return { orbCount: 3, radius: 80, angularSpeed: 2.15, damageMultiplier: 0.6 }
+    return { orbCount: 3, radius: 80, angularSpeed: 4.3, damageMultiplier: 0.6 }
   }
   if (safeLevel === 3) {
-    return { orbCount: 4, radius: 85, angularSpeed: 2.55, damageMultiplier: 0.6 }
+    return { orbCount: 4, radius: 85, angularSpeed: 5.1, damageMultiplier: 0.6 }
   }
   // Lv4+（個数は Lv3 と同じ 4）
-  return { orbCount: 4, radius: 90, angularSpeed: 3.0, damageMultiplier: 0.7 }
+  return { orbCount: 4, radius: 90, angularSpeed: 6.0, damageMultiplier: 0.7 }
 }
 
 /**

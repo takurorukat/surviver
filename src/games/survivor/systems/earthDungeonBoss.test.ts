@@ -123,6 +123,7 @@ describe('Earth Dungeon Stage5 earthDungeonBoss', () => {
       'earthSlime',
       'earthRock',
       'earthSkeleton',
+      'earthMagmaRock',
     ])
     expect(EARTH_DUNGEON_SUMMONABLE_ENEMY_KINDS.includes('earthDungeonBoss')).toBe(
       false,

@@ -24,6 +24,8 @@ import {
   ENEMY_EARTH_SLIME_COLOR,
   ENEMY_EARTH_ROCK_COLOR,
   ENEMY_EARTH_ROCK_HP,
+  ENEMY_EARTH_MAGMA_ROCK_COLOR,
+  ENEMY_EARTH_MAGMA_ROCK_HP,
   ENEMY_RANGED_COLOR,
   ENEMY_SPIRIT_FIRE_COLOR,
   ENEMY_SPIRIT_THUNDER_COLOR,
@@ -169,6 +171,30 @@ export function spawnEarthRockEnemy(
     ENEMY_EARTH_ROCK_COLOR,
     false,
     'earthRock',
+  )
+}
+
+/**
+ * Earth Dungeon Stage4 のマグマ岩を1体スポーンする。
+ * HP 18。速度は呼び出し側でスライム×0.55。6方向小石放射。
+ */
+export function spawnEarthMagmaRockEnemy(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  spawnX: number,
+  spawnY: number,
+  speed: number,
+): Phaser.GameObjects.Rectangle {
+  return spawnEnemyCommon(
+    scene,
+    enemyGroup,
+    spawnX,
+    spawnY,
+    ENEMY_EARTH_MAGMA_ROCK_HP,
+    speed,
+    ENEMY_EARTH_MAGMA_ROCK_COLOR,
+    false,
+    'earthMagmaRock',
   )
 }
 

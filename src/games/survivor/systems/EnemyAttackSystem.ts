@@ -9,13 +9,24 @@
 
 import Phaser from 'phaser'
 import {
+  ENEMY_BULLET_SPEED,
   ENEMY_EARTH_DUNGEON_BOSS_ROCK_ATTACK_INTERVAL_MS,
   ENEMY_EARTH_DUNGEON_BOSS_ROCK_BURST_COUNT,
   ENEMY_EARTH_DUNGEON_BOSS_ROCK_BURST_SPACING_MS,
+  ENEMY_EARTH_MAGMA_ROCK_ATTACK_INTERVAL_MS,
+  ENEMY_EARTH_MAGMA_ROCK_ATTACK_SWELL_SCALE,
+  ENEMY_EARTH_MAGMA_ROCK_PEBBLE_SPEED_FACTOR,
+  ENEMY_EARTH_MAGMA_ROCK_RADIAL_COUNT,
+  ENEMY_EARTH_MAGMA_ROCK_WINDUP_MS,
   ENEMY_EARTH_ROCK_PEBBLE_INTERVAL_MS,
   ENEMY_RANGED_ATTACK_INTERVAL_MS,
 } from '../GameConstants'
-import { fireEnemyBullet, firePebbleEnemyBullet } from '../objects/EnemyBullet'
+import {
+  fireEnemyBullet,
+  firePebbleEnemyBullet,
+  firePebbleEnemyBulletInDirection,
+} from '../objects/EnemyBullet'
+import { enemyBreathingSpriteMap } from '../objects/enemy/enemyInternal'
 import {
   advanceEarthDungeonBossRockBurstAfterShot,
   shouldFireEarthDungeonBossRockShot,
@@ -227,5 +238,97 @@ export function updateEarthDungeonBossRockBursts(
     })
     boss.setData('earthRockBurstShotsRemaining', advanced.shotsRemaining)
     boss.setData('nextEarthRockShotAtMs', advanced.nextShotAtMs)
+  }
+}
+
+/**
+ * Earth Dungeon Stage4 マグマ岩: 5秒周期で停止→0.7秒膨らみ予兆→6方向小石放射。
+ * 弾はプレイヤー狙いではなく固定角度（0°から60°刻み）。
+ */
+export function updateEarthMagmaRockAttacks(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  enemyBulletGroup: Phaser.Physics.Arcade.Group,
+  nowMs: number,
+): void {
+  const children = enemyGroup.getChildren()
+  const pebbleSpeed = ENEMY_BULLET_SPEED * ENEMY_EARTH_MAGMA_ROCK_PEBBLE_SPEED_FACTOR
+
+  for (let index = 0; index < children.length; index++) {
+    const enemy = children[index] as Phaser.GameObjects.Rectangle
+    if (!enemy.active) {
+      continue
+    }
+    if (enemy.getData('isDefeated') === true) {
+      continue
+    }
+    if (enemy.getData('enemyKind') !== 'earthMagmaRock') {
+      continue
+    }
+
+    let nextAttackAtMs = enemy.getData('nextMagmaRadialAtMs') as number
+    if (typeof nextAttackAtMs !== 'number') {
+      nextAttackAtMs = nowMs + ENEMY_EARTH_MAGMA_ROCK_ATTACK_INTERVAL_MS
+      enemy.setData('nextMagmaRadialAtMs', nextAttackAtMs)
+    }
+
+    const windupEndsAtMs = enemy.getData('magmaWindupEndsAtMs') as number
+    const isWindingUp = typeof windupEndsAtMs === 'number' && windupEndsAtMs > 0
+
+    if (isWindingUp) {
+      if (nowMs < windupEndsAtMs) {
+        continue
+      }
+      // 予兆終了 → 6方向放射
+      fireMagmaRockRadialPebbles(scene, enemyBulletGroup, enemy.x, enemy.y, pebbleSpeed)
+      enemy.setData('magmaWindupEndsAtMs', 0)
+      enemy.setData('isMagmaAttackWindup', false)
+      enemy.setData(
+        'nextMagmaRadialAtMs',
+        nowMs + ENEMY_EARTH_MAGMA_ROCK_ATTACK_INTERVAL_MS,
+      )
+      const breathing = enemyBreathingSpriteMap.get(enemy)
+      if (breathing !== undefined) {
+        breathing.setAttackSwellActive(false, ENEMY_EARTH_MAGMA_ROCK_ATTACK_SWELL_SCALE)
+      }
+      continue
+    }
+
+    if (nowMs < nextAttackAtMs) {
+      continue
+    }
+
+    // 予兆開始（停止＋膨らみ）
+    enemy.setData('isMagmaAttackWindup', true)
+    enemy.setData('magmaWindupEndsAtMs', nowMs + ENEMY_EARTH_MAGMA_ROCK_WINDUP_MS)
+    // 次周期は放射後に設定する（予兆中に再トリガしないよう先送り）
+    enemy.setData('nextMagmaRadialAtMs', Number.POSITIVE_INFINITY)
+    const breathing = enemyBreathingSpriteMap.get(enemy)
+    if (breathing !== undefined) {
+      breathing.setAttackSwellActive(true, ENEMY_EARTH_MAGMA_ROCK_ATTACK_SWELL_SCALE)
+    }
+  }
+}
+
+function fireMagmaRockRadialPebbles(
+  scene: Phaser.Scene,
+  enemyBulletGroup: Phaser.Physics.Arcade.Group,
+  originX: number,
+  originY: number,
+  pebbleSpeed: number,
+): void {
+  for (let shotIndex = 0; shotIndex < ENEMY_EARTH_MAGMA_ROCK_RADIAL_COUNT; shotIndex++) {
+    const angle = (Math.PI * 2 * shotIndex) / ENEMY_EARTH_MAGMA_ROCK_RADIAL_COUNT
+    const directionX = Math.cos(angle)
+    const directionY = Math.sin(angle)
+    firePebbleEnemyBulletInDirection(
+      scene,
+      enemyBulletGroup,
+      originX,
+      originY,
+      directionX,
+      directionY,
+      pebbleSpeed,
+    )
   }
 }

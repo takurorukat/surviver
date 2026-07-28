@@ -10,6 +10,11 @@ import {
   ENEMY_EARTH_ROCK_PEBBLE_INTERVAL_MS,
   ENEMY_EARTH_ROCK_RADIUS,
   ENEMY_EARTH_ROCK_WIDTH,
+  ENEMY_EARTH_MAGMA_ROCK_ATTACK_INTERVAL_MS,
+  ENEMY_EARTH_MAGMA_ROCK_HEIGHT,
+  ENEMY_EARTH_MAGMA_ROCK_RADIUS,
+  ENEMY_EARTH_MAGMA_ROCK_WIDTH,
+  ENEMY_EARTH_MAGMA_ROCK_XP_DROP_MULTIPLIER,
   ENEMY_ASH_KNIGHT_HEIGHT,
   ENEMY_ASH_KNIGHT_RADIUS,
   ENEMY_ASH_KNIGHT_WIDTH,
@@ -90,6 +95,7 @@ import {
   attachMushroomBreathingSprite,
   attachEarthSlimeBreathingSprite,
   attachEarthRockBreathingSprite,
+  attachEarthMagmaRockBreathingSprite,
   attachSpiritFireBreathingSprite,
   attachSpiritThunderBreathingSprite,
   attachBurningTreeBreathingSprite,
@@ -169,6 +175,10 @@ export function spawnEnemyCommon(
     hitboxWidth = ENEMY_EARTH_ROCK_WIDTH
     hitboxHeight = ENEMY_EARTH_ROCK_HEIGHT
     hitboxRadius = ENEMY_EARTH_ROCK_RADIUS
+  } else if (enemyKind === 'earthMagmaRock') {
+    hitboxWidth = ENEMY_EARTH_MAGMA_ROCK_WIDTH
+    hitboxHeight = ENEMY_EARTH_MAGMA_ROCK_HEIGHT
+    hitboxRadius = ENEMY_EARTH_MAGMA_ROCK_RADIUS
   } else if (enemyKind === 'chaosElemental') {
     hitboxWidth = ENEMY_CHAOS_ELEMENTAL_WIDTH
     hitboxHeight = ENEMY_CHAOS_ELEMENTAL_HEIGHT
@@ -202,6 +212,7 @@ export function spawnEnemyCommon(
     enemyKind !== 'mushroom' &&
     enemyKind !== 'earthSlime' &&
     enemyKind !== 'earthRock' &&
+    enemyKind !== 'earthMagmaRock' &&
     enemyKind !== 'spiritFire' &&
     enemyKind !== 'spiritThunder' &&
     enemyKind !== 'burningTree' &&
@@ -249,6 +260,8 @@ export function spawnEnemyCommon(
     enemy.setData('xpDropMultiplier', ENEMY_BEETLE_XP_DROP_MULTIPLIER)
   } else if (enemyKind === 'earthSkeleton') {
     enemy.setData('xpDropMultiplier', ENEMY_EARTH_SKELETON_XP_DROP_MULTIPLIER)
+  } else if (enemyKind === 'earthMagmaRock') {
+    enemy.setData('xpDropMultiplier', ENEMY_EARTH_MAGMA_ROCK_XP_DROP_MULTIPLIER)
   } else if (enemyKind === 'branch') {
     enemy.setData('xpDropMultiplier', ENEMY_BRANCH_XP_DROP_MULTIPLIER)
   } else if (enemyKind === 'gravestone') {
@@ -319,6 +332,14 @@ export function spawnEnemyCommon(
       scene.time.now + ENEMY_EARTH_ROCK_PEBBLE_INTERVAL_MS,
     )
   }
+  if (enemyKind === 'earthMagmaRock') {
+    enemy.setData('isMagmaAttackWindup', false)
+    enemy.setData('magmaWindupEndsAtMs', 0)
+    enemy.setData(
+      'nextMagmaRadialAtMs',
+      scene.time.now + ENEMY_EARTH_MAGMA_ROCK_ATTACK_INTERVAL_MS,
+    )
+  }
   if (enemyKind === 'chaosElemental') {
     enemy.setData('isStationary', true)
     enemy.setData('isBoss', true)
@@ -382,6 +403,8 @@ export function spawnEnemyCommon(
     attachEarthSlimeBreathingSprite(scene, enemy)
   } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'earthRock') {
     attachEarthRockBreathingSprite(scene, enemy)
+  } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'earthMagmaRock') {
+    attachEarthMagmaRockBreathingSprite(scene, enemy)
   } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'spiritFire') {
     attachSpiritFireBreathingSprite(scene, enemy)
   } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'spiritThunder') {

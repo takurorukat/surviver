@@ -29,6 +29,16 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
+- 実施内容: Orbiting Orb 角速度を全レベルで2倍。Earth Stage4 `earthMagmaRock` の表示を判定scale(1.5)の1.5倍＝2.25へ（当たり判定は1.5のまま）。未コミットだった Stage4 マグマ岩実装も同梱。Stage3 Final Wave は先行コミット `fef60b2`。
+- 変更ファイル: combat.ts / orbitingOrb.test.ts / enemies.ts（DISPLAY_SCALE）/ magma rock 実装一式 / sprite / tests / docs
+- 検証: typecheck OK、tests 194+ OK、build OK
+- 未解決: ブラウザ実プレイ未確認
+- 次の開発タスク: Run Result Data または Area Clear Result UI（未着手）
+
+## 直近の作業記録
+
+### 2026-07-28 — Cursor
+
 - 実施内容: Earth Dungeon Stage3 ファイナルウェーブ終了修正。原因は pack size=1＋1.4倍＋FINAL WAVE 1.6秒刻みで `areAllSpawnsFinished` が残り時間内に成立しないこと。前回修正はクローズ後にリトライも拒否してパックを捨てていた。通常バーストを15秒まで、FINAL WAVE は間隔0で有限予約、クローズ後はリトライのみ許可。敵ステ／他エリア／Stage4・5未変更。
 - 変更ファイル: `difficulty.ts`（Stage3のみ）/ `WaveSystem.ts` / `earthDungeonStage3WavePolicy.ts` / `ruinsStage3FinalWave.test.ts` / docs
 - 検証: typecheck OK（作業ツリー全体）、tests 193 OK、build OK

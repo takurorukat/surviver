@@ -25,6 +25,7 @@ import {
   ENEMY_SPEED_GROWTH_PER_STAGE,
   ENEMY_STONE_GUARD_SPEED_FACTOR,
   ENEMY_EARTH_ROCK_SPEED_FACTOR,
+  ENEMY_EARTH_MAGMA_ROCK_SPEED_FACTOR,
   ENEMY_STUMP_SPEED_FACTOR,
   ENEMY_TOUGH_MELEE_MAX_HP,
   ENEMY_TOUGH_MELEE_MIN_HP,
@@ -493,6 +494,18 @@ export function calculateStoneGuardSpeed(stageNumber: number, totalStages: numbe
  */
 export function calculateEarthRockSpeed(stageNumber: number, totalStages: number): number {
   return calculateEnemySpeedForStage(stageNumber, totalStages) * ENEMY_EARTH_ROCK_SPEED_FACTOR
+}
+
+/**
+ * Earth Dungeon Stage4 マグマ岩の移動速度（通常スライム速度の 0.55 倍）。
+ */
+export function calculateEarthMagmaRockSpeed(
+  stageNumber: number,
+  totalStages: number,
+): number {
+  return (
+    calculateEnemySpeedForStage(stageNumber, totalStages) * ENEMY_EARTH_MAGMA_ROCK_SPEED_FACTOR
+  )
 }
 
 /**

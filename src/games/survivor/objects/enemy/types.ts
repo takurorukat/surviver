@@ -16,6 +16,7 @@ export type EnemyKind =
   | 'earthSlime'
   | 'earthRock'
   | 'earthSkeleton'
+  | 'earthMagmaRock'
   | 'spiritFire'
   | 'spiritThunder'
   | 'burningTree'

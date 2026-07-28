@@ -92,6 +92,15 @@ export function updateEnemyChaseMovement(
       continue
     }
 
+    // マグマ岩の攻撃予兆中は停止
+    if (
+      enemy.getData('enemyKind') === 'earthMagmaRock' &&
+      enemy.getData('isMagmaAttackWindup') === true
+    ) {
+      body.setVelocity(0, 0)
+      continue
+    }
+
     if (enemy.getData('enemyKind') === 'charger') {
       applyChargerMovement(enemy, body, playerX, playerY)
       continue

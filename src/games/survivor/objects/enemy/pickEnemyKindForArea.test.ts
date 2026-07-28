@@ -41,6 +41,16 @@ describe('pickEnemyKindForArea', () => {
     expect(pickEnemyKindForArea('ruins', 3, true)).toBe('earthSkeleton')
   })
 
+  it('Ruins Stage 4 はマグマ岩または Stage1〜3 通常敵を選ぶ', () => {
+    const kinds = new Set<string>()
+    for (let index = 0; index < 60; index++) {
+      kinds.add(pickEnemyKindForArea('ruins', 4, false))
+    }
+    expect(kinds.has('earthMagmaRock') || kinds.has('earthSlime')).toBe(true)
+    expect(kinds.has('earthDungeonBoss')).toBe(false)
+    expect(kinds.has('melee')).toBe(false)
+  })
+
   it('他エリア Stage 1 の敵選択は従来どおり', () => {
     expect(pickEnemyKindForArea('plains', 1, false)).toBe('melee')
     expect(pickEnemyKindForArea('forest', 1, false)).toBe('mushroom')
