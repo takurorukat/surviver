@@ -6,6 +6,8 @@ import Phaser from 'phaser'
 import {
   spawnForestStage5Gravestone,
   spawnVolcanoStage5ChaosElemental,
+  spawnWindHiveBossEnemy,
+  getRandomInsideSpawnPosition,
 } from '../../objects/Enemy'
 import {
   updateStumpMushroomSpawns,
@@ -13,6 +15,7 @@ import {
   updateBranchBeetleSpawns,
   updateGravestoneBeetleSpawns,
   updateChaosElementalSpawns,
+  updateWindHiveBossBeeSpawns,
 } from '../../systems/EnemySummonSystem'
 
 export type SpecialEnemySpawnContext = {
@@ -22,10 +25,12 @@ export type SpecialEnemySpawnContext = {
   areaStageCount: number
   enemyGroup: Phaser.Physics.Arcade.Group
   nowMs: number
+  // Plains Stage3 ボス配置用。無い場合は中央付近へフォールバック
+  getPlayerPosition?: () => { x: number; y: number }
 }
 
 /**
- * 切り株・燃え木・枝・墓石・混沌エレメンタルなどの毎フレーム召喚更新。
+ * 切り株・燃え木・枝・墓石・混沌エレメンタル・竜巻ボスなどの毎フレーム召喚更新。
  */
 export function updateSpecialEnemySpawns(ctx: SpecialEnemySpawnContext): void {
   updateStumpMushroomSpawns(
@@ -63,11 +68,18 @@ export function updateSpecialEnemySpawns(ctx: SpecialEnemySpawnContext): void {
     ctx.areaStageCount,
     ctx.nowMs,
   )
+  updateWindHiveBossBeeSpawns(
+    ctx.scene,
+    ctx.enemyGroup,
+    ctx.stageNumber,
+    ctx.areaStageCount,
+    ctx.nowMs,
+  )
 }
 
 /**
- * エリアボス（Forest 墓石 / Volcano 混沌エレメンタル）を
- * Stage5 開始直後に1体だけ出す。条件外なら何もしない。
+ * エリアボスを Stage 開始直後に1体だけ出す。条件外なら何もしない。
+ * Forest 墓石 / Volcano 混沌エレメンタル / Plains 竜巻ボス。
  */
 export function spawnAreaBossIfNeeded(ctx: SpecialEnemySpawnContext): void {
   if (ctx.areaId === 'forest' && ctx.stageNumber === 5) {
@@ -76,5 +88,19 @@ export function spawnAreaBossIfNeeded(ctx: SpecialEnemySpawnContext): void {
   }
   if (ctx.areaId === 'volcano' && ctx.stageNumber === 5) {
     spawnVolcanoStage5ChaosElemental(ctx.scene, ctx.enemyGroup)
+    return
+  }
+  if (ctx.areaId === 'plains' && ctx.stageNumber === 3) {
+    const playerPosition =
+      ctx.getPlayerPosition !== undefined
+        ? ctx.getPlayerPosition()
+        : getRandomInsideSpawnPosition()
+    const spawnPosition = getRandomInsideSpawnPosition(playerPosition)
+    spawnWindHiveBossEnemy(
+      ctx.scene,
+      ctx.enemyGroup,
+      spawnPosition.x,
+      spawnPosition.y,
+    )
   }
 }

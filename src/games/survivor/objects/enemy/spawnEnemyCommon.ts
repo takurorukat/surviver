@@ -65,6 +65,11 @@ import {
   ENEMY_STUMP_WIDTH,
   ENEMY_WALK_SPRITES_ENABLED,
   ENEMY_WIDTH,
+  ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_INTERVAL_MS,
+  ENEMY_WIND_HIVE_BOSS_HEIGHT,
+  ENEMY_WIND_HIVE_BOSS_RADIUS,
+  ENEMY_WIND_HIVE_BOSS_WIDTH,
+  ENEMY_WIND_HIVE_BOSS_XP_DROP_MULTIPLIER,
 } from '../../GameConstants'
 import { setupCircleHitbox } from '../../utils/setupCircleHitbox'
 import { configureArcadeBodyForConstantSpeed } from '../../utils/arcadePhysicsHelpers'
@@ -89,6 +94,7 @@ import {
   attachEarthSkeletonBreathingSprite,
   attachBranchBreathingSprite,
   attachGravestoneBreathingSprite,
+  attachWindHiveBossBreathingSprite,
   attachSlimeWalkSprite,
   attachSnakeWalkSprite,
   attachChargerWalkSprite,
@@ -172,6 +178,10 @@ export function spawnEnemyCommon(
     hitboxWidth = ENEMY_EARTH_SKELETON_WIDTH
     hitboxHeight = ENEMY_EARTH_SKELETON_HEIGHT
     hitboxRadius = ENEMY_EARTH_SKELETON_RADIUS
+  } else if (enemyKind === 'windHiveBoss') {
+    hitboxWidth = ENEMY_WIND_HIVE_BOSS_WIDTH
+    hitboxHeight = ENEMY_WIND_HIVE_BOSS_HEIGHT
+    hitboxRadius = ENEMY_WIND_HIVE_BOSS_RADIUS
   }
 
   const enemy = scene.add.rectangle(spawnX, spawnY, hitboxWidth, hitboxHeight, color)
@@ -191,6 +201,7 @@ export function spawnEnemyCommon(
     enemyKind !== 'earthSkeleton' &&
     enemyKind !== 'branch' &&
     enemyKind !== 'gravestone' &&
+    enemyKind !== 'windHiveBoss' &&
     enemyKind !== 'ranged'
   ) {
     enemy.setStrokeStyle(ENEMY_SPECIAL_STROKE_WIDTH, ENEMY_SPECIAL_STROKE_COLOR)
@@ -236,6 +247,8 @@ export function spawnEnemyCommon(
     enemy.setData('xpDropMultiplier', ENEMY_ASH_KNIGHT_XP_DROP_MULTIPLIER)
   } else if (enemyKind === 'chaosElemental') {
     enemy.setData('xpDropMultiplier', ENEMY_CHAOS_ELEMENTAL_XP_DROP_MULTIPLIER)
+  } else if (enemyKind === 'windHiveBoss') {
+    enemy.setData('xpDropMultiplier', ENEMY_WIND_HIVE_BOSS_XP_DROP_MULTIPLIER)
   } else {
     enemy.setData('xpDropMultiplier', 1)
   }
@@ -315,6 +328,14 @@ export function spawnEnemyCommon(
       scene.time.now + ENEMY_GRAVESTONE_SPAWN_INTERVAL_MS,
     )
   }
+  if (enemyKind === 'windHiveBoss') {
+    enemy.setData('isBoss', true)
+    // 出現から 4 秒後に最初の蜂を召喚する
+    enemy.setData(
+      'nextBeeSummonAtMs',
+      scene.time.now + ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_INTERVAL_MS,
+    )
+  }
   enemy.setDepth(8)
   applyDevEntityDepth(enemy)
 
@@ -351,6 +372,8 @@ export function spawnEnemyCommon(
     attachBranchBreathingSprite(scene, enemy)
   } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'gravestone') {
     attachGravestoneBreathingSprite(scene, enemy)
+  } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'windHiveBoss') {
+    attachWindHiveBossBreathingSprite(scene, enemy)
   } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'ranged') {
     attachBeeBreathingSprite(scene, enemy)
   } else if (ENEMY_WALK_SPRITES_ENABLED) {

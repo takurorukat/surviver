@@ -30,6 +30,11 @@ import {
   type StageAreaId,
 } from '../GameConstants'
 import { countActiveEnemies, updateAllEnemyHpBars } from '../objects/Enemy'
+import {
+  getStageCompletionRule,
+  isActiveBossEnemy,
+  shouldBeginStageClear,
+} from './stageClearRules'
 import { countActiveCoins, spawnClearTimeBonusCoinRain } from '../objects/Coin'
 import {
   countActiveGoldCoins,
@@ -132,6 +137,7 @@ export type StageClearFlowContext = {
 
 /**
  * 時間切れ（生存）または全ウェーブ後に敵ゼロでクリア開始条件を見る。
+ * Plains Stage3 はボス撃破が唯一のクリア条件。
  */
 export function checkStageClearConditions(ctx: StageClearFlowContext): void {
   if (
@@ -150,13 +156,40 @@ export function checkStageClearConditions(ctx: StageClearFlowContext): void {
   const timeUp = ctx.remainingSeconds <= 0
   const allEnemiesDefeated =
     ctx.waveSystem.areAllSpawnsFinished() && countActiveEnemies(ctx.enemyGroup) === 0
-  const earlyClear = !timeUp && allEnemiesDefeated
+  const completionRule = getStageCompletionRule(
+    ctx.areaId,
+    ctx.stageNumber,
+    ctx.areaStageCount,
+  )
+  const bossAlive = hasAliveBossEnemy(ctx.enemyGroup)
 
-  if (!timeUp && !allEnemiesDefeated) {
+  if (
+    !shouldBeginStageClear({
+      completionRule,
+      bossAlive,
+      timeUp,
+      allEnemiesDefeated,
+    })
+  ) {
     return
   }
 
+  // defeat-boss: ボス撃破時点でクリア（タイマー残りがあれば earlyClear）
+  const earlyClear =
+    completionRule === 'defeat-boss' ? !timeUp : !timeUp && allEnemiesDefeated
+
   beginStageClearSequence(ctx, earlyClear)
+}
+
+function hasAliveBossEnemy(enemyGroup: Phaser.Physics.Arcade.Group): boolean {
+  const children = enemyGroup.getChildren()
+  for (let index = 0; index < children.length; index++) {
+    const enemy = children[index] as Phaser.GameObjects.Rectangle
+    if (isActiveBossEnemy(enemy)) {
+      return true
+    }
+  }
+  return false
 }
 
 /**

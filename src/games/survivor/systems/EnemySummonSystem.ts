@@ -13,6 +13,10 @@ import {
   ENEMY_SPAWN_AREA_MARGIN,
   ENEMY_STUMP_MUSHROOM_SPAWN_INTERVAL_MS,
   ENEMY_STUMP_MUSHROOM_SPAWN_OFFSET,
+  ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_INTERVAL_MS,
+  ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_OFFSET_MAX,
+  ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_OFFSET_MIN,
+  ENEMY_WIND_HIVE_BOSS_MAX_SUMMONED_BEES,
   PLAY_AREA_HEIGHT,
   PLAY_AREA_ORIGIN_X,
   PLAY_AREA_ORIGIN_Y,
@@ -20,6 +24,8 @@ import {
   calculateBranchSpeed,
   calculateEnemyHpForStage,
   calculateEnemySpeedForStage,
+  calculateRangedEnemyHpForStage,
+  calculateRangedEnemySpeedForStage,
   calculateStumpSpeed,
   getMaxEnemiesForStage,
 } from '../GameConstants'
@@ -36,17 +42,46 @@ import {
   spawnBeetleEnemy,
   spawnStumpEnemy,
   spawnBranchEnemy,
+  spawnRangedEnemy,
 } from '../objects/enemy/spawnFactories'
+import { shouldSummonWindHiveBossBee } from './windHiveBossLogic'
+
+export { shouldSummonWindHiveBossBee } from './windHiveBossLogic'
 
 /**
  * 敵撃破時の経験値コイン倍率（通常は1。カブトムシ／枝／火山ステージ3以上は2）。
+ * 0 は「ドロップなし」（ボス召喚蜂など）。未設定や不正値は 1。
  */
 export function getEnemyXpDropMultiplier(enemy: Phaser.GameObjects.Rectangle): number {
   const value = enemy.getData('xpDropMultiplier') as number
-  if (typeof value === 'number' && value > 0) {
+  if (typeof value === 'number' && value >= 0) {
     return value
   }
   return 1
+}
+
+/**
+ * ボスが召喚した蜂（summonedByBoss）の生存数を数える。
+ * Wave の通常蜂は含めない。
+ */
+export function countBossSummonedBees(
+  enemyGroup: Phaser.Physics.Arcade.Group,
+): number {
+  const children = enemyGroup.getChildren()
+  let count = 0
+  for (let index = 0; index < children.length; index++) {
+    const enemy = children[index] as Phaser.GameObjects.Rectangle
+    if (!enemy.active) {
+      continue
+    }
+    if (enemy.getData('isDefeated') === true) {
+      continue
+    }
+    if (enemy.getData('summonedByBoss') === true) {
+      count = count + 1
+    }
+  }
+  return count
 }
 
 /**
@@ -376,6 +411,79 @@ export function updateChaosElementalSpawns(
   }
 }
 
+/**
+ * Wind Plains Stage3 ボスが 4 秒ごとに蜂を1体召喚する。
+ * ボス召喚蜂が 5 体いるときはスキップ。Wave 蜂は上限に含めない。
+ */
+export function updateWindHiveBossBeeSpawns(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  stageNumber: number,
+  totalStages: number,
+  nowMs: number,
+): void {
+  const children = enemyGroup.getChildren()
+
+  for (let index = 0; index < children.length; index++) {
+    const boss = children[index] as Phaser.GameObjects.Rectangle
+    if (!boss.active) {
+      continue
+    }
+    if (boss.getData('isDefeated') === true) {
+      continue
+    }
+    if (boss.getData('enemyKind') !== 'windHiveBoss') {
+      continue
+    }
+
+    let nextSummonAtMs = boss.getData('nextBeeSummonAtMs') as number
+    if (typeof nextSummonAtMs !== 'number') {
+      nextSummonAtMs = nowMs + ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_INTERVAL_MS
+      boss.setData('nextBeeSummonAtMs', nextSummonAtMs)
+    }
+
+    const summonedBeeCount = countBossSummonedBees(enemyGroup)
+    if (
+      !shouldSummonWindHiveBossBee({
+        nowMs,
+        nextSummonAtMs,
+        activeSummonedBeeCount: summonedBeeCount,
+        maxSummonedBees: ENEMY_WIND_HIVE_BOSS_MAX_SUMMONED_BEES,
+      })
+    ) {
+      // 上限到達時もタイマーは進め、次の間隔まで待つ
+      if (
+        nowMs >= nextSummonAtMs &&
+        summonedBeeCount >= ENEMY_WIND_HIVE_BOSS_MAX_SUMMONED_BEES
+      ) {
+        boss.setData(
+          'nextBeeSummonAtMs',
+          nowMs + ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_INTERVAL_MS,
+        )
+      }
+      continue
+    }
+
+    const spawnPosition = getWindHiveBossBeeSpawnPosition(boss.x, boss.y)
+    const bee = spawnRangedEnemy(
+      scene,
+      enemyGroup,
+      spawnPosition.x,
+      spawnPosition.y,
+      calculateRangedEnemyHpForStage(stageNumber, totalStages),
+      calculateRangedEnemySpeedForStage(stageNumber, totalStages),
+    )
+    // ボス召喚蜂だけを識別（Wave 蜂と区別）
+    bee.setData('summonedByBoss', true)
+    bee.setData('xpDropMultiplier', 0)
+
+    boss.setData(
+      'nextBeeSummonAtMs',
+      nowMs + ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_INTERVAL_MS,
+    )
+  }
+}
+
 /** Stage1〜4 の火山敵をランダムで1体出す（各ステージ本来のステータス）。 */
 function spawnVolcanoPreviousStageEnemy(
   scene: Phaser.Scene,
@@ -546,24 +654,46 @@ function getStumpMushroomSpawnPosition(
   let spawnX = stumpX + Math.cos(angle) * ENEMY_STUMP_MUSHROOM_SPAWN_OFFSET
   let spawnY = stumpY + Math.sin(angle) * ENEMY_STUMP_MUSHROOM_SPAWN_OFFSET
 
+  return clampSpawnToPlayArea(spawnX, spawnY)
+}
+
+/** 竜巻ボスの周囲に蜂を出す座標（半径 32〜64、プレイエリア内）。 */
+function getWindHiveBossBeeSpawnPosition(
+  bossX: number,
+  bossY: number,
+): SpawnPosition {
+  const angle = Math.random() * Math.PI * 2
+  const distance =
+    ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_OFFSET_MIN +
+    Math.random() *
+      (ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_OFFSET_MAX -
+        ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_OFFSET_MIN)
+  const spawnX = bossX + Math.cos(angle) * distance
+  const spawnY = bossY + Math.sin(angle) * distance
+  return clampSpawnToPlayArea(spawnX, spawnY)
+}
+
+function clampSpawnToPlayArea(spawnX: number, spawnY: number): SpawnPosition {
+  let x = spawnX
+  let y = spawnY
   const left = PLAY_AREA_ORIGIN_X + ENEMY_SPAWN_AREA_MARGIN
   const right = PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH - ENEMY_SPAWN_AREA_MARGIN
   const top = PLAY_AREA_ORIGIN_Y + ENEMY_SPAWN_AREA_MARGIN
   const bottom = PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT - ENEMY_SPAWN_AREA_MARGIN
 
-  if (spawnX < left) {
-    spawnX = left
+  if (x < left) {
+    x = left
   }
-  if (spawnX > right) {
-    spawnX = right
+  if (x > right) {
+    x = right
   }
-  if (spawnY < top) {
-    spawnY = top
+  if (y < top) {
+    y = top
   }
-  if (spawnY > bottom) {
-    spawnY = bottom
+  if (y > bottom) {
+    y = bottom
   }
 
-  return { x: spawnX, y: spawnY }
+  return { x, y }
 }
 

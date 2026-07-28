@@ -28,6 +28,7 @@ export {
   spawnBranchEnemy,
   spawnGravestoneEnemy,
   spawnForestStage5Gravestone,
+  spawnWindHiveBossEnemy,
   spawnStoneGuardEnemy,
   spawnRangedEnemy,
 } from './spawnFactories'

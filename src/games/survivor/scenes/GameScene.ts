@@ -683,6 +683,9 @@ export class GameScene extends Phaser.Scene {
         areaStageCount: this.areaStageCount,
         enemyGroup: this.enemyGroup,
         nowMs: this.time.now,
+        getPlayerPosition: () => {
+          return { x: this.player.x, y: this.player.y }
+        },
       })
       this.waveSystem.startWaves()
     })

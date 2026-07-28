@@ -373,6 +373,10 @@ export function spawnExperienceCoinsAt(
   enemyY: number,
   xpDropMultiplier: number = 1,
 ): void {
+  // 0 以下はドロップなし（ボス召喚蜂など）
+  if (xpDropMultiplier <= 0) {
+    return
+  }
   const safeMultiplier = Math.max(1, Math.floor(xpDropMultiplier))
   const baseCoinCount = calculateXpCoinDropCount(ctx.currentXpBonusLevel)
   const coinCount = baseCoinCount * safeMultiplier

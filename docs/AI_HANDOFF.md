@@ -29,6 +29,13 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
+- 実施内容: Wind Plains Stage 3 に召喚ボス `windHiveBoss` を追加。HP25・速度=スライム×0.5・XP×10・呼吸スプライト。4秒ごとに蜂1体（上限5・召喚蜂XP0）。クリア条件はボス撃破のみ（`defeat-boss`）。他エリア・Audio・Gold／Shop 未変更。
+- 変更ファイル: `enemies.ts` / `difficulty.ts` / `assetManifest.ts` / `enemySprites` / `spawnFactories` / `spawnEnemyCommon` / `EnemySummonSystem` / `updateSpecialEnemySpawns` / `stageClearRules` / `StageClearFlowSystem` / `PlayerBulletCombatSystem` / `GameScene` / `windHiveBoss*.ts` / sprite PNG / docs
+- 検証: typecheck OK、tests 128 OK、build OK（dist に sprite あり）
+- 次の開発タスク: **Run Result Data**（未着手）
+
+### 2026-07-28 — Cursor
+
 - 実施内容: Gold／Shop Runtime Disable。`RUNTIME_ENABLE_GOLD_AND_SHOP = false` を追加し、Gold 生成・取得・クリア報酬・HUD・+GOLD 演出・Shop／Seal 導線を Runtime から休止。全スキル上限時は報酬なしで自動レベルアップ（空 UI／無限待ち防止）。セーブの gold／shopUpgrades 読み取りと既存強化適用は維持。Coin.ts／XP は未変更。Audio／SFX Catalog／ステージ／クリア条件は未変更。
 - 変更ファイル: `constants/ui.ts`、`GameScene.ts`、`StageClearFlowSystem.ts`、`TopBarSystem.ts`、`TitleScene.ts`、`ShopSystem.ts`、`SealSkillSystem.ts`、`LevelUpChoiceSystem.ts`、`goldShopRuntime.test.ts`、`docs/AI_HANDOFF.md`、`TODO.md`
 - 検証: typecheck OK、関連25／全120テスト OK、build OK、git diff --check OK。ブラウザ実耳確認は手動。

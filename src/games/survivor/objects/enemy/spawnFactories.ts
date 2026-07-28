@@ -34,11 +34,14 @@ import {
   ENEMY_STUMP_COLOR,
   ENEMY_STUMP_HP,
   ENEMY_TOUGH_MELEE_COLOR,
+  ENEMY_WIND_HIVE_BOSS_COLOR,
+  ENEMY_WIND_HIVE_BOSS_HP,
   PLAY_AREA_HEIGHT,
   PLAY_AREA_ORIGIN_X,
   PLAY_AREA_ORIGIN_Y,
   PLAY_AREA_WIDTH,
   calculateBurningTreeSpeed,
+  calculateWindHiveBossSpeed,
 } from '../../GameConstants'
 import { spawnEnemyCommon } from './spawnEnemyCommon'
 
@@ -451,6 +454,29 @@ export function spawnForestStage5Gravestone(
   const spawnY =
     PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT / 2 + ENEMY_GRAVESTONE_SPAWN_OFFSET_Y
   return spawnGravestoneEnemy(scene, enemyGroup, spawnX, spawnY)
+}
+
+/**
+ * Wind Plains Stage3 ボスを1体スポーンする。
+ * HP 25。速度は通常スライムの 0.5 倍。プレイヤーを追う。
+ */
+export function spawnWindHiveBossEnemy(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  spawnX: number,
+  spawnY: number,
+): Phaser.GameObjects.Rectangle {
+  return spawnEnemyCommon(
+    scene,
+    enemyGroup,
+    spawnX,
+    spawnY,
+    ENEMY_WIND_HIVE_BOSS_HP,
+    calculateWindHiveBossSpeed(),
+    ENEMY_WIND_HIVE_BOSS_COLOR,
+    false,
+    'windHiveBoss',
+  )
 }
 
 /**

@@ -29,6 +29,7 @@ import {
   ENEMY_TOUGH_MELEE_MAX_HP,
   ENEMY_TOUGH_MELEE_MIN_HP,
   ENEMY_TOUGH_MELEE_SPEED_FACTOR,
+  ENEMY_WIND_HIVE_BOSS_SPEED_FACTOR,
   EXPECTED_LEVEL_UPS_PER_STAGE,
   EXPECTED_POWER_GROWTH_PER_LEVEL_UP,
   FOREST_STAGE5_SPAWN_COUNT_FACTOR,
@@ -409,6 +410,14 @@ export function calculateToughMeleeSpeed(): number {
   // Stage2: BASE * (1 + growth * 1)
   const stage2Multiplier = 1 + ENEMY_SPEED_GROWTH_PER_STAGE
   return ENEMY_BASE_SPEED * stage2Multiplier * ENEMY_TOUGH_MELEE_SPEED_FACTOR
+}
+
+/**
+ * Wind Plains Stage3 ボスの移動速度（通常スライム基準速度の 0.5 倍）。
+ * Plains 最終面の速度補正は掛けない。
+ */
+export function calculateWindHiveBossSpeed(): number {
+  return ENEMY_BASE_SPEED * ENEMY_WIND_HIVE_BOSS_SPEED_FACTOR
 }
 
 /**
