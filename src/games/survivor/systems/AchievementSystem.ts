@@ -197,39 +197,44 @@ export type UnlockStatusRow = {
 }
 
 /**
+ * 解放可能スキル → 保存される Achievement／Unlock ID。
+ * ALL_ACHIEVEMENTS の skillId が唯一の対応表（HUD / Level Up 共通）。
+ */
+export function getUnlockAchievementIdForSkill(
+  skillId: UnlockableSkillId,
+): string | null {
+  for (let index = 0; index < ALL_ACHIEVEMENTS.length; index++) {
+    const def = ALL_ACHIEVEMENTS[index]
+    if (def.skillId === skillId) {
+      return def.id
+    }
+  }
+  return null
+}
+
+/**
  * スキルが実績で解放済みか調べる。
  * Python: skill_id in unlocked_skills のような判定。
- * LevelUpChoiceSystem / HudSystem から呼ばれる。
+ * LevelUpChoiceSystem / HudSystem から同じ関数を呼ぶ（表示と候補の SSoT）。
  * 基本スキル（Power / Speed / Range）は常に true。
  */
 export function isSkillUnlocked(skillId: SkillHudId): boolean {
   if (skillId === 'damage' || skillId === 'fireRate' || skillId === 'range') {
     return true
   }
-  // Move は Plains クリアで解放する
-  if (skillId === 'move') {
-    return hasUnlockedAchievement(ACHIEVEMENT_ID_PLAINS_CLEAR)
+  const achievementId = getUnlockAchievementIdForSkill(skillId)
+  if (achievementId === null) {
+    return false
   }
-  // Pickup は Forest クリアで解放する
-  if (skillId === 'magnet') {
-    return hasUnlockedAchievement(ACHIEVEMENT_ID_FOREST_CLEAR)
-  }
-  if (skillId === 'ricochet') {
-    return hasUnlockedAchievement(ACHIEVEMENT_ID_RICOCHET_UNLOCK)
-  }
-  if (skillId === 'orbitingOrb') {
-    return hasUnlockedAchievement(ACHIEVEMENT_ID_ORBITING_ORB_UNLOCK)
-  }
-  if (skillId === 'pierce') {
-    return hasUnlockedAchievement(ACHIEVEMENT_ID_PIERCE_UNLOCK)
-  }
-  if (skillId === 'blast') {
-    return hasUnlockedAchievement(ACHIEVEMENT_ID_BLAST_UNLOCK)
-  }
-  if (skillId === 'xpBonus') {
-    return hasUnlockedAchievement(ACHIEVEMENT_ID_VOLCANO_CLEAR)
-  }
-  return false
+  return hasUnlockedAchievement(achievementId)
+}
+
+/**
+ * HUD スキルツリーで「鍵／グレー」を出すべきか。
+ * 実績解放済みなら false（今ラン未取得でも鍵は出さない）。
+ */
+export function shouldShowSkillLockOnHud(skillId: SkillHudId): boolean {
+  return !isSkillUnlocked(skillId)
 }
 
 /**

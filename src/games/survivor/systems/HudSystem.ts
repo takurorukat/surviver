@@ -430,8 +430,7 @@ export class HudSystem {
         continue
       }
 
-      // 未解放／未取得のスキルはグレーアウト
-      // Move は実績解放まで。Pierce / Blast は今ランで付くまで（値 0）
+      // 未解放スキルだけグレー（実績解放済みなら今ラン Lv0 でも通常色）
       if (line.key === 'move' && !isSkillUnlocked('move')) {
         line.text.setColor(UNLOCK_STATUS_LOCKED_COLOR)
         line.text.setAlpha(UNLOCK_STATUS_LOCKED_ALPHA)
@@ -447,22 +446,22 @@ export class HudSystem {
         line.text.setAlpha(UNLOCK_STATUS_LOCKED_ALPHA)
         continue
       }
-      if (line.key === 'penetrate' && value <= 0) {
+      if (line.key === 'penetrate' && !isSkillUnlocked('pierce')) {
         line.text.setColor(UNLOCK_STATUS_LOCKED_COLOR)
         line.text.setAlpha(UNLOCK_STATUS_LOCKED_ALPHA)
         continue
       }
-      if (line.key === 'blast' && value <= 0) {
+      if (line.key === 'blast' && !isSkillUnlocked('blast')) {
         line.text.setColor(UNLOCK_STATUS_LOCKED_COLOR)
         line.text.setAlpha(UNLOCK_STATUS_LOCKED_ALPHA)
         continue
       }
-      if (line.key === 'orbitingOrb' && value <= 0) {
+      if (line.key === 'orbitingOrb' && !isSkillUnlocked('orbitingOrb')) {
         line.text.setColor(UNLOCK_STATUS_LOCKED_COLOR)
         line.text.setAlpha(UNLOCK_STATUS_LOCKED_ALPHA)
         continue
       }
-      if (line.key === 'ricochet' && value <= 0) {
+      if (line.key === 'ricochet' && !isSkillUnlocked('ricochet')) {
         line.text.setColor(UNLOCK_STATUS_LOCKED_COLOR)
         line.text.setAlpha(UNLOCK_STATUS_LOCKED_ALPHA)
         continue
@@ -472,14 +471,14 @@ export class HudSystem {
       line.text.setAlpha(calculatePlayerStatAlpha(value))
     }
 
-    // スキルツリーの Blast / Pierce / Move も同じ条件でグレーを更新
-    this.syncSkillTreeComboIconLooks()
+    // スキルツリーも isSkillUnlocked（実績）基準で色を合わせる（tooltip は消さない）
+    this.syncSkillTreeUnlockLooks()
     // レベル変化に合わせて線の太さも更新
     this.layoutUnlockStatusIcons()
   }
 
   /**
-   * ロック／解放のアイコン表示を localStorage の最新状態に合わせる。
+   * ロック／解放のアイコン表示を保存済み解放状態に合わせる。
    * ゲームクリア後の再開や実績解放直後に GameScene から呼ぶ。
    */
   refreshUnlockStatus(): void {
@@ -501,7 +500,8 @@ export class HudSystem {
       icon.skillLabel = row.skillLabel
       icon.skillDescription = row.skillDescription
       icon.unlockCondition = row.unlockCondition
-      icon.isUnlocked = this.resolveSkillTreeIconUnlocked(icon.skillId, row.isUnlocked)
+      // 実績解放 = 鍵なし。今ラン未取得でも UNLOCKED 表示
+      icon.isUnlocked = row.isUnlocked
       icon.isSealed = sealedSkillIds.includes(row.skillId)
       this.applyUnlockIconLook(icon)
     }
@@ -512,35 +512,10 @@ export class HudSystem {
   }
 
   /**
-   * スキルツリーの色付き／グレーを決める。
-   * - Move: 実績で解放されるまでグレー
-   * - Blast / Pierce / Ricochet: 今ランで合成により付くまでグレー（レベル 0）
-   * - その他: 実績の解放状態
+   * ステータス更新時にスキルツリーの鍵／色だけ再評価する。
+   * refreshUnlockStatus と違い tooltip は閉じない。
    */
-  private resolveSkillTreeIconUnlocked(
-    skillId: string,
-    achievementUnlocked: boolean,
-  ): boolean {
-    if (skillId === 'blast') {
-      return this.currentStatValues.blast > 0
-    }
-    if (skillId === 'pierce') {
-      return this.currentStatValues.penetrate > 0
-    }
-    if (skillId === 'orbitingOrb') {
-      return this.currentStatValues.orbitingOrb > 0
-    }
-    if (skillId === 'ricochet') {
-      return this.currentStatValues.ricochet > 0
-    }
-    if (skillId === 'move') {
-      return isSkillUnlocked('move')
-    }
-    return achievementUnlocked
-  }
-
-  /** ステータス更新後に、ツリー上の合成スキル / Move だけ見た目を合わせる。 */
-  private syncSkillTreeComboIconLooks(): void {
+  private syncSkillTreeUnlockLooks(): void {
     const rows = getUnlockStatusRows()
     const rowBySkillId = new Map<string, (typeof rows)[number]>()
     for (let index = 0; index < rows.length; index++) {
@@ -549,21 +524,11 @@ export class HudSystem {
 
     for (let index = 0; index < this.unlockStatusIcons.length; index++) {
       const icon = this.unlockStatusIcons[index]
-      if (
-        icon.skillId !== 'blast' &&
-        icon.skillId !== 'pierce' &&
-        icon.skillId !== 'orbitingOrb' &&
-        icon.skillId !== 'ricochet' &&
-        icon.skillId !== 'move'
-      ) {
+      const row = rowBySkillId.get(icon.skillId)
+      if (row === undefined) {
         continue
       }
-      const row = rowBySkillId.get(icon.skillId)
-      const achievementUnlocked = row !== undefined ? row.isUnlocked : false
-      icon.isUnlocked = this.resolveSkillTreeIconUnlocked(
-        icon.skillId,
-        achievementUnlocked,
-      )
+      icon.isUnlocked = row.isUnlocked
       this.applyUnlockIconLook(icon)
     }
   }
@@ -1208,7 +1173,7 @@ export class HudSystem {
     } else if (icon.isUnlocked) {
       tooltip.titleText.setText(icon.skillLabel)
       tooltip.titleText.setColor(UNLOCK_STATUS_TOOLTIP_COLOR)
-      tooltip.lockText.setText('Unlocked')
+      tooltip.lockText.setText('UNLOCKED')
       tooltip.lockText.setColor(UNLOCK_STATUS_TOOLTIP_DESC_COLOR)
     } else {
       tooltip.titleText.setText(icon.skillLabel)

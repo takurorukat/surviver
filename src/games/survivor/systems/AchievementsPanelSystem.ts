@@ -55,8 +55,6 @@ const SKILL_ROW_HEIGHT = 72
 const SKILL_ROW_GAP = 8
 const FOOTER_RESERVED_HEIGHT = 36
 const ACHIEVEMENT_COLUMN_COUNT = 2
-// 解放済みスキルの南京錠（タイトルのロック色より明るい緑）
-const ACHIEVEMENT_UNLOCKED_LOCK_COLOR = 0x86efac
 
 const SKILL_EFFECT_DESCS: Record<UnlockableSkillId, string> = {
   pierce: UNLOCK_SKILL_DESC_PIERCE,
@@ -252,27 +250,26 @@ export function createAchievementsPanelController(
     let titleColor = '#6b7280'
     let detailColor = '#6b7280'
     let effectColor = '#4b5563'
-    let lockColor = TITLE_LOCK_ICON_COLOR
     if (unlocked) {
       titleColor = '#86efac'
       detailColor = '#a7f3d0'
       effectColor = '#86efac'
-      lockColor = ACHIEVEMENT_UNLOCKED_LOCK_COLOR
     }
 
-    // 冒頭はタイトルと同じ南京錠アイコン
+    // 冒頭はタイトルと同じ南京錠アイコン（解放済みなら非表示）
     const lockIcon = createLockIcon(
       scene,
       rowLeft + TITLE_LOCK_ICON_SIZE / 2,
       rowCenterY,
       TITLE_LOCK_ICON_SIZE,
-      lockColor,
+      TITLE_LOCK_ICON_COLOR,
     )
-    setLockIconVisible(lockIcon, true)
+    setLockIconVisible(lockIcon, !unlocked)
     lockIcon.container.setScrollFactor(0)
     lockIcon.container.setDepth(PANEL_DEPTH + 1)
     screenObjects.push(lockIcon.container)
 
+    // 列揃えのため鍵の幅は常に確保する
     let textLeft = rowLeft + TITLE_LOCK_ICON_SIZE + 10
     if (def.skillId !== undefined && isSkillIconId(def.skillId)) {
       const iconCenterX = textLeft + SKILL_TREE_ICON_OUTER_SIZE / 2
@@ -291,8 +288,10 @@ export function createAchievementsPanelController(
         skillIcon.fill.setFillStyle(UNLOCK_ICON_LOCKED_FILL_COLOR)
         if (skillIcon.symbol instanceof Phaser.GameObjects.Text) {
           skillIcon.symbol.setColor(UNLOCK_ICON_LOCKED_LETTER_COLOR)
+        } else if (skillIcon.symbol instanceof Phaser.GameObjects.Image) {
+          skillIcon.symbol.setAlpha(0.55)
         } else {
-          // Orbiting Orb は Graphics のため色変更不可。薄くしてロック感を維持
+          // Orbiting Orb Graphics など
           skillIcon.symbol.setAlpha(0.55)
         }
       }
@@ -314,7 +313,8 @@ export function createAchievementsPanelController(
     const rowTextMaxWidth = columnWidth - (textLeft - rowLeft) - 8
     shrinkTextToFitWidth(titleText, rowTextMaxWidth)
 
-    const detailText = scene.add.text(textLeft, rowTopY + 26, def.condition, {
+    const detailLine = unlocked ? 'UNLOCKED' : def.condition
+    const detailText = scene.add.text(textLeft, rowTopY + 26, detailLine, {
       fontFamily: FONT_FAMILY_UI,
       fontSize: '12px',
       color: detailColor,

@@ -27,6 +27,14 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ## 直近の作業記録
 
+### 2026-07-28 — Cursor
+
+- 実施内容: Skill Unlock 表示同期修正。根本原因は HUD が Pierce/Blast/Orb/Ricochet を「今ラン Lv>0」で鍵表示していたこと。`isSkillUnlocked`（`unlockedAchievementIds` + ALL_ACHIEVEMENTS）を SSoT に統一。スキルツリー／ステータス行／Achievements パネルの鍵を解放済みで非表示。合成解放直後に `refreshUnlockStatus`。条件・Save・ID 未変更。
+- 変更ファイル: AchievementSystem / HudSystem / AchievementsPanelSystem / GameScene / skillUnlockDisplay.test.ts / docs
+- 検証: typecheck OK、tests 233 OK、build OK、git diff --check OK
+- 未解決: ブラウザ実機確認は未実施
+- 次の開発タスク: Area Clear Result UI または Unused Achievement Cleanup（未着手）
+
 ### 2026-07-28 — Codex
 
 - 実施内容: Wind / Water / Fire / Earth / Speed / Power / Range の7アイコンを、Game-icons.net の同一作者 Lorc（CC BY 3.0）へ統一。原本SVGを `assets-source/icons/skills/unified/`、64×64のRuntime SVGを `public/assets/icons/skills/unified/` に保存し、`skillIcons.ts` をSSoTとしてManifest・HUD・Level Up・Achievements/複合表示へ反映した。Creditsと詳細ライセンス記録も追加。

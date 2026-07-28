@@ -2082,6 +2082,7 @@ export class GameScene extends Phaser.Scene {
     this.currentPierceLevel = targetPierce
     this.pickedPierceThisRun = true
     unlockAchievement(ACHIEVEMENT_ID_PIERCE_UNLOCK)
+    this.hudSystem.refreshUnlockStatus()
     this.refreshPlayerStatsHud()
     this.hudSystem.playStatUpgradePulse('penetrate')
     this.gameAudioSystem.playLevelUp()
@@ -2115,6 +2116,7 @@ export class GameScene extends Phaser.Scene {
     this.currentBlastLevel = targetBlast
     this.pickedBlastThisRun = true
     unlockAchievement(ACHIEVEMENT_ID_BLAST_UNLOCK)
+    this.hudSystem.refreshUnlockStatus()
     this.refreshPlayerStatsHud()
     this.hudSystem.playStatUpgradePulse('blast')
 
@@ -2145,6 +2147,7 @@ export class GameScene extends Phaser.Scene {
     const wasLocked = this.currentOrbitingOrbLevel <= ORBITING_ORB_LEVEL_START
     this.currentOrbitingOrbLevel = targetOrbitingOrb
     unlockAchievement(ACHIEVEMENT_ID_ORBITING_ORB_UNLOCK)
+    this.hudSystem.refreshUnlockStatus()
     this.orbitingOrbSystem.syncLevel(this.currentOrbitingOrbLevel)
     this.refreshPlayerStatsHud()
     this.hudSystem.playStatUpgradePulse('orbitingOrb')
@@ -2178,6 +2181,7 @@ export class GameScene extends Phaser.Scene {
     const wasLocked = this.currentRicochetLevel <= RICOCHET_LEVEL_START
     this.currentRicochetLevel = targetRicochet
     unlockAchievement(ACHIEVEMENT_ID_RICOCHET_UNLOCK)
+    this.hudSystem.refreshUnlockStatus()
     this.refreshPlayerStatsHud()
     this.hudSystem.playStatUpgradePulse('ricochet')
 
