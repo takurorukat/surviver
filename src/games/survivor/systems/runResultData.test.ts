@@ -29,6 +29,9 @@ describe('RunResultStore — 開始とリセット', () => {
     expect(progress.enemiesDefeated).toBe(0)
     expect(progress.finalBossDefeated).toBe(false)
     expect(progress.finalized).toBe(false)
+    expect(progress.reviveUsed).toBe(false)
+    expect(progress.revivePending).toBe(false)
+    expect(progress.deathSettled).toBe(false)
     expect(getFinalizedRunResult()).toBe(null)
   })
 

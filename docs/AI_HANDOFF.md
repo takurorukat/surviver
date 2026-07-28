@@ -27,6 +27,78 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ## 直近の作業記録
 
+### 2026-07-29 — Cursor
+
+- 実施内容: Revive-Ready Game Over Foundation。`REVIVE_FEATURE_ENABLED=false`。Run に reviveUsed/pending/deathSettled。canRevive/request/apply/reject API。Flag=false では従来どおり即 defeat・REVIVE 非表示。広告 SDK なし。Save 非永続。
+- 変更ファイル: `revive.ts` / `reviveLogic.ts` / `ReviveFlowSystem.ts` / `RunResultStore.ts` / `RunResult.ts` / `PlayerDamageSystem.ts` / `StageResultSystem.ts` / `GameScene.ts` / `GameConstants.ts` / `reviveFoundation.test.ts` / `runResultData.test.ts` / `AI_HANDOFF.md`
+- 検証: typecheck OK、tests 286 OK、build OK、git diff --check OK。
+- 未解決: 他の未コミット差分は保護。push なし。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
+### 2026-07-29 — Cursor
+
+- 実施内容: Production Build Asset Audit。public→dist を監査し、未採用 Kenney 3音源・旧 player_walk 画像3枚・未使用 vite.svg を Production 外へ移動。`sync.mjs` は未採用を `tools/audio_library/candidates/` へ同期。回帰テストと監査記録を追加。アーキ／フォルダ再編なし。
+- 変更ファイル: 上記移動 / `tools/audio_library/sync.mjs` / `productionAssetAudit.test.ts` / `docs/PRODUCTION_BUILD_ASSET_AUDIT.md` / `TODO.md` / `docs/AI_HANDOFF.md`
+- 検証: typecheck OK、tests 269 OK、build OK、git diff --check OK。dist に Preview/tools/tmp/未採用候補なし。Runtime 必須 asset あり。
+- 未解決: 他の未コミット差分（ボス・Credits・アイコン等）は保護。commit/push なし。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
+### 2026-07-29 — Cursor
+
+- 実施内容: Earth Dungeon Stage3 FINAL WAVE の追加パック間隔特例（0秒）を廃止し、他の非最終ステージと同じ `FINAL_WAVE_EXTRA_PACK_GAP_SECONDS`（1.6秒）に統一。有限ウェーブ終了・早期クリア・散開・通常スケジュール・Skeleton性能は未変更。
+- 変更ファイル: `earthDungeonStage3WavePolicy.ts` / `ruinsStage3FinalWave.test.ts` / `WaveSystem.ts`（コメント） / `docs/AI_HANDOFF.md`
+- 検証: typecheck OK、tests 266 OK、build OK、git diff --check OK。ブラウザ実機は人間確認推奨（既存dev未停止）。
+- 未解決: 他の未コミット差分は保護。commit/push なし。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
+### 2026-07-29 — Cursor
+
+- 実施内容: Earth Dungeon Stage4 `earthMagmaRock` を強化。HP 18→36、攻撃間隔 5000→2500ms。予兆700ms・6方向・弾速／ダメージ・移動／出現比率／上限4は未変更。定数 SSoT のみ変更（Runtime ハードコードなし）。関連コメント更新。
+- 変更ファイル: `enemies.ts` / `earthMagmaRock.test.ts` / `spawnFactories.ts`・`EnemyAttackSystem.ts`・`packSpawn.ts`（コメント） / `docs/AI_HANDOFF.md`
+- 検証: typecheck OK、tests 262 OK、build OK（途中 ENOSPC のため dist/vite cache 掃除後成功）、git diff --check OK。ブラウザ実機は人間確認推奨（既存dev未停止）。
+- 未解決: 他の未コミット差分は保護。ディスク空きが逼迫（~0.4GB）。commit/push なし。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
+### 2026-07-29 — Cursor
+
+- 実施内容: ゲーム内 Credits の音楽欄から UI 表示の `License: CC0` のみ削除。作者名・OpenGameArt・スキルアイコンの `CC BY 3.0`・ライセンス文書は維持。
+- 変更ファイル: `ui.ts`（当該1行） / `creditsAttribution.test.ts` / `endingBgmCredits.test.ts`（同期待の追随） / `docs/AI_HANDOFF.md`
+- 検証: typecheck OK、tests 260 OK、build OK、git diff --check OK。`public/assets/audio/licenses/` の CC0 文書は残存。
+- 未解決: 他の未コミット差分（ボス位置・バランス・アイコン等）は保護。commit/push なし。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
+### 2026-07-29 — Cursor
+
+- 実施内容: 4エリア最終ボスの出現位置をプレイエリア上部中央へ統一。`getFinalBossSpawnPosition()`（X=中央、Y=上端から20%）を SSoT とし、`spawnAreaBossIfNeeded` のランダム位置を廃止。通常敵の `getRandomInsideSpawnPosition`・ボス性能・クリア条件は未変更。専用 factory／offset 定数は参照残のため維持。
+- 変更ファイル: `layout.ts` / `finalBossConfig.ts` / `updateSpecialEnemySpawns.ts` / `finalBossConfig.test.ts` / `docs/AI_HANDOFF.md`
+- 検証: typecheck OK、tests 260 OK、build OK、git diff --check OK。座標計算で最大ボス（earth×5）も上端マージン約11px。既存dev serverは未停止。ブラウザ4エリア実機は人間確認推奨。
+- 未解決: Credits／Attack Speed アイコン／ボス×1.5 の未コミット差分は別作業として保護。commit/push なし。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
+### 2026-07-29 — Cursor
+
+- 実施内容: 4エリア最終ボスを Runtime 実効値基準で ×1.5 強化。HP・移動速度（追従ボスのみ）・ボス弾速・攻撃／召喚間隔（÷1.5）。固定ボスは静止維持。`ENEMY_BULLET_SPEED=280` と通常敵・Magma Rock 弾は未変更。ボス弾は `ENEMY_FINAL_BOSS_PROJECTILE_SPEED=420`。
+- 変更ファイル: enemies.ts / EnemyBullet.ts / EnemyAttackSystem.ts / spawnFactories（コメント） / windHiveBossLogic（コメント） / finalBossBalance.test.ts / windHiveBoss・earthDungeonBoss・finalBossConfig テスト / TODO.md / AI_HANDOFF.md
+- 検証: typecheck OK、tests 259 OK、build OK、git diff --check OK。ブラウザ実機は未実施。
+- 未解決: Credits／Attack Speed アイコンの未コミット差分は別作業として保護。commit/push なし。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
+### 2026-07-28 — Cursor
+
+- 実施内容: Attack Speed（`fireRate`）アイコンを Game-icons.net「Fairy wand」（Lorc / CC BY 3.0）へ差し替え。asset key/path・表示名・色 `#67E8F9`・内部IDは維持。旧 Sprint 原本を削除し `fairy-wand.svg` を追加。ライセンス記録更新。
+- 変更ファイル: `public/.../speed.svg` / `assets-source/.../fairy-wand.svg`（sprint削除） / `docs/licenses/skill-icons.md` / `LICENSE.txt` / skillIcons・unified・attackSpeedIcon テスト / TODO.md / AI_HANDOFF.md
+- 検証: typecheck OK、tests 253 OK、build OK、git diff --check OK。dist に runtime SVG あり・assets-source なし。確認画像は `test-results/attack-speed-icon/`（gitignore）。
+- 未解決: 未コミットの Credits 調整差分は別作業として保護（今回コミットに含めない想定）
+- 次の開発タスク: ユーザー判断（この差し替えのコミット／Credits 調整のコミット）
+
+### 2026-07-28 — Cursor
+
+- 実施内容: Credits の ROSSO ARGINE ロゴを大きく（幅 180→320）、帰属本文フォントを小さく（13→10）。created by も 11px。レイアウトは Back 固定・はみ出し時スクロール維持。
+- 変更ファイル: assets.ts / ui.ts / SettingsMenuSystem.ts / creditsAttribution.test.ts / docs/AI_HANDOFF.md
+- 検証: typecheck OK、tests 251 OK、build OK、Playwright Credits 表示確認
+- 未解決: なし（コミット未実施・依頼があれば作成）
+- 次の開発タスク: ユーザー判断（コミット／追加微調整）
+
 ### 2026-07-28 — Cursor
 
 - 実施内容: Credits はみ出し修正。UI本文を作者／配布元／ライセンスの短文に整理（URL・パック名等はライセンス文書へ）。パネル高さの画面内クランプ、行間縮小、ロゴ幅180、収まらない場合のみ本文スクロール。Back固定。

@@ -84,6 +84,7 @@ import {
   startPlayerKnockbackAwayFromEnemy,
   applyPlayerKnockbackIfActive,
   updatePlayerInvincibilityBlink,
+  startPlayerInvulnerability,
   type PlayerDamageState,
 } from '../systems/PlayerDamageSystem'
 import { RangeDisplaySystem } from '../systems/RangeDisplaySystem'
@@ -181,7 +182,9 @@ import {
   resetAreaRun,
   addRunElapsedMs,
   finalizeRunAsDefeat,
+  markDeathSettled,
 } from '../systems/RunResultStore'
+import { ReviveFlowSystem } from '../systems/ReviveFlowSystem'
 import type { CarriedProgress } from '../types/CarriedProgress'
 import { playFinalWaveBanner } from '../systems/FinalWaveBannerSystem'
 import { playPierceUnlockBanner, playPierceLevelUpBanner } from '../systems/PierceUnlockBannerSystem'
@@ -316,6 +319,7 @@ export class GameScene extends Phaser.Scene {
   private confirmDialogSystem!: ConfirmDialogSystem
   private levelUpChoiceSystem!: LevelUpChoiceSystem
   private stageResultSystem!: StageResultSystem
+  private reviveFlowSystem!: ReviveFlowSystem
   // 設定メニューを開く前に time.paused だったか（閉じたときの復元用）
   private wasTimePausedBeforeSettings = false
   // 実績パネルを開く前の停止状態（閉じたときに誤って再開しないため）
@@ -542,6 +546,43 @@ export class GameScene extends Phaser.Scene {
       )
     })
     this.stageResultSystem = new StageResultSystem(this)
+    this.reviveFlowSystem = new ReviveFlowSystem({
+      getPlayerLevel: () => this.currentLevel,
+      getMaxHp: () => this.maxHp,
+      setCurrentHp: (hp) => {
+        this.currentHp = hp
+      },
+      updateHpHud: () => {
+        this.hudSystem.updateHpBar(this.currentHp, this.maxHp)
+      },
+      getNowMs: () => this.time.now,
+      grantInvulnerabilityMs: (durationMs) => {
+        startPlayerInvulnerability(this.damageState, this.time.now, durationMs)
+      },
+      resetPlayerVelocity: () => {
+        if (this.playerBody !== undefined) {
+          this.playerBody.setVelocity(0, 0)
+        }
+      },
+      clearPlayerDeadFlags: () => {
+        this.isPlayerDead = false
+        this.isStageSettled = false
+        this.isStageActive = true
+      },
+      destroyEnemyProjectilesWithoutScoring: () => {
+        destroyAllEnemyBullets(this.enemyBulletGroup)
+      },
+      resumeGameplayAfterRevive: () => {
+        this.time.paused = false
+      },
+      hideGameOverUi: () => {
+        this.stageResultSystem.hide()
+      },
+      isPlayerDead: () => this.isPlayerDead,
+      isStageClearSettled: () => this.isStageSettled && !this.isPlayerDead,
+      isEndingActive: () => this.scene.isActive('EndingScene') === true,
+      isSceneActive: () => this.scene.isActive() === true,
+    })
     // 自動物理更新を止め、update 内で stepArcadePhysicsOnce を自分で呼ぶ
     this.physics.disableUpdate()
     this.waveSystem = new WaveSystem(
@@ -2419,6 +2460,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   // 役割: 死亡時の確定処理と敗北 UI。タイトルへ戻る
+  // Feature Flag=false（Production）では従来どおり即 defeat 確定。
+  // Flag=true かつ canRevive のときは復活待ちへ分岐する。
   // 呼び出し元: handlePlayerEnemyOverlap / handlePlayerEnemyBulletHit
   // 呼び出し先: waveSystem.stopWaves, stageResultSystem.show, TitleScene
   private handlePlayerDeath(): void {
@@ -2427,6 +2470,68 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.isPlayerDead = true
+
+    // 復活可能な死亡（Flag=true）だけ pending。Production では常に false。
+    if (!this.reviveFlowSystem.shouldFinalizeDefeatImmediately()) {
+      this.beginReviveDecisionPending()
+      return
+    }
+
+    this.settlePlayerDefeatAsGameOver()
+  }
+
+  /**
+   * Feature Flag=true 用: 広告結果待ち。defeat はまだ確定しない。
+   * Production（Flag=false）では呼ばれない。
+   */
+  private beginReviveDecisionPending(): void {
+    this.isStageSettled = true
+    this.isStageActive = false
+    this.stopAllMovingBodies()
+    if (this.levelUpChoiceSystem.isOpen()) {
+      this.levelUpChoiceSystem.hide()
+      this.isLevelUpPaused = false
+    }
+    this.isResumeCountdownActive = false
+    this.isStartCountdownActive = false
+    this.time.paused = true
+    this.gameAudioSystem.stopBgm()
+    this.gameAudioSystem.playGameOver()
+    this.reviveFlowSystem.requestRevive()
+
+    this.stageResultSystem.show(
+      'defeat',
+      this.stageNumber,
+      () => {
+        this.finishDefeatAfterReviveRejected()
+      },
+      [],
+      {
+        showRevive: true,
+        onRevive: () => {
+          // 広告 SDK 接続前: request 済みのまま apply は手動／将来 SDK 成功時
+          this.reviveFlowSystem.applyRevive()
+        },
+      },
+    )
+  }
+
+  /** 復活拒否／TITLE: ここで初めて defeat 確定し、タイトルへ戻る */
+  private finishDefeatAfterReviveRejected(): void {
+    this.reviveFlowSystem.rejectRevive()
+    this.waveSystem.stopWaves()
+    this.orbitingOrbSystem.destroy()
+    destroyAllEnemyBullets(this.enemyBulletGroup)
+    recordPlayerDeath()
+    this.time.paused = false
+    clearRunProgress()
+    resetAreaRun()
+    this.gameAudioSystem.stopAllSounds()
+    this.scene.start('TitleScene')
+  }
+
+  /** Production 従来どおり: 即 defeat 確定 → Game Over（REVIVE なし） */
+  private settlePlayerDefeatAsGameOver(): void {
     this.isStageSettled = true
     this.isStageActive = false
     this.waveSystem.stopWaves()
@@ -2447,6 +2552,7 @@ export class GameScene extends Phaser.Scene {
     recordPlayerDeath()
     // Player Death 確定時に RunResult を1回だけ作る（clear と二重にしない）
     finalizeRunAsDefeat(this.currentLevel)
+    markDeathSettled()
     this.stageResultSystem.show('defeat', this.stageNumber, () => {
       this.time.paused = false
       clearRunProgress()

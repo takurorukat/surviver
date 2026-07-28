@@ -66,10 +66,26 @@ export function applyPlayerDamage(
   damageAmount: number = ENEMY_MELEE_DAMAGE,
 ): number {
   const newHp = currentHp - damageAmount
-  damageState.isInvincible = true
-  // 秒 → ミリ秒に変換して「今から何ミリ秒後まで無敵か」を記録
-  damageState.invincibleUntilMs = nowMs + PLAYER_INVINCIBLE_SECONDS * 1000
+  startPlayerInvulnerability(
+    damageState,
+    nowMs,
+    PLAYER_INVINCIBLE_SECONDS * 1000,
+  )
   return newHp
+}
+
+/**
+ * 既存の無敵点滅処理を再利用して、指定ミリ秒の無敵を開始する。
+ * 復活（Revive）など、被ダメージ以外からも呼ぶ。
+ */
+export function startPlayerInvulnerability(
+  damageState: PlayerDamageState,
+  nowMs: number,
+  durationMs: number,
+): void {
+  const safeDuration = Math.max(0, Math.floor(durationMs))
+  damageState.isInvincible = true
+  damageState.invincibleUntilMs = nowMs + safeDuration
 }
 
 // 接触した敵と反対方向へノックバックを開始する

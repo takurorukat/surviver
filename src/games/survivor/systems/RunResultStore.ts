@@ -15,6 +15,9 @@ type StoreState = {
   finalBossDefeated: boolean
   finalized: boolean
   result: RunResult | null
+  reviveUsed: boolean
+  revivePending: boolean
+  deathSettled: boolean
 }
 
 function createEmptyState(): StoreState {
@@ -25,6 +28,9 @@ function createEmptyState(): StoreState {
     finalBossDefeated: false,
     finalized: false,
     result: null,
+    reviveUsed: false,
+    revivePending: false,
+    deathSettled: false,
   }
 }
 
@@ -36,7 +42,7 @@ export function resetRunResultStoreForTests(): void {
 }
 
 /**
- * 新しいエリアランを開始する（時間・撃破・確定をリセット）。
+ * 新しいエリアランを開始する（時間・撃破・確定・復活状態をリセット）。
  * Stage 引き継ぎでは呼ばない。
  */
 export function startAreaRun(areaId: StageAreaId): void {
@@ -47,6 +53,9 @@ export function startAreaRun(areaId: StageAreaId): void {
     finalBossDefeated: false,
     finalized: false,
     result: null,
+    reviveUsed: false,
+    revivePending: false,
+    deathSettled: false,
   }
 }
 
@@ -66,6 +75,9 @@ export function getRunProgress(): RunProgress {
     enemiesDefeated: state.enemiesDefeated,
     finalBossDefeated: state.finalBossDefeated,
     finalized: state.finalized,
+    reviveUsed: state.reviveUsed,
+    revivePending: state.revivePending,
+    deathSettled: state.deathSettled,
   }
 }
 
@@ -159,5 +171,31 @@ function finalizeRun(
 
   state.finalized = true
   state.result = result
+  state.deathSettled = true
+  state.revivePending = false
   return getFinalizedRunResult()
+}
+
+/** 復活待ちを開始する（広告前）。reviveUsed はまだ消費しない。 */
+export function markRevivePending(): void {
+  state.revivePending = true
+  state.deathSettled = false
+}
+
+/** 復活成功。1ラン1回を消費し、pending を解除する。 */
+export function markReviveUsed(): void {
+  state.reviveUsed = true
+  state.revivePending = false
+  state.deathSettled = false
+}
+
+/** 復活キャンセル／失敗。defeat 確定前に pending だけ戻す。 */
+export function clearRevivePending(): void {
+  state.revivePending = false
+}
+
+/** Game Over へ進むとき（復活不可・拒否後）に死亡確定を付ける。 */
+export function markDeathSettled(): void {
+  state.deathSettled = true
+  state.revivePending = false
 }

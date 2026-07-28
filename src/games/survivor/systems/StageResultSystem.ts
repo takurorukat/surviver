@@ -49,9 +49,17 @@ import {
   getFinalizedRunResult,
 } from './RunResultStore'
 import type { RunResult } from '../types/RunResult'
+import { REVIVE_BUTTON_LABEL } from '../constants/revive'
 
 // clear=次ステージへ / gameClear=タイトルへ / defeat=リトライ
 export type StageResultKind = 'clear' | 'gameClear' | 'defeat'
+
+export type StageResultShowOptions = {
+  confirmLabel?: string
+  /** Feature Flag=true のときだけ true。false／省略時は従来どおり1ボタン */
+  showRevive?: boolean
+  onRevive?: () => void
+}
 
 // ステージ終了時の結果画面（クリア／ゲームクリア／失敗）
 export class StageResultSystem {
@@ -65,10 +73,15 @@ export class StageResultSystem {
   private buttonBackground: Phaser.GameObjects.Rectangle | null = null
   private buttonBorder: Phaser.GameObjects.Rectangle | null = null
   private buttonText: Phaser.GameObjects.Text | null = null
+  private reviveButtonBackground: Phaser.GameObjects.Rectangle | null = null
+  private reviveButtonBorder: Phaser.GameObjects.Rectangle | null = null
+  private reviveButtonText: Phaser.GameObjects.Text | null = null
   private hintText: Phaser.GameObjects.Text | null = null
   private isVisible = false
   // 決定時に GameScene 側へ戻るコールバック（次ステージ・タイトル・リトライ）
   private onConfirm: (() => void) | null = null
+  private onRevive: (() => void) | null = null
+  private showReviveButton = false
   private keySpace: Phaser.Input.Keyboard.Key | null = null
   private keyEnter: Phaser.Input.Keyboard.Key | null = null
   // ゲームクリア時の実績解放メッセージ（空なら表示しない）
@@ -105,7 +118,7 @@ export class StageResultSystem {
     stageNumber: number,
     onConfirm: () => void,
     unlockLines: string[] = [],
-    options?: { confirmLabel?: string },
+    options?: StageResultShowOptions,
   ): void {
     if (this.isVisible) {
       return
@@ -114,11 +127,16 @@ export class StageResultSystem {
     this.isVisible = true
     this.onConfirm = onConfirm
     this.unlockLines = unlockLines
+    this.showReviveButton = options?.showRevive === true
+    this.onRevive = options?.onRevive ?? null
     this.createOverlay()
     this.createPanel()
     this.createTitle(kind)
     this.createSubtitle(kind, stageNumber)
     this.createUnlockText()
+    if (this.showReviveButton) {
+      this.createReviveButton()
+    }
     this.createButton(kind, options?.confirmLabel)
     this.createHintText()
     this.setupKeyboard()
@@ -132,6 +150,8 @@ export class StageResultSystem {
 
     this.isVisible = false
     this.onConfirm = null
+    this.onRevive = null
+    this.showReviveButton = false
     this.unlockLines = []
     this.teardownKeyboard()
 
@@ -145,6 +165,9 @@ export class StageResultSystem {
       this.buttonBorder,
       this.buttonBackground,
       this.buttonText,
+      this.reviveButtonBorder,
+      this.reviveButtonBackground,
+      this.reviveButtonText,
       this.hintText,
     ]
 
@@ -164,23 +187,29 @@ export class StageResultSystem {
     this.buttonBorder = null
     this.buttonBackground = null
     this.buttonText = null
+    this.reviveButtonBorder = null
+    this.reviveButtonBackground = null
+    this.reviveButtonText = null
     this.hintText = null
   }
 
   /** 解放文言があるときは行数に合わせてパネルを高くする。 */
   private getPanelHeight(): number {
-    if (this.unlockLines.length === 0) {
-      return STAGE_RESULT_PANEL_HEIGHT
+    let panelHeight = STAGE_RESULT_PANEL_HEIGHT
+    if (this.unlockLines.length > 0) {
+      // Forest + Pierce + XP Bonus のように行が増えても、下の行が潰れない高さにする
+      const unlockBlockHeight =
+        this.unlockLines.length * STAGE_RESULT_UNLOCK_LINE_HEIGHT
+      const neededHeight =
+        STAGE_RESULT_UNLOCK_PANEL_CHROME_HEIGHT + unlockBlockHeight
+      panelHeight = STAGE_RESULT_PANEL_HEIGHT_WITH_UNLOCK
+      if (neededHeight > panelHeight) {
+        panelHeight = neededHeight
+      }
     }
-
-    // Forest + Pierce + XP Bonus のように行が増えても、下の行が潰れない高さにする
-    const unlockBlockHeight =
-      this.unlockLines.length * STAGE_RESULT_UNLOCK_LINE_HEIGHT
-    const neededHeight =
-      STAGE_RESULT_UNLOCK_PANEL_CHROME_HEIGHT + unlockBlockHeight
-    let panelHeight = STAGE_RESULT_PANEL_HEIGHT_WITH_UNLOCK
-    if (neededHeight > panelHeight) {
-      panelHeight = neededHeight
+    // REVIVE ボタン用の1段（Feature Flag=true 時のみ）。false 時は高さ据え置き
+    if (this.showReviveButton) {
+      panelHeight = panelHeight + 56
     }
     if (panelHeight > STAGE_RESULT_PANEL_MAX_HEIGHT) {
       panelHeight = STAGE_RESULT_PANEL_MAX_HEIGHT
@@ -375,6 +404,51 @@ export class StageResultSystem {
     })
   }
 
+  /**
+   * Feature Flag=true 時のみ。TITLE の上に REVIVE を置く。
+   * Production（Flag=false）では呼ばれないため見た目は従来どおり。
+   */
+  private createReviveButton(): void {
+    const buttonY = this.getPanelBottomY() - 108
+    this.reviveButtonBorder = this.scene.add.rectangle(
+      GAME_WIDTH / 2,
+      buttonY,
+      184,
+      44,
+      TITLE_AREA_PANEL_SELECTED_BORDER_COLOR,
+    )
+    this.reviveButtonBorder.setDepth(STAGE_RESULT_UI_DEPTH + 3)
+
+    this.reviveButtonBackground = this.scene.add.rectangle(
+      GAME_WIDTH / 2,
+      buttonY,
+      180,
+      40,
+      STAGE_RESULT_BUTTON_HOVER_COLOR,
+    )
+    this.reviveButtonBackground.setDepth(STAGE_RESULT_UI_DEPTH + 3)
+    this.reviveButtonBackground.setInteractive({ useHandCursor: true })
+
+    this.reviveButtonText = this.scene.add.text(
+      GAME_WIDTH / 2,
+      buttonY,
+      REVIVE_BUTTON_LABEL,
+      {
+        fontFamily: FONT_FAMILY_UI,
+        fontSize: '18px',
+        color: STAGE_RESULT_BUTTON_TEXT_COLOR,
+        fontStyle: 'bold',
+      },
+    )
+    this.reviveButtonText.setOrigin(0.5)
+    this.reviveButtonText.setDepth(STAGE_RESULT_UI_DEPTH + 4)
+    shrinkTextToFitWidth(this.reviveButtonText, 168)
+
+    this.reviveButtonBackground.on('pointerdown', () => {
+      this.confirmRevive()
+    })
+  }
+
   /** 「SPACE / ENTER で決定」のヒント文字。 */
   private createHintText(): void {
     const hintY = this.getPanelBottomY() - 16
@@ -435,6 +509,16 @@ export class StageResultSystem {
     }
 
     const action = this.onConfirm
+    this.hide()
+    action()
+  }
+
+  /** REVIVE 押下。広告入口はホスト側（requestRevive）。 */
+  private confirmRevive(): void {
+    if (!this.isVisible || this.onRevive === null) {
+      return
+    }
+    const action = this.onRevive
     this.hide()
     action()
   }

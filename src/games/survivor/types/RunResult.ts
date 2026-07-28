@@ -27,4 +27,10 @@ export type RunProgress = {
   /** 最終ボス（finalBossConfig）をこのランで撃破したか */
   finalBossDefeated: boolean
   finalized: boolean
+  /** このランで復活を1回使ったか（Save しない・Run メモリのみ） */
+  reviveUsed: boolean
+  /** 広告／復活待ち中か（Feature Flag=true 時） */
+  revivePending: boolean
+  /** 死亡後の結果が確定したか（defeat 確定 or 復活不可の Game Over） */
+  deathSettled: boolean
 }
