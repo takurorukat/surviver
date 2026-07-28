@@ -36,12 +36,15 @@ import {
   ENEMY_TOUGH_MELEE_COLOR,
   ENEMY_WIND_HIVE_BOSS_COLOR,
   ENEMY_WIND_HIVE_BOSS_HP,
+  ENEMY_EARTH_DUNGEON_BOSS_COLOR,
+  ENEMY_EARTH_DUNGEON_BOSS_HP,
   PLAY_AREA_HEIGHT,
   PLAY_AREA_ORIGIN_X,
   PLAY_AREA_ORIGIN_Y,
   PLAY_AREA_WIDTH,
   calculateBurningTreeSpeed,
   calculateWindHiveBossSpeed,
+  calculateEarthDungeonBossSpeed,
 } from '../../GameConstants'
 import { spawnEnemyCommon } from './spawnEnemyCommon'
 
@@ -476,6 +479,29 @@ export function spawnWindHiveBossEnemy(
     ENEMY_WIND_HIVE_BOSS_COLOR,
     false,
     'windHiveBoss',
+  )
+}
+
+/**
+ * Earth Dungeon Stage5 ボスを1体スポーンする。
+ * HP 100。速度は通常スライムの 0.5 倍。プレイヤーを追う。
+ */
+export function spawnEarthDungeonBossEnemy(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  spawnX: number,
+  spawnY: number,
+): Phaser.GameObjects.Rectangle {
+  return spawnEnemyCommon(
+    scene,
+    enemyGroup,
+    spawnX,
+    spawnY,
+    ENEMY_EARTH_DUNGEON_BOSS_HP,
+    calculateEarthDungeonBossSpeed(),
+    ENEMY_EARTH_DUNGEON_BOSS_COLOR,
+    false,
+    'earthDungeonBoss',
   )
 }
 

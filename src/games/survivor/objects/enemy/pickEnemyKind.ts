@@ -7,6 +7,21 @@ import type { EnemyKind } from './types'
 
 const FOREST_STAGE5_ENEMY_KINDS: EnemyKind[] = ['mushroom', 'stump', 'beetle', 'branch']
 
+/**
+ * Earth Dungeon ボスが召喚できる通常敵（Stage1〜3 で使う種類）。
+ * Stage4 専用通常敵は未実装のため含めない。ボス自身・特殊ボスは含めない。
+ */
+export const EARTH_DUNGEON_SUMMONABLE_ENEMY_KINDS: readonly EnemyKind[] = [
+  'earthSlime',
+  'earthRock',
+  'earthSkeleton',
+] as const
+
+/** Earth ボス召喚用: 候補から1種類をランダムに選ぶ。 */
+export function pickEarthDungeonSummonEnemyKind(): EnemyKind {
+  return pickRandomKind([...EARTH_DUNGEON_SUMMONABLE_ENEMY_KINDS])
+}
+
 /** 重み付き抽選の1エントリ。weight は相対比率（合計が100でなくてよい）。 */
 export type WeightedEnemyKind = {
   kind: EnemyKind

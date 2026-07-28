@@ -17,6 +17,9 @@ export function getStageCompletionRule(
   if (areaId === 'plains' && isFinalStage(stageNumber, totalStages)) {
     return 'defeat-boss'
   }
+  if (areaId === 'ruins' && isFinalStage(stageNumber, totalStages)) {
+    return 'defeat-boss'
+  }
   return 'survive-or-clear-all'
 }
 

@@ -27,7 +27,7 @@ describe('Wind Plains Stage3 windHiveBoss', () => {
     expect(getWindHiveBossSpeedFromBase()).toBe(ENEMY_BASE_SPEED * 0.5)
   })
 
-  it('Plains Stage3 だけ defeat-boss、他は survive-or-clear-all', () => {
+  it('Plains 最終と他エリア中間は従来どおり（Ruins 最終は別テスト）', () => {
     expect(getStageCompletionRule('plains', 3, 3)).toBe('defeat-boss')
     expect(getStageCompletionRule('plains', 2, 3)).toBe('survive-or-clear-all')
     expect(getStageCompletionRule('forest', 5, 5)).toBe('survive-or-clear-all')

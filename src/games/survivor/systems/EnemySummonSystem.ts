@@ -17,11 +17,17 @@ import {
   ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_OFFSET_MAX,
   ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_OFFSET_MIN,
   ENEMY_WIND_HIVE_BOSS_MAX_SUMMONED_BEES,
+  ENEMY_EARTH_DUNGEON_BOSS_MAX_SUMMONED_ENEMIES,
+  ENEMY_EARTH_DUNGEON_BOSS_SUMMON_INTERVAL_MS,
+  ENEMY_EARTH_DUNGEON_BOSS_SUMMON_OFFSET_MAX,
+  ENEMY_EARTH_DUNGEON_BOSS_SUMMON_OFFSET_MIN,
+  ENEMY_WIDTH,
   PLAY_AREA_HEIGHT,
   PLAY_AREA_ORIGIN_X,
   PLAY_AREA_ORIGIN_Y,
   PLAY_AREA_WIDTH,
   calculateBranchSpeed,
+  calculateEarthRockSpeed,
   calculateEnemyHpForStage,
   calculateEnemySpeedForStage,
   calculateRangedEnemyHpForStage,
@@ -29,9 +35,10 @@ import {
   calculateStumpSpeed,
   getMaxEnemiesForStage,
 } from '../GameConstants'
-import { type SpawnPosition } from '../objects/enemy/types'
+import { type EnemyKind, type SpawnPosition } from '../objects/enemy/types'
 import { pickBurningTreeSpawnIntervalMs } from '../objects/enemy/spawnEnemyCommon'
 import { pickVolcanoStage5EnemyKind } from '../objects/enemy/packSpawn'
+import { pickEarthDungeonSummonEnemyKind } from '../objects/enemy/pickEnemyKind'
 import { countActiveEnemies } from '../objects/enemy/combat'
 import {
   spawnMushroomEnemy,
@@ -43,10 +50,18 @@ import {
   spawnStumpEnemy,
   spawnBranchEnemy,
   spawnRangedEnemy,
+  spawnEarthSlimeEnemy,
+  spawnEarthRockEnemy,
+  spawnEarthSkeletonEnemy,
 } from '../objects/enemy/spawnFactories'
 import { shouldSummonWindHiveBossBee } from './windHiveBossLogic'
+import {
+  isSpawnDirectlyAbovePlayer,
+  shouldSummonEarthDungeonBossMinion,
+} from './earthDungeonBossLogic'
 
 export { shouldSummonWindHiveBossBee } from './windHiveBossLogic'
+export { shouldSummonEarthDungeonBossMinion } from './earthDungeonBossLogic'
 
 /**
  * 敵撃破時の経験値コイン倍率（通常は1。カブトムシ／枝／火山ステージ3以上は2）。
@@ -484,6 +499,125 @@ export function updateWindHiveBossBeeSpawns(
   }
 }
 
+/**
+ * Earth Dungeon Stage5 ボスが 1 秒ごとに Earth 通常敵を1体召喚する。
+ * ボス召喚敵が 8 体いるときはスキップ。Wave 敵は上限に含めない。
+ */
+export function updateEarthDungeonBossMinionSpawns(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  _stageNumber: number,
+  totalStages: number,
+  nowMs: number,
+  playerX: number,
+  playerY: number,
+): void {
+  const children = enemyGroup.getChildren()
+
+  for (let index = 0; index < children.length; index++) {
+    const boss = children[index] as Phaser.GameObjects.Rectangle
+    if (!boss.active) {
+      continue
+    }
+    if (boss.getData('isDefeated') === true) {
+      continue
+    }
+    if (boss.getData('enemyKind') !== 'earthDungeonBoss') {
+      continue
+    }
+
+    let nextSummonAtMs = boss.getData('nextEarthSummonAtMs') as number
+    if (typeof nextSummonAtMs !== 'number') {
+      nextSummonAtMs = nowMs + ENEMY_EARTH_DUNGEON_BOSS_SUMMON_INTERVAL_MS
+      boss.setData('nextEarthSummonAtMs', nextSummonAtMs)
+    }
+
+    const summonedCount = countBossSummonedBees(enemyGroup)
+    if (
+      !shouldSummonEarthDungeonBossMinion({
+        nowMs,
+        nextSummonAtMs,
+        activeSummonedCount: summonedCount,
+        maxSummoned: ENEMY_EARTH_DUNGEON_BOSS_MAX_SUMMONED_ENEMIES,
+      })
+    ) {
+      // 上限到達時もタイマーは進め、次の間隔まで待つ（一斉 catch-up しない）
+      if (
+        nowMs >= nextSummonAtMs &&
+        summonedCount >= ENEMY_EARTH_DUNGEON_BOSS_MAX_SUMMONED_ENEMIES
+      ) {
+        boss.setData(
+          'nextEarthSummonAtMs',
+          nowMs + ENEMY_EARTH_DUNGEON_BOSS_SUMMON_INTERVAL_MS,
+        )
+      }
+      continue
+    }
+
+    const spawnPosition = getEarthDungeonBossMinionSpawnPosition(
+      boss.x,
+      boss.y,
+      playerX,
+      playerY,
+    )
+    const enemyKind = pickEarthDungeonSummonEnemyKind()
+    const summoned = spawnEarthDungeonSummonedEnemy(
+      scene,
+      enemyGroup,
+      spawnPosition.x,
+      spawnPosition.y,
+      enemyKind,
+      totalStages,
+    )
+    summoned.setData('summonedByBoss', true)
+    summoned.setData('xpDropMultiplier', 0)
+
+    boss.setData(
+      'nextEarthSummonAtMs',
+      nowMs + ENEMY_EARTH_DUNGEON_BOSS_SUMMON_INTERVAL_MS,
+    )
+  }
+}
+
+/** Stage1〜3 の Earth 通常敵をランダムで1体出す（各ステージ本来のステータス）。 */
+function spawnEarthDungeonSummonedEnemy(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  spawnX: number,
+  spawnY: number,
+  enemyKind: EnemyKind,
+  totalStages: number,
+): Phaser.GameObjects.Rectangle {
+  if (enemyKind === 'earthRock') {
+    return spawnEarthRockEnemy(
+      scene,
+      enemyGroup,
+      spawnX,
+      spawnY,
+      calculateEarthRockSpeed(2, totalStages),
+    )
+  }
+
+  if (enemyKind === 'earthSkeleton') {
+    return spawnEarthSkeletonEnemy(
+      scene,
+      enemyGroup,
+      spawnX,
+      spawnY,
+      calculateEnemySpeedForStage(3, totalStages),
+    )
+  }
+
+  return spawnEarthSlimeEnemy(
+    scene,
+    enemyGroup,
+    spawnX,
+    spawnY,
+    calculateEnemyHpForStage(1, totalStages),
+    calculateEnemySpeedForStage(1, totalStages),
+  )
+}
+
 /** Stage1〜4 の火山敵をランダムで1体出す（各ステージ本来のステータス）。 */
 function spawnVolcanoPreviousStageEnemy(
   scene: Phaser.Scene,
@@ -671,6 +805,47 @@ function getWindHiveBossBeeSpawnPosition(
   const spawnX = bossX + Math.cos(angle) * distance
   const spawnY = bossY + Math.sin(angle) * distance
   return clampSpawnToPlayArea(spawnX, spawnY)
+}
+
+/**
+ * Earth ボス周囲に召喚敵を出す座標（半径 48〜96）。
+ * プレイヤー真上は避け、数回だけ角度をやり直す。
+ */
+function getEarthDungeonBossMinionSpawnPosition(
+  bossX: number,
+  bossY: number,
+  playerX: number,
+  playerY: number,
+): SpawnPosition {
+  const horizontalTolerance = ENEMY_WIDTH * 1.5
+  let chosen: SpawnPosition = { x: bossX, y: bossY }
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const angle = Math.random() * Math.PI * 2
+    const distance =
+      ENEMY_EARTH_DUNGEON_BOSS_SUMMON_OFFSET_MIN +
+      Math.random() *
+        (ENEMY_EARTH_DUNGEON_BOSS_SUMMON_OFFSET_MAX -
+          ENEMY_EARTH_DUNGEON_BOSS_SUMMON_OFFSET_MIN)
+    const candidate = clampSpawnToPlayArea(
+      bossX + Math.cos(angle) * distance,
+      bossY + Math.sin(angle) * distance,
+    )
+    chosen = candidate
+    if (
+      !isSpawnDirectlyAbovePlayer({
+        spawnX: candidate.x,
+        spawnY: candidate.y,
+        playerX,
+        playerY,
+        horizontalTolerance,
+      })
+    ) {
+      return candidate
+    }
+  }
+
+  return chosen
 }
 
 function clampSpawnToPlayArea(spawnX: number, spawnY: number): SpawnPosition {

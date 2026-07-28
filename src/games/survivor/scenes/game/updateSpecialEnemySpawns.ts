@@ -7,6 +7,7 @@ import {
   spawnForestStage5Gravestone,
   spawnVolcanoStage5ChaosElemental,
   spawnWindHiveBossEnemy,
+  spawnEarthDungeonBossEnemy,
   getRandomInsideSpawnPosition,
 } from '../../objects/Enemy'
 import {
@@ -16,6 +17,7 @@ import {
   updateGravestoneBeetleSpawns,
   updateChaosElementalSpawns,
   updateWindHiveBossBeeSpawns,
+  updateEarthDungeonBossMinionSpawns,
 } from '../../systems/EnemySummonSystem'
 
 export type SpecialEnemySpawnContext = {
@@ -75,11 +77,24 @@ export function updateSpecialEnemySpawns(ctx: SpecialEnemySpawnContext): void {
     ctx.areaStageCount,
     ctx.nowMs,
   )
+  const playerPosition =
+    ctx.getPlayerPosition !== undefined
+      ? ctx.getPlayerPosition()
+      : { x: 0, y: 0 }
+  updateEarthDungeonBossMinionSpawns(
+    ctx.scene,
+    ctx.enemyGroup,
+    ctx.stageNumber,
+    ctx.areaStageCount,
+    ctx.nowMs,
+    playerPosition.x,
+    playerPosition.y,
+  )
 }
 
 /**
  * エリアボスを Stage 開始直後に1体だけ出す。条件外なら何もしない。
- * Forest 墓石 / Volcano 混沌エレメンタル / Plains 竜巻ボス。
+ * Forest 墓石 / Volcano 混沌エレメンタル / Plains 竜巻ボス / Earth ゴーレム。
  */
 export function spawnAreaBossIfNeeded(ctx: SpecialEnemySpawnContext): void {
   if (ctx.areaId === 'forest' && ctx.stageNumber === 5) {
@@ -97,6 +112,20 @@ export function spawnAreaBossIfNeeded(ctx: SpecialEnemySpawnContext): void {
         : getRandomInsideSpawnPosition()
     const spawnPosition = getRandomInsideSpawnPosition(playerPosition)
     spawnWindHiveBossEnemy(
+      ctx.scene,
+      ctx.enemyGroup,
+      spawnPosition.x,
+      spawnPosition.y,
+    )
+    return
+  }
+  if (ctx.areaId === 'ruins' && ctx.stageNumber === 5) {
+    const playerPosition =
+      ctx.getPlayerPosition !== undefined
+        ? ctx.getPlayerPosition()
+        : getRandomInsideSpawnPosition()
+    const spawnPosition = getRandomInsideSpawnPosition(playerPosition)
+    spawnEarthDungeonBossEnemy(
       ctx.scene,
       ctx.enemyGroup,
       spawnPosition.x,

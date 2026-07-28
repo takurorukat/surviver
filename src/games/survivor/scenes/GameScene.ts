@@ -76,7 +76,7 @@ import { stepArcadePhysicsOnce } from '../utils/arcadePhysicsHelpers'
 import { HudSystem } from '../systems/HudSystem'
 import { WaveSystem } from '../systems/WaveSystem'
 import { updateEnemyChaseMovement } from '../systems/EnemyMovementSystem'
-import { updateEnemyRangedAttacks, updateEarthRockAttacks } from '../systems/EnemyAttackSystem'
+import { updateEnemyRangedAttacks, updateEarthRockAttacks, updateEarthDungeonBossRockBursts } from '../systems/EnemyAttackSystem'
 import {
   createPlayerDamageState,
   canPlayerTakeDamageNow,
@@ -795,6 +795,9 @@ export class GameScene extends Phaser.Scene {
         areaStageCount: this.areaStageCount,
         enemyGroup: this.enemyGroup,
         nowMs: this.time.now,
+        getPlayerPosition: () => {
+          return { x: this.player.x, y: this.player.y }
+        },
       })
       updatePlayerBullets(this.playerBulletGroup)
       updateEnemyBullets(this.enemyBulletGroup)
@@ -1466,6 +1469,14 @@ export class GameScene extends Phaser.Scene {
       this.time.now,
     )
     updateEarthRockAttacks(
+      this,
+      this.enemyGroup,
+      this.enemyBulletGroup,
+      this.player.x,
+      this.player.y,
+      this.time.now,
+    )
+    updateEarthDungeonBossRockBursts(
       this,
       this.enemyGroup,
       this.enemyBulletGroup,

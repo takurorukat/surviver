@@ -26,6 +26,7 @@ export type EnemyKind =
   | 'branch'
   | 'gravestone'
   | 'windHiveBoss'
+  | 'earthDungeonBoss'
   | 'stoneGuard'
   | 'ranged'
   | 'runner'
