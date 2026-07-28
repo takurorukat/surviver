@@ -23,6 +23,7 @@ describe('unified seven skill icon assets', () => {
 
   it('同一作者・同一ライセンスのCreditsを表示する', () => {
     expect(CORE_SKILL_ICON_IDS).toHaveLength(7)
+    expect(SETTINGS_CREDITS_BODY).not.toContain('TMFactory')
     expect(SETTINGS_CREDITS_BODY).toContain('Icons by Lorc')
     expect(SETTINGS_CREDITS_BODY).toContain('game-icons.net')
     expect(SETTINGS_CREDITS_BODY).toContain('CC BY 3.0')

@@ -15,9 +15,9 @@ export const SETTINGS_MENU_TWEEN_MS = 220
 export const SETTINGS_MENU_BUTTON_HEIGHT = 40
 export const SETTINGS_MENU_BUTTON_GAP = 12
 export const SETTINGS_CREDITS_TITLE = 'Credits'
+/** ロゴの上に出す短い一文（ロゴ自体に ROSSO ARGINE が入っている） */
+export const SETTINGS_CREDITS_CREATED_BY = 'created by'
 export const SETTINGS_CREDITS_BODY = [
-  'Created by TMFactory',
-  '',
   'MUSIC',
   '"Pack of loopable game music"',
   'by obscure music (Gichco)',

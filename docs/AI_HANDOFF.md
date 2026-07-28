@@ -29,6 +29,14 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
+- 実施内容: Credits に「created by」＋ ROSSO ARGINE ロゴ画像を表示。旧「Created by TMFactory」文言を削除。アセットは添付 PNG（`public/assets/images/credits_rosso_argine.png`）を preload。
+- 変更ファイル: assets.ts / ui.ts / assetManifest / SettingsMenuSystem / creditsRossoArgine.test.ts / 関連 Credits テスト
+- 検証: typecheck OK、関連テスト OK、build OK、dist にロゴあり
+- 未解決: ブラウザでの見た目確認は未実施（Settings → Credits）
+- 次の開発タスク: ユーザー確認待ち（コミット未作成）
+
+### 2026-07-28 — Cursor
+
 - 実施内容: Skill Unlock 表示同期修正。根本原因は HUD が Pierce/Blast/Orb/Ricochet を「今ラン Lv>0」で鍵表示していたこと。`isSkillUnlocked`（`unlockedAchievementIds` + ALL_ACHIEVEMENTS）を SSoT に統一。スキルツリー／ステータス行／Achievements パネルの鍵を解放済みで非表示。合成解放直後に `refreshUnlockStatus`。条件・Save・ID 未変更。
 - 変更ファイル: AchievementSystem / HudSystem / AchievementsPanelSystem / GameScene / skillUnlockDisplay.test.ts / docs
 - 検証: typecheck OK、tests 233 OK、build OK、git diff --check OK

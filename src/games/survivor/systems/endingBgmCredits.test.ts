@@ -56,6 +56,7 @@ describe('Music Credits', () => {
         'https://opengameart.org/content/pack-of-loopable-game-music',
       ),
     ).toBe(true)
+    expect(SETTINGS_CREDITS_BODY.includes('TMFactory')).toBe(false)
   })
 })
 

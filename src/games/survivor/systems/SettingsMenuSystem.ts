@@ -26,7 +26,10 @@ import {
   SETTINGS_MENU_BLUR_STRENGTH,
   SETTINGS_MENU_BLUR_STEPS,
   SETTINGS_CREDITS_TITLE,
+  SETTINGS_CREDITS_CREATED_BY,
   SETTINGS_CREDITS_BODY,
+  CREDITS_ROSSO_ARGINE_LOGO_KEY,
+  CREDITS_ROSSO_ARGINE_LOGO_DISPLAY_WIDTH,
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
 } from '../GameConstants'
@@ -62,7 +65,7 @@ const BUTTON_BORDER_NORMAL = 0x475569
 const BUTTON_BG_NORMAL = 0x334155
 const BUTTON_BG_HOVER = 0x475569
 const CREDITS_PANEL_WIDTH = 420
-const CREDITS_PANEL_HEIGHT = 360
+const CREDITS_PANEL_HEIGHT = 420
 const CREDITS_BODY_PADDING_X = 36
 const CREDITS_DEPTH = SETTINGS_MENU_DEPTH + 20
 
@@ -88,6 +91,8 @@ export class SettingsMenuSystem {
   private creditsBorder: Phaser.GameObjects.Rectangle | null = null
   private creditsPanel: Phaser.GameObjects.Rectangle | null = null
   private creditsTitleText: Phaser.GameObjects.Text | null = null
+  private creditsCreatedByText: Phaser.GameObjects.Text | null = null
+  private creditsLogo: Phaser.GameObjects.Image | null = null
   private creditsBodyText: Phaser.GameObjects.Text | null = null
   private creditsBackButton: MenuButtonView | null = null
 
@@ -450,8 +455,48 @@ export class SettingsMenuSystem {
     this.creditsTitleText.setScrollFactor(0)
     shrinkTextToFitWidth(this.creditsTitleText, CREDITS_PANEL_WIDTH - CREDITS_BODY_PADDING_X)
 
-    const bodyTopY = panelTopY + 56
+    // created by + ROSSO ARGINE ロゴ
+    this.creditsCreatedByText = this.scene.add.text(
+      GAME_WIDTH / 2,
+      panelTopY + 56,
+      SETTINGS_CREDITS_CREATED_BY,
+      {
+        fontFamily: FONT_FAMILY_UI,
+        fontSize: '13px',
+        color: '#cbd5e1',
+      },
+    )
+    this.creditsCreatedByText.setOrigin(0.5, 0)
+    this.creditsCreatedByText.setDepth(CREDITS_DEPTH + 3)
+    this.creditsCreatedByText.setScrollFactor(0)
+
+    let logoBottomY = panelTopY + 56 + this.creditsCreatedByText.height + 8
+    if (this.scene.textures.exists(CREDITS_ROSSO_ARGINE_LOGO_KEY)) {
+      this.creditsLogo = this.scene.add.image(
+        GAME_WIDTH / 2,
+        logoBottomY,
+        CREDITS_ROSSO_ARGINE_LOGO_KEY,
+      )
+      this.creditsLogo.setOrigin(0.5, 0)
+      const sourceWidth = this.creditsLogo.width
+      const sourceHeight = this.creditsLogo.height
+      let displayWidth = CREDITS_ROSSO_ARGINE_LOGO_DISPLAY_WIDTH
+      let displayHeight = displayWidth
+      if (sourceWidth > 0) {
+        displayHeight = (displayWidth * sourceHeight) / sourceWidth
+      }
+      this.creditsLogo.setDisplaySize(displayWidth, displayHeight)
+      this.creditsLogo.setDepth(CREDITS_DEPTH + 3)
+      this.creditsLogo.setScrollFactor(0)
+      logoBottomY = logoBottomY + displayHeight + 12
+    } else {
+      // アセット未読込時の最低限フォールバック
+      this.creditsCreatedByText.setText('created by ROSSO ARGINE')
+      logoBottomY = logoBottomY + 8
+    }
+
     const backButtonY = panelBottomY - 36
+    const bodyTopY = logoBottomY
     const bodyMaxHeight = backButtonY - SETTINGS_MENU_BUTTON_HEIGHT / 2 - 12 - bodyTopY
 
     this.creditsBodyText = this.scene.add.text(
@@ -532,6 +577,12 @@ export class SettingsMenuSystem {
     if (this.creditsTitleText !== null) {
       creditsObjects.push(this.creditsTitleText)
     }
+    if (this.creditsCreatedByText !== null) {
+      creditsObjects.push(this.creditsCreatedByText)
+    }
+    if (this.creditsLogo !== null) {
+      creditsObjects.push(this.creditsLogo)
+    }
     if (this.creditsBodyText !== null) {
       creditsObjects.push(this.creditsBodyText)
     }
@@ -571,6 +622,14 @@ export class SettingsMenuSystem {
     if (this.creditsTitleText !== null) {
       this.creditsTitleText.destroy()
       this.creditsTitleText = null
+    }
+    if (this.creditsCreatedByText !== null) {
+      this.creditsCreatedByText.destroy()
+      this.creditsCreatedByText = null
+    }
+    if (this.creditsLogo !== null) {
+      this.creditsLogo.destroy()
+      this.creditsLogo = null
     }
     if (this.creditsBodyText !== null) {
       this.creditsBodyText.destroy()
