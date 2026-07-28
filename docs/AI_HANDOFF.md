@@ -29,6 +29,14 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
+- 実施内容: Ending BGM（Victory=Plains 0.11 / Final Ascent=Ruins 0.09、fade 400/600ms）＋ Music Credits を obscure music (Gichco) CC0 へ修正。出所不明の `area_clear_bgm.ogg` を Runtime／manifest／ファイルから削除（短い Area Clear SFX は維持）。`stopSharedBgm({ fadeMs })` の最小拡張のみ。新音源なし。
+- 変更ファイル: EndingScene / GameAudioSystem / SoundManager / ending・audio・ui・assetManifest / endingBgmCredits.test.ts / area_clear_bgm.ogg 削除 / AUDIO_ASSET_LIBRARY・GAME_SPEC
+- 検証: typecheck OK、tests 203 OK、build OK、git diff --check OK、dist に plains/ruins あり・area_clear_bgm なし・area_clear.ogg あり
+- 未解決: ブラウザでの聴感・Network は未自動確認（VIEW ENDING 手動手順を報告）。tools/sfx_designer の文字列言及は残置
+- 次の開発タスク: Full Game Verification または Run Result Data（未着手）
+
+### 2026-07-28 — Cursor
+
 - 実施内容: Orbiting Orb 角速度を全レベルで2倍。Earth Stage4 `earthMagmaRock` の表示を判定scale(1.5)の1.5倍＝2.25へ（当たり判定は1.5のまま）。未コミットだった Stage4 マグマ岩実装も同梱。Stage3 Final Wave は先行コミット `fef60b2`。
 - 変更ファイル: combat.ts / orbitingOrb.test.ts / enemies.ts（DISPLAY_SCALE）/ magma rock 実装一式 / sprite / tests / docs
 - 検証: typecheck OK、tests 194+ OK、build OK

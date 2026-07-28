@@ -27,8 +27,10 @@ import {
   BGM_VOLUME,
   TITLE_BGM_KEY,
   TITLE_BGM_VOLUME,
-  AREA_CLEAR_BGM_KEY,
+  RUINS_BGM_KEY,
   BGM_ENABLED_STORAGE_KEY,
+  ENDING_VICTORY_BGM_VOLUME,
+  ENDING_FINAL_ASCENT_BGM_VOLUME,
   SFX_KEY_ORBITING_ORB_OBTAIN,
   SFX_KEY_ORBITING_ORB_HIT,
   SFX_KEY_ORBITING_ORB_SHATTER,
@@ -61,6 +63,9 @@ const SURVIVOR_SOUND_PREFERENCES: SoundPreferencesConfig = {
 }
 
 let preferredBattleBgmKey = BGM_KEY
+/** Ending 用に最後に要求した曲（BGM ON 復帰時） */
+let preferredEndingAudioKey: string | null = null
+let preferredEndingVolume = ENDING_VICTORY_BGM_VOLUME
 
 /** 設定の BGM ON/OFF（どこからでも参照可） */
 export function isBgmEnabled(): boolean {
@@ -90,8 +95,8 @@ export class GameAudioSystem {
     return this.soundManager.isBgmKindActive('battle')
   }
 
-  isAreaClearBgmActive(): boolean {
-    return this.soundManager.isBgmKindActive('clear')
+  isEndingBgmActive(): boolean {
+    return this.soundManager.isBgmKindActive('ending')
   }
 
   isAnyBgmActive(): boolean {
@@ -100,6 +105,7 @@ export class GameAudioSystem {
 
   startBgm(audioKey: string = BGM_KEY): void {
     preferredBattleBgmKey = audioKey
+    preferredEndingAudioKey = null
     const commandSeq = this.soundManager.scheduleBgmStart()
     this.soundManager.whenAudioReady(this.scene, () => {
       if (!this.soundManager.isBgmCommandCurrent(commandSeq)) {
@@ -126,6 +132,7 @@ export class GameAudioSystem {
   }
 
   startTitleBgm(): void {
+    preferredEndingAudioKey = null
     const commandSeq = this.soundManager.scheduleBgmStart()
     this.soundManager.whenAudioReady(this.scene, () => {
       if (!this.soundManager.isBgmCommandCurrent(commandSeq)) {
@@ -147,7 +154,24 @@ export class GameAudioSystem {
     })
   }
 
-  startAreaClearBgm(): void {
+  /**
+   * Ending Victory: Wind Plains BGM（BGM_KEY）を曲頭からループ。
+   * 既に同じ ending 曲なら二重起動しない。
+   */
+  startEndingVictoryBgm(): void {
+    this.startEndingBgm(BGM_KEY, ENDING_VICTORY_BGM_VOLUME)
+  }
+
+  /**
+   * Ending Final Ascent: Ruins BGM を曲頭からループ。
+   */
+  startEndingFinalAscentBgm(): void {
+    this.startEndingBgm(RUINS_BGM_KEY, ENDING_FINAL_ASCENT_BGM_VOLUME)
+  }
+
+  private startEndingBgm(audioKey: string, volume: number): void {
+    preferredEndingAudioKey = audioKey
+    preferredEndingVolume = volume
     const commandSeq = this.soundManager.scheduleBgmStart()
     this.soundManager.whenAudioReady(this.scene, () => {
       if (!this.soundManager.isBgmCommandCurrent(commandSeq)) {
@@ -155,23 +179,27 @@ export class GameAudioSystem {
       }
       const activeKey = this.soundManager.getActiveBgmAudioKey()
       if (
-        this.soundManager.isBgmKindActive('clear') &&
-        activeKey === AREA_CLEAR_BGM_KEY
+        this.soundManager.isBgmKindActive('ending') &&
+        activeKey === audioKey
       ) {
-        this.soundManager.applyGainToSharedBgm(BGM_VOLUME)
+        this.soundManager.applyGainToSharedBgm(volume)
         return
       }
       this.soundManager.startNativeBgm(
         this.scene,
-        AREA_CLEAR_BGM_KEY,
-        BGM_VOLUME,
-        'clear',
-        false,
+        audioKey,
+        volume,
+        'ending',
+        true,
+        undefined,
+        getSurvivorBgmLoopBounds(audioKey),
+        true,
       )
     })
   }
 
   forceRestartBattleBgm(): void {
+    preferredEndingAudioKey = null
     const commandSeq = this.soundManager.scheduleBgmStart()
     this.soundManager.whenAudioReady(this.scene, () => {
       if (!this.soundManager.isBgmCommandCurrent(commandSeq)) {
@@ -200,6 +228,8 @@ export class GameAudioSystem {
     if (this.soundManager.isAnyBgmActive()) {
       if (this.soundManager.isBgmKindActive('title')) {
         this.soundManager.applyGainToSharedBgm(TITLE_BGM_VOLUME)
+      } else if (this.soundManager.isBgmKindActive('ending')) {
+        this.soundManager.applyGainToSharedBgm(preferredEndingVolume)
       } else {
         this.soundManager.applyGainToSharedBgm(BGM_VOLUME)
       }
@@ -210,6 +240,12 @@ export class GameAudioSystem {
       this.startTitleBgm()
       return
     }
+    if (enabled && this.scene.scene.key === 'EndingScene') {
+      if (preferredEndingAudioKey !== null) {
+        this.startEndingBgm(preferredEndingAudioKey, preferredEndingVolume)
+      }
+      return
+    }
     if (enabled) {
       this.forceRestartBattleBgm()
     }
@@ -217,6 +253,17 @@ export class GameAudioSystem {
 
   stopBgm(): void {
     this.soundManager.stopSharedBgm()
+  }
+
+  /**
+   * BGM を指定ミリ秒でフェードアウトし、完了後にコールバック。
+   * Ending の画面切替用。shutdown 後は呼び出し側でガードすること。
+   */
+  fadeOutBgmThen(fadeMs: number, onComplete: () => void): void {
+    this.soundManager.stopSharedBgm({
+      fadeMs,
+      onFadeComplete: onComplete,
+    })
   }
 
   stopAllSounds(): void {

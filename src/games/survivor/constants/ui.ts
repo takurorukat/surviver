@@ -18,8 +18,12 @@ export const SETTINGS_CREDITS_TITLE = 'Credits'
 export const SETTINGS_CREDITS_BODY = [
   'Created by TMFactory',
   '',
-  'Assets',
-  'Graphics, Music: Pixel-Boy (Ninja Adventure, CC0)',
+  'MUSIC',
+  '"Pack of loopable game music"',
+  'by obscure music (Gichco)',
+  'Source: OpenGameArt.org',
+  'License: CC0 1.0 / Public Domain',
+  'https://opengameart.org/content/pack-of-loopable-game-music',
 ].join('\n')
 // Phaser postFX.addBlur(quality, x, y, strength, color, steps)
 export const SETTINGS_MENU_BLUR_QUALITY = 1

@@ -27,6 +27,7 @@
 - [x] Four-Area Ending Sequence（Victory → Final Ascent → Title、endingSeen、VIEW ENDING）。2026-07-28 実装・検証済み。
 - [x] Earth Dungeon Stage 3 Final Wave Termination（有限ウェーブ終了・早期クリア）。2026-07-28 修正・検証済み。
 - [x] Orbiting Orb 角速度2倍 + Earth Stage4 `earthMagmaRock` 表示1.5倍（判定据え置き）。2026-07-28 実装・検証済み。
+- [x] Ending BGM（Plains / Ruins 再利用）+ Music Credits 修正 + area_clear_bgm Runtime 除外。2026-07-28 実装・検証済み。
 - [ ] Run Result Data（Version 1 向けリザルトデータ）。
 - [ ] Area Clear Result UI（Version 1）。
 - [x] Final Stage Completion Rules（4エリア最終の `defeat-boss` を `finalBossConfig` で統合済み）。

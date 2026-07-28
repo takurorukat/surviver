@@ -181,6 +181,8 @@ export class SoundManager {
   stopSharedBgm(options?: {
     immediate?: boolean
     onFadeComplete?: () => void
+    /** 省略時はインスタンスの bgmFadeMs（既定 100ms） */
+    fadeMs?: number
   }): void {
     if (options?.onFadeComplete === undefined) {
       bgmCommandSequence = bgmCommandSequence + 1
@@ -193,6 +195,10 @@ export class SoundManager {
     }
 
     const onFadeComplete = options?.onFadeComplete
+    const fadeMs =
+      typeof options?.fadeMs === 'number' && Number.isFinite(options.fadeMs)
+        ? Math.max(0, options.fadeMs)
+        : this.bgmFadeMs
 
     if (sharedBgm === null) {
       if (onFadeComplete !== undefined) {
@@ -204,7 +210,7 @@ export class SoundManager {
     const playback = sharedBgm
     sharedBgm = null
 
-    if (options?.immediate === true) {
+    if (options?.immediate === true || fadeMs <= 0) {
       disconnectBgmPlayback(playback)
       if (onFadeComplete !== undefined) {
         onFadeComplete()
@@ -213,9 +219,9 @@ export class SoundManager {
     }
 
     const audioContext = playback.gainNode.context as AudioContext
-    scheduleGainFadeOut(audioContext, playback.gainNode, this.bgmFadeMs)
+    scheduleGainFadeOut(audioContext, playback.gainNode, fadeMs)
 
-    const stopAtSec = audioContext.currentTime + this.bgmFadeMs / 1000
+    const stopAtSec = audioContext.currentTime + fadeMs / 1000
     try {
       playback.source.stop(stopAtSec)
     } catch (_error) {
@@ -236,7 +242,7 @@ export class SoundManager {
       if (onFadeComplete !== undefined) {
         onFadeComplete()
       }
-    }, this.bgmFadeMs + BGM_FADE_DISCONNECT_BUFFER_MS)
+    }, fadeMs + BGM_FADE_DISCONNECT_BUFFER_MS)
   }
 
   stopAllActiveSfx(): void {

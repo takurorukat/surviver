@@ -8,6 +8,8 @@ import {
   ENDING_FADE_MS,
   ENDING_INPUT_LOCK_MS,
   ENDING_CONTINUE_HINT,
+  ENDING_VICTORY_TO_TEASER_BGM_FADE_MS,
+  ENDING_TEASER_TO_TITLE_BGM_FADE_MS,
 } from '../GameConstants'
 import { GameAudioSystem } from '../systems/GameAudioSystem'
 import {
@@ -37,6 +39,7 @@ export class EndingScene extends Phaser.Scene {
   private inputUnlockTimer: Phaser.Time.TimerEvent | null = null
   private fadeTween: Phaser.Tweens.Tween | null = null
   private isAdvancing = false
+  private isShuttingDown = false
   private audioSystem: GameAudioSystem | null = null
   private onPointerDown: (() => void) | null = null
 
@@ -48,26 +51,31 @@ export class EndingScene extends Phaser.Scene {
     this.markSeenOnComplete = data.markSeenOnComplete !== false
     this.sequenceState = createEndingSequenceState()
     this.isAdvancing = false
+    this.isShuttingDown = false
   }
 
   create(): void {
     this.cameras.main.setBackgroundColor(0x000000)
     this.audioSystem = new GameAudioSystem(this)
     this.audioSystem.prepare()
-    // Ending 中は無音（既存 BGM をフェードアウト）
-    this.audioSystem.stopBgm()
+    // 戦闘／Title BGM を止めてから Victory（Plains）へ
     this.audioSystem.stopAllSounds()
+    this.audioSystem.startEndingVictoryBgm()
 
     this.showCurrentScreen(true)
     this.bindInput()
   }
 
   shutdown(): void {
+    this.isShuttingDown = true
     this.unbindInput()
     this.clearInputUnlockTimer()
     if (this.fadeTween !== null) {
       this.fadeTween.stop()
       this.fadeTween = null
+    }
+    if (this.audioSystem !== null) {
+      this.audioSystem.stopBgm()
     }
     this.image = null
     this.hintText = null
@@ -169,6 +177,11 @@ export class EndingScene extends Phaser.Scene {
     this.hintText.setDepth(2)
     this.hintText.setAlpha(0)
 
+    // Final Ascent 画面では Ruins BGM を曲頭から開始
+    if (this.sequenceState.screen === 'finalAscent' && this.audioSystem !== null) {
+      this.audioSystem.startEndingFinalAscentBgm()
+    }
+
     const lockMs = Math.max(ENDING_FADE_MS, ENDING_INPUT_LOCK_MS)
 
     if (fadeIn) {
@@ -193,7 +206,7 @@ export class EndingScene extends Phaser.Scene {
   }
 
   private tryAdvance(): void {
-    if (this.isAdvancing) {
+    if (this.isAdvancing || this.isShuttingDown) {
       return
     }
 
@@ -210,7 +223,7 @@ export class EndingScene extends Phaser.Scene {
       return
     }
 
-    // Victory → Final Ascent: フェードアウトしてから次画面
+    // Victory → Final Ascent: 画像と BGM をフェードしてから次画面
     const targets: Phaser.GameObjects.GameObject[] = []
     if (this.image !== null) {
       targets.push(this.image)
@@ -219,20 +232,43 @@ export class EndingScene extends Phaser.Scene {
       targets.push(this.hintText)
     }
 
-    if (targets.length === 0) {
+    let visualDone = targets.length === 0
+    let bgmDone = this.audioSystem === null
+
+    const maybeShowNext = (): void => {
+      if (this.isShuttingDown) {
+        return
+      }
+      if (!visualDone || !bgmDone) {
+        return
+      }
       this.showCurrentScreen(true)
-      return
     }
 
-    this.fadeTween = this.tweens.add({
-      targets,
-      alpha: 0,
-      duration: ENDING_FADE_MS,
-      onComplete: () => {
-        this.fadeTween = null
-        this.showCurrentScreen(true)
-      },
-    })
+    if (targets.length === 0) {
+      visualDone = true
+    } else {
+      this.fadeTween = this.tweens.add({
+        targets,
+        alpha: 0,
+        duration: ENDING_FADE_MS,
+        onComplete: () => {
+          this.fadeTween = null
+          visualDone = true
+          maybeShowNext()
+        },
+      })
+    }
+
+    if (this.audioSystem !== null) {
+      this.audioSystem.fadeOutBgmThen(ENDING_VICTORY_TO_TEASER_BGM_FADE_MS, () => {
+        bgmDone = true
+        maybeShowNext()
+      })
+    } else {
+      bgmDone = true
+      maybeShowNext()
+    }
   }
 
   private finishAndReturnToTitle(): void {
@@ -243,13 +279,22 @@ export class EndingScene extends Phaser.Scene {
       markEndingSeen()
     }
 
-    if (this.audioSystem !== null) {
-      this.audioSystem.stopAllSounds()
+    const goToTitle = (): void => {
+      if (this.isShuttingDown) {
+        return
+      }
+      this.isShuttingDown = true
+      // GameScene が残っていれば止める（Title の二重表示・裏進行を防ぐ）
+      this.scene.stop('GameScene')
+      this.scene.start('TitleScene')
     }
 
-    // GameScene が残っていれば止める（Title の二重表示・裏進行を防ぐ）
-    this.scene.stop('GameScene')
+    if (this.audioSystem !== null) {
+      // SFX は即停止。BGM はフェード後に Title へ（Title が Title BGM を開始）
+      this.audioSystem.fadeOutBgmThen(ENDING_TEASER_TO_TITLE_BGM_FADE_MS, goToTitle)
+      return
+    }
 
-    this.scene.start('TitleScene')
+    goToTitle()
   }
 }

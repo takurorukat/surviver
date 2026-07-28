@@ -84,9 +84,6 @@ export const VOLCANO_BGM_PATH = 'assets/audio/library/cc0-loop-pack/volcano.ogg'
 // Earth Dungeon BGM（game_music_generator の dungeon テーマ / area id: ruins）
 export const RUINS_BGM_KEY = 'bgm-ruins'
 export const RUINS_BGM_PATH = 'assets/audio/library/cc0-loop-pack/ruins.ogg'
-// エリアクリア用ジングル（Ninja Adventure: LevelUp2）。ループしない
-export const AREA_CLEAR_BGM_KEY = 'bgm-area-clear'
-export const AREA_CLEAR_BGM_PATH = 'assets/audio/area_clear_bgm.ogg'
 export const TITLE_BGM_KEY = 'bgm-title'
 export const TITLE_BGM_PATH = 'assets/audio/library/cc0-loop-pack/title.ogg'
 // 元の曲が大きいため、戦闘BGMの半分の音量にする

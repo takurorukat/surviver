@@ -1682,10 +1682,7 @@ export class GameScene extends Phaser.Scene {
 
     this.pauseGameForLevelUp()
     // 選択中は戦闘BGMを止め、レベルアップ音だけを聞こえやすくする
-    // エリア最終ステージのクリアBGMはそのまま流す
-    if (!this.gameAudioSystem.isAreaClearBgmActive()) {
-      this.gameAudioSystem.stopBgm()
-    }
+    this.gameAudioSystem.stopBgm()
     this.gameAudioSystem.playEvent(SURVIVOR_SFX_EVENT_IDS.PROGRESSION_LEVEL_UP_OPEN)
     let requiredChoice: LevelUpChoiceId | undefined
     if (this.areaId === 'volcano' && this.stageNumber === 1 && this.currentMoveLevel < 2) {

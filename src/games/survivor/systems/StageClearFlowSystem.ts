@@ -221,7 +221,7 @@ export function beginStageClearSequence(
   ctx.setIsStartCountdownActive(false)
 
   // 戦闘 BGM を止めて、バナー表示と同時にクリア音を鳴らす。
-  // エリア最終: AREA CLEAR! 表示と同時に LevelUp2／途中ステージ: STAGE CLEAR! と同時に通常クリア音
+  // エリア最終: AREA CLEAR! 表示と同時に短い Area Clear SFX／途中ステージ: STAGE CLEAR! と同時に通常クリア音
   ctx.gameAudioSystem.stopBgm()
   const isGameClear = isFinalStage(ctx.stageNumber, ctx.areaStageCount)
   if (isGameClear) {

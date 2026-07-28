@@ -3,8 +3,6 @@
  */
 import type { AssetManifest } from '../../../core/scenes/AssetManifest'
 import {
-  AREA_CLEAR_BGM_KEY,
-  AREA_CLEAR_BGM_PATH,
   BGM_KEY,
   BGM_PATHS,
   ENEMY_ARMORED_WALK_FRAME_SIZE,
@@ -151,7 +149,6 @@ export const SURVIVOR_ASSET_MANIFEST: AssetManifest = {
     { key: FOREST_BGM_KEY, paths: FOREST_BGM_PATH },
     { key: VOLCANO_BGM_KEY, paths: VOLCANO_BGM_PATH },
     { key: RUINS_BGM_KEY, paths: RUINS_BGM_PATH },
-    { key: AREA_CLEAR_BGM_KEY, paths: AREA_CLEAR_BGM_PATH },
     { key: TITLE_BGM_KEY, paths: TITLE_BGM_PATH },
     { key: SFX_KEY_ENEMY_HIT, paths: SFX_PATH_ENEMY_HIT },
     { key: SFX_KEY_ENEMY_DEFEAT, paths: SFX_PATH_ENEMY_DEFEAT },

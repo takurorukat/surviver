@@ -160,7 +160,8 @@ XP BonusがLv2～3ならこのクリアXPは2倍、Lv4～5なら3倍（以降も
 3. たまったレベルアップをすべて選択
 4. 四角パネルの STAGE CLEAR / GAME CLEAR 表示
 
-エリア最終クリア用 BGM: `public/assets/audio/area_clear_bgm.ogg`（キー `bgm-area-clear`）。未配置時は無音で続行。
+エリア最終クリア時は短い Area Clear SFX（`sfx-area-clear` / `area_clear.ogg`）を再生する。
+旧の長尺クリア BGM（`area_clear_bgm.ogg` / `bgm-area-clear`）は Runtime から除外済み。
 旧ファイル名 `bgm_clear.ogg` / `bgm_loop.ogg` は使わない。
 
 ### 難易度（レベルアップ成長に連動）
@@ -208,17 +209,17 @@ XP BonusがLv2～3ならこのクリアXPは2倍、Lv4～5なら3倍（以降も
 | `sfx-player-hurt` | プレイヤー被ダメ時 | 低い衝撃音 |
 | `sfx-level-up` | レベルアップ時 | 上昇音 |
 | `bgm` / エリア別 | 戦闘中 | エリアごとにループ再生（下表） |
-| `bgm-title` | タイトル | `title_bgm.ogg` |
-| `bgm-area-clear` | エリア最終クリア | `area_clear_bgm.ogg` |
+| `bgm-title` | タイトル | `library/cc0-loop-pack/title.ogg` |
+| `sfx-area-clear` | エリア最終クリア | `area_clear.ogg`（短い SFX） |
 
 **戦闘 BGM（エリア別）**
 
 | エリア ID | キー | ファイル |
 |-----------|------|----------|
-| `plains`（既定） | `bgm` | `plains_bgm.ogg` |
-| `forest` | `bgm-forest` | `forest_bgm.ogg` |
-| `volcano` | `bgm-volcano` | `volcano_bgm.ogg` |
-| `ruins`（Earth Dungeon） | `bgm-ruins` | `ruins_bgm.ogg` |
+| `plains`（既定） | `bgm` | `library/cc0-loop-pack/plains.ogg` |
+| `forest` | `bgm-forest` | `library/cc0-loop-pack/forest.ogg` |
+| `volcano` | `bgm-volcano` | `library/cc0-loop-pack/volcano.ogg` |
+| `ruins`（Earth Dungeon） | `bgm-ruins` | `library/cc0-loop-pack/ruins.ogg` |
 
 - 効果音・BGM はいずれも `public/assets/audio/` の外部 OGG を主に使用
 - タイトル設定の BGM ON/OFF は `localStorage` キー `survivor-bgm-enabled-v2`

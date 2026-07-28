@@ -36,3 +36,29 @@ KenneyのRPG Audio、Impact Sounds、Interface SoundsはCC0です。商用利用
 ## BGM方針
 
 BGMは生成器の微調整ではなく、ループ済みでライセンスが明確な完成楽曲を試聴・選定して差し替える。候補にはCC0のOpenGameArt音楽などを使用し、採用前にループ品質と世界観を確認する。BGMの正式差し替えは候補の試聴・採用判断後に行う。
+
+## Runtime BGM（採用済み）
+
+Title / Plains / Forest / Volcano / Ruins の5曲は同一パック由来です。
+
+| 用途 | Runtime key | パス |
+| --- | --- | --- |
+| Title | `bgm-title` | `library/cc0-loop-pack/title.ogg` |
+| Wind Plains | `bgm` | `library/cc0-loop-pack/plains.ogg` |
+| Water Forest | `bgm-forest` | `library/cc0-loop-pack/forest.ogg` |
+| Fire Volcano | `bgm-volcano` | `library/cc0-loop-pack/volcano.ogg` |
+| Earth Dungeon | `bgm-ruins` | `library/cc0-loop-pack/ruins.ogg` |
+
+- パック名: “Pack of loopable game music”
+- 作者: obscure music (Gichco)
+- 配布元: OpenGameArt.org
+- ライセンス: CC0 1.0 / Public Domain（クレジット義務はないが自主的に Credits へ表示）
+- 元ページ: <https://opengameart.org/content/pack-of-loopable-game-music>
+- 証拠ファイル: `public/assets/audio/licenses/opengameart-cc0-loop-pack.txt`
+
+### Ending での再利用
+
+- Victory 画面: Plains BGM（`bgm`）を再利用（新しい音源コピーは作らない）
+- Final Ascent 画面: Ruins BGM（`bgm-ruins`）を再利用
+- `area_clear_bgm.ogg` は出所が不確定のため Ending では使用せず、Runtime／build 対象からも除外済み
+- 短い Area Clear SFX（`area_clear.ogg` / `sfx-area-clear`）は別物で維持
