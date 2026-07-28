@@ -28,7 +28,33 @@ export const SETTINGS_MENU_BLUR_STRENGTH = 1.4
 export const SETTINGS_MENU_BLUR_STEPS = 4
 
 export const TITLE_AREA_PANEL_COLUMNS = 2
-// タイトルに出すエリア数（Windy Plains / Water Forest / Fire Volcano / Earth Dungeon のみ。Castle 以降は出さない）
+
+import { getSkillIconMetrics } from './skillIcons'
+
+// --- スキルアイコン倍率（原本は constants/skillIcons.ts）---
+export const SKILL_TREE_ICON_SCALE = 1
+export const LEVEL_UP_SKILL_ICON_SCALE = 1.5
+export const UNLOCK_BANNER_SKILL_ICON_SCALE = 4.5
+export const LEVEL_UP_BANNER_SKILL_ICON_SCALE = 2.5
+const SKILL_TREE_ICON_METRICS = getSkillIconMetrics(SKILL_TREE_ICON_SCALE)
+const LEVEL_UP_SKILL_ICON_METRICS = getSkillIconMetrics(
+  LEVEL_UP_SKILL_ICON_SCALE,
+)
+export const SKILL_TREE_ICON_SIZE = SKILL_TREE_ICON_METRICS.size
+export const SKILL_TREE_ICON_BORDER = SKILL_TREE_ICON_METRICS.border
+export const SKILL_TREE_ICON_OUTER_SIZE = SKILL_TREE_ICON_METRICS.outerSize
+export const SKILL_TREE_ICON_GAP = SKILL_TREE_ICON_METRICS.gap
+export const SKILL_TREE_ICON_SYMBOL_FONT_SIZE = `${SKILL_TREE_ICON_METRICS.symbolFontSize}px`
+export const LEVEL_UP_SKILL_ICON_SIZE = LEVEL_UP_SKILL_ICON_METRICS.size
+export const LEVEL_UP_SKILL_ICON_BORDER = LEVEL_UP_SKILL_ICON_METRICS.border
+export const LEVEL_UP_SKILL_ICON_OUTER_SIZE =
+  LEVEL_UP_SKILL_ICON_METRICS.outerSize
+export const LEVEL_UP_SKILL_ICON_GAP = LEVEL_UP_SKILL_ICON_METRICS.gap
+export const LEVEL_UP_SKILL_ICON_SYMBOL_FONT_SIZE = `${LEVEL_UP_SKILL_ICON_METRICS.symbolFontSize}px`
+export const SKILL_ICON_SYMBOL_OFFSET_X = 0
+export const SKILL_ICON_SYMBOL_OFFSET_Y = 0
+
+// --- タイトルに出すエリア数 ---
 export const TITLE_AREA_VISIBLE_COUNT = 4
 // 2×2 グリッド用。横は広め、縦は SELECT AREA や下部の Shop を隠さない高さ
 export const TITLE_AREA_PANEL_WIDTH = 440
@@ -172,10 +198,12 @@ export const RESUME_COUNTDOWN_HOLD_MS = START_COUNTDOWN_HOLD_MS
 export const RESUME_COUNTDOWN_FADE_OUT_MS = START_COUNTDOWN_FADE_OUT_MS
 
 // --- 効果音プレビュー（Settings → SFX Preview）---
-export const SFX_PREVIEW_PANEL_WIDTH = 520
-export const SFX_PREVIEW_PANEL_HEIGHT = 560
+// 画面 960x540 にほぼ全面表示し、比較ボタンを1画面に収める
+export const SFX_PREVIEW_PANEL_WIDTH = 900
+export const SFX_PREVIEW_PANEL_HEIGHT = 500
 export const SFX_PREVIEW_DEPTH = 470
 export const SFX_PREVIEW_ROW_HEIGHT = 22
+export const SFX_PREVIEW_COMPARE_BUTTON_HEIGHT = 40
 export const SFX_PREVIEW_VOLUME_STEP = 0.05
 // 波形合成の a/b/c 候補（regen_element_bullet_sfx.py --preview-pack）
 export const SFX_CANDIDATE_DIR = 'assets/audio/candidates'
@@ -267,11 +295,6 @@ export const LEVEL_UP_CHOICE_DESC_COLOR = '#cbd5e1'
 export const LEVEL_UP_CHOICE_COMBO_COLOR = '#fde68a'
 export const LEVEL_UP_CHOICE_COMBO_BLOCK_GAP = 8
 export const LEVEL_UP_UI_DEPTH = 400
-// レベルアップ枠内のスキルアイコン（スキルツリーと同じ記号・色）
-export const LEVEL_UP_CHOICE_ICON_SIZE = 22
-export const LEVEL_UP_CHOICE_ICON_BORDER = 2
-export const LEVEL_UP_CHOICE_ICON_GAP = 8
-
 // --- Move+1 かつ Speed+1 で Pierce を自動取得したときの大きな通知 ---
 export const PIERCE_UNLOCK_BANNER_TITLE = 'PIERCE OBTAINED'
 export const PIERCE_UNLOCK_BANNER_SUBTITLE = 'Bullets pierce through enemies'
@@ -285,7 +308,6 @@ export const PIERCE_UNLOCK_BANNER_DEPTH = 435
 export const PIERCE_UNLOCK_BANNER_POP_MS = 280
 export const PIERCE_UNLOCK_BANNER_HOLD_MS = 1100
 export const PIERCE_UNLOCK_BANNER_FADE_MS = 320
-export const PIERCE_UNLOCK_ICON_SIZE = 72
 
 // --- Power+1 かつ Range+1 で Blast を自動取得したときの大きな通知 ---
 export const BLAST_UNLOCK_BANNER_TITLE = 'BLAST OBTAINED'
@@ -300,7 +322,6 @@ export const BLAST_UNLOCK_BANNER_DEPTH = 435
 export const BLAST_UNLOCK_BANNER_POP_MS = 280
 export const BLAST_UNLOCK_BANNER_HOLD_MS = 1100
 export const BLAST_UNLOCK_BANNER_FADE_MS = 320
-export const BLAST_UNLOCK_ICON_SIZE = 72
 
 // --- Pickup+1 かつ Power+1 かつ Speed+1 で Ricochet を自動取得 ---
 export const RICOCHET_UNLOCK_BANNER_TITLE = 'RICOCHET OBTAINED'
@@ -315,7 +336,6 @@ export const RICOCHET_UNLOCK_BANNER_DEPTH = 435
 export const RICOCHET_UNLOCK_BANNER_POP_MS = 280
 export const RICOCHET_UNLOCK_BANNER_HOLD_MS = 1100
 export const RICOCHET_UNLOCK_BANNER_FADE_MS = 320
-export const RICOCHET_UNLOCK_ICON_SIZE = 72
 
 // Blast / Pierce / Ricochet のレベル上昇時（初回 OBTAINED より控えめ）
 export const SKILL_LEVEL_UP_BANNER_TITLE_FONT_SIZE = '28px'
@@ -324,14 +344,29 @@ export const SKILL_LEVEL_UP_BANNER_DEPTH = 430
 export const SKILL_LEVEL_UP_BANNER_POP_MS = 180
 export const SKILL_LEVEL_UP_BANNER_HOLD_MS = 700
 export const SKILL_LEVEL_UP_BANNER_FADE_MS = 220
-export const SKILL_LEVEL_UP_BANNER_ICON_SIZE = 40
 export const SKILL_LEVEL_UP_BANNER_STROKE_THICKNESS = 5
 export const BLAST_LEVEL_UP_BANNER_TITLE_PREFIX = 'BLAST Lv.'
 export const BLAST_LEVEL_UP_BANNER_SUBTITLE = 'Power + Range'
 export const PIERCE_LEVEL_UP_BANNER_TITLE_PREFIX = 'PIERCE Lv.'
 export const PIERCE_LEVEL_UP_BANNER_SUBTITLE = 'Move + Speed'
 export const RICOCHET_LEVEL_UP_BANNER_TITLE_PREFIX = 'RICOCHET Lv.'
-export const RICOCHET_LEVEL_UP_BANNER_SUBTITLE = 'Pickup + Power + Speed'
+export const RICOCHET_LEVEL_UP_BANNER_SUBTITLE = 'XP Bonus + Pickup + Speed'
+
+export const ORBITING_ORB_UNLOCK_BANNER_TITLE = 'ORBITING ORB OBTAINED'
+export const ORBITING_ORB_UNLOCK_BANNER_SUBTITLE =
+  'Ice orbs orbit, hit enemies, and shatter projectiles'
+export const ORBITING_ORB_UNLOCK_BANNER_TITLE_FONT_SIZE = '42px'
+export const ORBITING_ORB_UNLOCK_BANNER_SUBTITLE_FONT_SIZE = '20px'
+export const ORBITING_ORB_UNLOCK_BANNER_TITLE_COLOR = '#7dd3fc'
+export const ORBITING_ORB_UNLOCK_BANNER_SUBTITLE_COLOR = '#e0f2fe'
+export const ORBITING_ORB_UNLOCK_BANNER_STROKE_COLOR = '#000000'
+export const ORBITING_ORB_UNLOCK_BANNER_STROKE_THICKNESS = 8
+export const ORBITING_ORB_UNLOCK_BANNER_DEPTH = 435
+export const ORBITING_ORB_UNLOCK_BANNER_POP_MS = 280
+export const ORBITING_ORB_UNLOCK_BANNER_HOLD_MS = 1100
+export const ORBITING_ORB_UNLOCK_BANNER_FADE_MS = 320
+export const ORBITING_ORB_LEVEL_UP_BANNER_TITLE_PREFIX = 'ORBITING ORB Lv.'
+export const ORBITING_ORB_LEVEL_UP_BANNER_SUBTITLE = 'Move + Pickup'
 
 // --- ステージ結果（クリア／失敗／ゲームクリア）パネル ---
 export const STAGE_RESULT_OVERLAY_COLOR = 0x000000
@@ -369,14 +404,19 @@ export const UNLOCK_STATUS_TOOLTIP_BG_COLOR = 0x111827
 export const UNLOCK_STATUS_TOOLTIP_BG_ALPHA = 0.92
 export const UNLOCK_STATUS_TOOLTIP_PADDING = 6
 export const UNLOCK_STATUS_RIGHT_MARGIN = 8
-// 右カラムのスキル解放アイコン（小さな正方形）
-export const UNLOCK_ICON_SIZE = 16
-export const UNLOCK_ICON_GAP = 5
-export const UNLOCK_ICON_BORDER_SIZE = 2
 // スキルツリー: 左列＝基本スキル、右列＝合成スキル（線でつなぐ）
 export const SKILL_TREE_ROW_GAP = 6
 /** 基本列(0)と合成列のあいだの空き列（線の見通し用） */
 export const SKILL_TREE_COMBO_COL = 2
+/** アイコン外枠と接続線の見通しを両立する列間の追加余白。 */
+export const SKILL_TREE_COLUMN_CLEARANCE = 6
+export const SKILL_TREE_COLUMN_STEP =
+  SKILL_TREE_ICON_OUTER_SIZE +
+  SKILL_TREE_ICON_GAP +
+  SKILL_TREE_COLUMN_CLEARANCE
+/** 左端から右端までの実幅。現行レイアウトでは右マージン8pxを正確に残す。 */
+export const SKILL_TREE_WIDTH =
+  SKILL_TREE_ICON_OUTER_SIZE + SKILL_TREE_COMBO_COL * SKILL_TREE_COLUMN_STEP
 export const SKILL_TREE_LINE_COLOR = 0x94a3b8
 export const SKILL_TREE_LINE_ALPHA = 0.55
 export const SKILL_TREE_LINE_THICKNESS = 1.25
@@ -385,34 +425,10 @@ export const SKILL_TREE_LINE_ACTIVE_COLOR = 0xfde68a
 export const SKILL_TREE_LINE_ACTIVE_ALPHA = 0.95
 export const SKILL_TREE_LINE_ACTIVE_THICKNESS = 3
 export const SKILL_TREE_LINE_DEPTH_OFFSET = -1
-// 最初から使える基本スキル（Power / Speed / Range）
-export const UNLOCK_ICON_POWER_COLOR = 0xef4444
-export const UNLOCK_ICON_SPEED_COLOR = 0xf97316
-export const UNLOCK_ICON_RANGE_COLOR = 0x3b82f6
-// 元素イメージに揃える: 風（Move/Pierce）・水（Pickup）・炎（XP Bonus）・爆破は琥珀
-export const UNLOCK_ICON_PIERCE_COLOR = 0x67e8f9
-export const UNLOCK_ICON_BLAST_COLOR = 0xfbbf24
-export const UNLOCK_ICON_RICOCHET_COLOR = 0xc084fc
-export const UNLOCK_ICON_MOVE_COLOR = 0x5eead4
-export const UNLOCK_ICON_MAGNET_COLOR = 0x38bdf8
-export const UNLOCK_ICON_HP_COLOR = 0xfb7185
-export const UNLOCK_ICON_XP_BONUS_COLOR = 0xf97316
 export const UNLOCK_ICON_LOCKED_FILL_COLOR = 0x374151
 export const UNLOCK_ICON_LOCKED_BORDER_COLOR = 0x6b7280
 export const UNLOCK_ICON_LETTER_COLOR = '#0f172a'
 export const UNLOCK_ICON_LOCKED_LETTER_COLOR = '#9ca3af'
-// アイコンはアルファベットではなく1色で描ける記号を使う
-// （テキスト描画なので setColor でロック／解放の色に切り替えられる）
-export const UNLOCK_ICON_POWER_LETTER = '⚔' // Power = 攻撃
-export const UNLOCK_ICON_SPEED_LETTER = '⚡' // Speed = 連射の速さ
-export const UNLOCK_ICON_RANGE_LETTER = '◎' // Range = 射程円
-export const UNLOCK_ICON_PIERCE_LETTER = '➤' // 貫通 = 突き抜ける矢
-export const UNLOCK_ICON_BLAST_LETTER = '✸' // 爆破 = 破裂する星
-export const UNLOCK_ICON_RICOCHET_LETTER = '↯' // 跳弾 = 折れ曲がる軌道
-export const UNLOCK_ICON_MOVE_LETTER = '〰' // Move = 風のうねり
-export const UNLOCK_ICON_MAGNET_LETTER = '≋' // Pickup = 水面の波（流れ・吸引）
-export const UNLOCK_ICON_HP_LETTER = '♥' // HP = ハート
-export const UNLOCK_ICON_XP_BONUS_LETTER = '❖' // XP Bonus = 炎の結晶（Volcano）
 // シール中: スキル固有色の上に薄い氷を張る（全スキル同じ青にはしない）
 // 幕は白に近い半透明。下のスキル色が透けて見える
 export const UNLOCK_ICON_SEAL_FROST_COLOR = 0xf8fafc

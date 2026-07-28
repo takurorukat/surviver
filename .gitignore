@@ -32,7 +32,17 @@ public/assets/audio/*_backup.mp3
 public/assets/audio/*_before_hum.ogg
 public/assets/audio/*_prev.ogg
 # 波形合成 SE の a/b/c 候補（regen_element_bullet_sfx.py --preview-pack）
-public/assets/audio/candidates/
+# および大量のローカル候補は追跡しない。
+# Combat Core の外部 CC0 候補（Catalog Review 用）だけ例外で追跡する。
+public/assets/audio/candidates/*
+!public/assets/audio/candidates/external/
+public/assets/audio/candidates/external/*
+!public/assets/audio/candidates/external/skill-power-cast/
+!public/assets/audio/candidates/external/skill-power-cast/**
+!public/assets/audio/candidates/external/skill-power-impact/
+!public/assets/audio/candidates/external/skill-power-impact/**
+!public/assets/audio/candidates/external/enemy-defeat/
+!public/assets/audio/candidates/external/enemy-defeat/**
 
 # Music generator: venv / SoundFont / 生成物はリポジトリに含めない（クローン・CI 軽量化）
 tools/game_music_generator/.venv/
@@ -50,3 +60,9 @@ tools/sfx_designer/backups/
 
 # リファクタ時のバックアップ（復旧用・ローカルのみ）
 **/_refactor_backup/
+
+# Playwright generated output
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

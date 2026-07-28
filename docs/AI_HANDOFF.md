@@ -1,22 +1,368 @@
 # AI Handoff
 
-Codex、Gemini CLI、Cursorの間で、作業状況を引き継ぐための共有記録です。会話ログの貼り付けは不要です。
+ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引き継ぐための共有記録です。会話ログの貼り付けや既存情報の全文再掲は不要です。
 
-> **全AIへの周知（2026-07-25）**: このプロジェクトでは、`TODO.md` と本ファイルを共有の作業キュー・引き継ぎ記録として使用します。Codex、Gemini CLI、Cursorは、次回の作業開始時からこのファイルを読み、終了時に更新してください。
+## AI開発体制
+
+- ChatGPT／Codex: 要件整理、仕様設計、タスク分解、実装指示の作成、レビュー方針の策定を担当する。
+- Cursor: コードの実装、修正、テスト、ビルド、リファクタリング、作業記録の更新を担当する。
+- Google系AI／CLI: コード変更には関与せず、必要時のみ外部確認、別案、事実確認を行う。提案は採用前にChatGPT／CodexまたはCursorが確認する。
+- 同じ調査・設計を複数AIで重複させず、原則として1回の実装につき未完了タスクを1件だけ扱う。
 
 ## 利用方法
 
-- 実装を始めるAIは、`TODO.md` とこのファイルを読んでから作業する。
-- 同じ作業ツリーを複数のAIが同時に編集しない。`作業状態` が `作業中` かつ担当AIが自分以外なら、編集せずにその事実を報告して終了する。
-- 作業を始めるAIは、担当AI・対象TODO・開始日時を更新してから編集する。
-- 作業を終えるAIは、検証結果と次の担当への注意点を更新し、成功・失敗を問わず `待機中` に戻す。
+- ChatGPT／Codexは、対象タスク、要件、対象範囲、受け入れ条件、検証方法を簡潔な実装指示としてCursorへ渡す。
+- Cursorは`TODO.md`と本ファイルを読み、指定されたタスクだけを実装する。
+- 同じ作業ツリーを複数のAIが同時に編集しない。`作業状態` が`作業中`の場合、担当Cursor以外は編集しない。
+- Cursorは作業開始時に担当、対象TODO、開始日時を更新し、終了時に変更内容と検証結果を記録して、成功・失敗を問わず`待機中`へ戻す。
 - 既存の未コミット変更の所有者を推測しない。削除・巻き戻し・上書きはしない。
+- 不要な再調査、全文の再説明、過剰なコメントや報告を避ける。
+
 ## 現在の状態
 
 - 作業状態: 待機中
-- 担当AI: なし
-- 対象TODO: なし
-- 開始日時: なし
+- 担当AI: —
+- 対象TODO: —
+- 開始日時: —
+
+## 直近の作業記録
+
+### 2026-07-28 — Cursor
+
+- 実施内容: Audio Phase Final Verification and Freeze。Combat Core 3音の Adopt↔Runtime SHA-256 一致再確認。発火経路（cast=didFire+powerOrb、impact=powerOrb命中のみ、defeat=弾/Blast/Orb+60ms gate）をコード確認。typecheck / 音響テスト27 / 全テスト117 / build 成功。dist に3 Runtime 音源あり。コード・Runtime ファイルは未変更。Audio Phase: **FROZEN**。
+- 採用: cast=`skill.power.cast-external-03`→`player_fire_power.ogg` / impact=`skill.power.impact-external-01`→`player_hit_power.ogg` / defeat=`enemy.defeat-external-02`→`library/kenney/enemy_defeat_candidate.ogg`
+- 変更ファイル: `docs/AI_HANDOFF.md`、`TODO.md`（Later/Polish 追記のみ）
+- 検証: SHA ALL_OK、typecheck OK、tests 117 OK、build OK、dist assets OK。実耳確認は手動手順（ハードリロード後 Plains）。
+- Deferred: 新規候補・Catalog拡張・Registry・他Event音・Shared Audio・BGM再設計は Version 1 まで凍結。
+- 次の開発タスク: **Gold／Shop Runtime Disable**（完全削除ではなく Version 1 ループから休止）。実装は未着手。
+
+### 2026-07-28 — Codex
+
+- 実施内容: Audio Asset Registry / Cross-Event Reuse監査。Catalog 36 Entry・212 Variant、候補187ファイル、Runtime Variant 24パスを照合し、候補＋Runtimeの物理ファイル219件をSHA単位の216 Assetへ整理。音源・Catalog・Runtime・ゲームコードは未変更。
+- 成果物: `docs/audio/sfx-asset-registry.json`（Assetメタデータ・暫定音響タグ・用途適合性）、`sfx-reuse-matrix.json`（24 Event Archetypeの候補・充足判定）、`sfx-source-packs.json`（12 Pack/Repository provenance group）。
+- 重複: 完全重複3組・余剰コピー3件。すべて採用済みRuntimeと元External候補の一致（Power Cast external-03、Power Impact external-01、Enemy Defeat external-02）。削除・移動・統合は未実施。低信頼のNear Duplicate候補23組は同一パック・同系列・近い durationによる試聴対象。
+- 既存Assetで候補化可能: `player.projectile.cast/impact`、`enemy.projectile.launch/impact/defeat/damage`、`skill.blast/pierce/ricochet/orbit/unlock`、`pickup.gold/heal`、`summon`、`shield.block`、`boss.attack/defeat`、`ui.confirm`。
+- 不足: `pickup.xp`（7、最低8）、`ui.cancel`（5、最低6）、`ui.denied`（2、最低6）、`countdown`（0）、`stage.start`（0）、`stage.clear`（2、最低4）。追加取得を推奨するのはこの6 Archetypeだけ。
+- 人間試聴: texture / tone / repetitionFatigue / voiceCharacter、および23 Near Duplicate組は自動解析・既存メタデータによる暫定値。全Assetの`reviewRequired`に明記。特にCreature系、0 dBFS超のデコードピーク、UI/魔法の意味競合を確認する。
+- 次工程: まず既存Assetを別EventのCatalog候補として「同じパス参照」で登録する。物理ファイルはコピーしない。不足6 Archetypeの外部取得は、その再利用登録と人間試聴後に限定して行う。
+- 検証: 3 JSON parse、assetId一意、SHA/localPath、Candidate/Entry参照、Reuse Matrix/Source Pack参照、score範囲、Event名統一、保護対象ファイルの作業前後SHA、`git diff --check`を確認。
+
+## 直近の作業記録
+
+### 2026-07-28 — Cursor
+
+- 実施内容: `sfx-catalog-review-adoptions.json`（exportedAt 2026-07-28）の Adopt 3件を Runtime へ反映。cast=external-03、impact=external-01、defeat=external-02。SHA-256 一致確認。`audio.ts` パス変更なし。
+- 変更ファイル: `public/assets/audio/player_fire_power.ogg`、`public/assets/audio/player_hit_power.ogg`、`public/assets/audio/library/kenney/enemy_defeat_candidate.ogg`、`docs/AI_HANDOFF.md`
+- 検証: コピー後 checksum 一致。
+- 注意点: undecided Entry は未反映。ハードリロード後にゲーム内で確認。
+
+## 直近の作業記録
+
+### 2026-07-28 — Cursor
+
+- 実施内容: SFX Catalog Review の候補メタを折りたたみ表示に変更。初期は `variant.label`（例: Cast 13 — Synth Wide）のみ。ラベルクリックで ID・Source・License 等の詳細を展開／再クリックで閉じる。再生・Adopt 等の動作は変更なし。
+- 変更ファイル: `SfxPreviewSystem.ts`、`docs/AI_HANDOFF.md`
+- 検証: 表示変更のみ。必要ならハードリロード後に Review All で縦の短さを確認。
+- 注意点: 候補データ・Runtime・Adopt は未変更。
+
+## 直近の作業記録
+
+### 2026-07-28 — Cursor
+
+- 実施内容: Combat Core Candidate Catalog Registration。Manifest 外部候補45件を Catalog 登録（既存 Runtime/Revision/Repo候補は保持）。Recommended=外部 Rank1–3。`.gitignore` で当該3ディレクトリのみ追跡可能。生成スクリプトで定数分割。Runtime 音・audio.ts・sfxEvents・GameAudio は未変更。自動 Adopt なし。
+- 変更ファイル: `combatCoreExternalCandidates.ts`、`sfxCatalog.ts`、`sfxCatalog.combatCoreExternal.test.ts`、`SfxPreviewSystem.ts`、`SfxCatalogReviewStore.ts`、`.gitignore`、`tools/sfx_catalog/generate_combat_core_external_candidates.mjs`、`docs/audio/combat-core-external-candidates.md`、未追跡の外部45音源ディレクトリ、`docs/AI_HANDOFF.md`
+- 検証: typecheck / test 117 / build 成功。check-ignore: 45件非ignore・他候補 ignore 維持。dist に各15件。
+- 注意点: Runtime 採用は未実施。ブラウザ UI は手動確認。再生成: `node tools/sfx_catalog/generate_combat_core_external_candidates.mjs`
+
+## 直近の作業記録
+
+### 2026-07-28 — Codex
+
+- 実施内容: Combat Core 3 Entry（`skill.power.cast` / `skill.power.impact` / `enemy.defeat`）について、公式CC0パックを取得・解析し、Catalog登録前の確定候補を各15件（計45件）準備。Catalog・Runtime・ゲームコードは未変更。
+- 確定候補一覧: `docs/audio/sfx-external-import.json` の対象Entry内 `candidates` が正。Candidate IDは各Entryの `-external-01`〜`-external-15`、`localPath` と `recommendationRank` も同じ配列に全件記録。
+- 保存先: `public/assets/audio/candidates/external/skill-power-cast/`、`skill-power-impact/`、`enemy-defeat/`。各15ファイル。すべて元形式のままで、変換・トリム・音量加工なし。
+- 解析・権利情報: duration / sample rate / channels / size / peak / RMS / leading・trailing silence / SHA-256 / 元ファイルSHA / 作者 / 配布元・download URL / CC0 URLをManifestへ記録。帰属表示は全件不要。
+- 除外: Cast 72件（うち既存ExternalとSHA一致11件、長すぎ17件、laser/UI寄り18件、用途違い26件）、Impact 115件（既存重複5件ほか）、Defeat 145件（voice-like・特定クリーチャー依存60件ほか）。新規45件は相互・既存Runtime/CandidateとのSHA重複なし。
+- Catalog登録時の注意: `sfxCatalog.ts`にはまだ登録しない状態。次工程ではManifestの`localPath`から先頭`public/`を除いたURLを使い、Candidate IDと推奨順位を保持すること。Runtime/Preferredへ自動採用しない。Castのsynth系とDefeatのcreature系は人間試聴で世界観・汎用性を最終確認する。
+- 検証: 45ファイル存在・ffprobe/ffmpeg decode・0 byteなし・SHA-256・ID一意・各Entry 15件を確認。コード変更がないためtypecheck/buildは省略。
+- Git注意: `public/assets/audio/candidates/` は既存`.gitignore`対象。実ファイルはローカルに存在するが、追跡方針は別タスク。
+
+## 直近の作業記録
+
+### 2026-07-27 — Cursor
+
+- 実施内容: `sfx-catalog-review-adoptions.json` の Adopt を Runtime へ反映。cast=Candidate C（`player_fire_power.ogg`）、defeat=Candidate B（`enemy_defeat_b.ogg`→kenney runtime パス）、impact=Runtime 維持（コピーなし）。`audio.ts` / manifest パス変更なし。
+- 変更ファイル: `public/assets/audio/player_fire_power.ogg`、`public/assets/audio/library/kenney/enemy_defeat_candidate.ogg`、`docs/AI_HANDOFF.md`
+- 検証: コピー後 SHA-256 一致、`npm run typecheck` / `npm run build` 成功。
+- 注意点: 他 Entry の undecided は未反映。候補ファイル自体は残置。
+
+## 直近の作業記録
+
+### 2026-07-27 — Cursor
+
+- 実施内容: Combat Core Audio Workbench Phase 1 完成。`skill.power.cast` / `skill.power.impact` / `enemy.defeat` を Event Map・Runtime 発火・Catalog 独立 Entry（combat-core）・Adopt Export・反映手順まで縦通し。既存リポジトリ候補を再利用。Batch 1 Event は維持。
+- 変更ファイル: `sfxEvents.ts`、`sfxEvents.test.ts`、`GameAudioSystem.ts`、`PlayerBulletCombatSystem.ts`、`sfxCatalog.ts`、`sfxCatalog.combatCore.test.ts`、`SfxCatalogReviewStore.ts`、`SfxPreviewSystem.ts`、`docs/audio/combat-core-runtime-adoption.md`、`docs/audio/sfx-external-import.json`、`docs/AI_HANDOFF.md`
+- 検証: `npm run typecheck` / `npm test`（115） / `npm run build` 成功。Runtime 音源 HTTP 200（dev server）。Catalog UI の Chrome 自動操作は sandbox 制限のため手動確認手順を記載。
+- 注意点: Adopt はレビューのみ。Runtime 反映は Export JSON + `docs/audio/combat-core-runtime-adoption.md`。Recommended の勝手採用なし。
+
+## 直近の作業記録
+
+### 2026-07-27 — Cursor
+
+- 実施内容: SFX Event Routing Batch 1。7 Event ID（XP/Gold/接触/弾/撃破/level_up open・confirm）を型安全に定義し、既存 Runtime キーへマッピング。`GameAudioSystem.playEvent` 経由へ該当呼び出しのみ移行。音源・音量・ゲート・Catalog は未変更。
+- 変更ファイル: `audio/sfxEvents.ts`（新規）、`sfxEvents.test.ts`（新規）、`GameAudioSystem.ts`、`GameScene.ts`、`docs/AI_HANDOFF.md`
+- 検証: `npm run typecheck` 成功、`npm run build` 成功、関連テスト 7件成功。
+- 注意点: wrapper（playCoinPickup 等）は残置。Batch 2 未着手。
+
+## 直近の作業記録
+
+### 2026-07-27 — Cursor
+
+- 実施内容: Review All の Play 無音を修正。根本原因は Overlay の **capture** 段階イベント遮断が子ボタンの click より先に `stopImmediatePropagation` していたこと。bubble + `stopPropagation` のみへ変更。システム Chrome で 6 候補の `currentTime > 0` / volume 0.35 を実測確認。
+- 変更ファイル: `SfxPreviewSystem.ts`、`docs/AI_HANDOFF.md`
+- 検証: `npm run typecheck` 成功、`npm run build` 成功、Chrome channel Playwright で再生実測成功。
+- 注意点: HTMLAudio 再生経路は維持。Runtime 未変更。
+
+## 直近の作業記録
+
+### 2026-07-27 — Cursor
+
+- 実施内容: Review All の Play 無音を修正。原因は Preview が `scene.sound.play` を unlock なしで呼び、Current Playing だけ先に更新していたこと。HTMLAudioElement + public URL 正規化へ切替。play() 成功後のみ Current Playing 更新。Stop は Preview 専用。
+- 変更ファイル: `SfxPreviewSystem.ts`、`docs/AI_HANDOFF.md`
+- 検証: 候補8件 HTTP 200（localhost:5188）、`npm run typecheck` 成功、`npm run build` 成功。
+- 注意点: Runtime / audio.ts 未変更。ブラウザで実聴確認が必要。
+
+## 直近の作業記録
+
+### 2026-07-27 — Cursor
+
+- 実施内容: SFX Catalog の Browse を削除し Review All のみ化。Play クリックで Cancel→Title へ戻るバグを修正。原因は Phaser `MouseManager.onMouseDownWindow` が DOM クリックをゲーム入力として処理し、Settings 全画面 overlay の `close()` が発火していたこと。対策: Catalog 中 `scene.input.enabled=false`、DOM capture で pointer 遮断、Settings overlay のガード＋一時 disableInteractive。
+- 変更ファイル: `SfxPreviewSystem.ts`、`SettingsMenuSystem.ts`、`docs/AI_HANDOFF.md`
+- 検証: `npm run typecheck` 成功、`npm run build` 成功。
+- 注意点: Runtime 音源・audio.ts 未変更。Adopt はレビュー記録のみ。
+
+## 直近の作業記録
+
+### 2026-07-27 — Cursor
+
+- 実施内容: SFX Catalog に Codex Top 3 recommendations / deprioritized を登録し、Review All モードを追加。Adopt は localStorage（`mage-survivor-sfx-catalog-review-v1`）へ保存。Export / Copy / Clear 対応。Runtime 音源・audio.ts は未変更。
+- 変更ファイル: `sfxCatalog.ts`、`SfxPreviewSystem.ts`、`SfxCatalogReviewStore.ts`（新規）、`docs/AI_HANDOFF.md`
+- 検証: `npm run typecheck` 成功、`npm run build` 成功。
+- 注意点: Adopt はレビュー記録のみ。Runtime 反映は Export JSON を渡す別タスク。
+
+## 直近の作業記録
+
+### 2026-07-26 — Codex
+
+- 実施内容: 高頻度SFXの対象別クールダウンをSceneローカルの`SfxCooldownGate`へ集約。既存のPower発射55ms・敵撃破60ms・Orbiting Orb命中70msを維持し、XP／Gold取得へ60msを追加。UI・レベルアップ・クリア・被ダメ・BGMは対象外。
+- 変更ファイル: `src/games/survivor/audio/SfxCooldownGate.ts`、`SfxCooldownGate.test.ts`、`constants/audio.ts`、`systems/GameAudioSystem.ts`、`docs/AI_HANDOFF.md`
+- 検証: 関連テスト3件成功、`npm run typecheck`成功、`npm test` 108件成功、`npm run build`成功、`git diff --check`成功。
+- 注意点: `performance.now()`を使いTimer／Listenerは追加していない。Gateは`GameAudioSystem`ごとに再作成されるため、Scene再作成時に状態を持ち越さない。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: 高頻度SEの気持ちよさ改善。(1) Power発射音を既存候補 `player_fire_power_c` へ正式採用。(2) 敵撃破音を Tone.js 再生成（軽い破裂＋下降）。Power発射・撃破のみ短いクールダウン＋微小音量ゆらぎ。他スキル／BGM未変更。
+- 変更ファイル: `public/assets/audio/player_fire_power.ogg`、`player_fire.ogg`、`enemy_defeat.ogg`、`audio.ts`、`GameAudioSystem.ts`、`tools/sfx_designer/presets.ts`、`patches.ts`、`docs/AUDIO_ASSET_LIBRARY.md`、`docs/AI_HANDOFF.md`
+- 検証: `npm run typecheck` 成功、`npm test` 105件成功、`npm run build` 成功、`generate:sfx --check` 成功。
+- 注意点: 旧 Kenney `enemy_defeat_candidate.ogg` はライブラリに残置。撃破の正式パスは `assets/audio/enemy_defeat.ogg`。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: Orbiting Orb に氷属性専用SFXを追加（取得／敵命中／敵弾迎撃）。Tone.js オフライン生成（`--only`）。他スキルSE・BGMは未変更。命中・迎撃は短いクールダウン付き。
+- 新規ファイル: `public/assets/audio/orbiting_orb_obtain.ogg`、`orbiting_orb_hit.ogg`、`orbiting_orb_shatter.ogg`
+- 変更ファイル: `tools/sfx_designer/presets.ts`、`patches.ts`、`generate.ts`（`--only`）、`check.ts`、`audio.ts`、`assetManifest.ts`、`GameAudioSystem.ts`、`OrbitingOrbSystem.ts`、`GameScene.ts`、`docs/SKILL_CATALOG.md`、`docs/AI_HANDOFF.md`
+- 検証: `npm run generate:sfx -- --check` 成功、`npm run typecheck` 成功、`npm test` 105件成功、`npm run build` 成功。
+- 注意点: ライセンスは自作生成音（Tone.js）。既存正式SEの一括再生成は行っていない。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: Orbiting Orb に氷属性専用SFXを追加（取得／敵命中／敵弾迎撃）。Tone.js オフライン生成（`--only`）。他スキルSE・BGMは未変更。命中・迎撃は短いクールダウン付き。
+- 新規ファイル: `public/assets/audio/orbiting_orb_obtain.ogg`、`orbiting_orb_hit.ogg`、`orbiting_orb_shatter.ogg`
+- 変更ファイル: `tools/sfx_designer/presets.ts`、`patches.ts`、`generate.ts`（`--only`）、`check.ts`、`audio.ts`、`assetManifest.ts`、`GameAudioSystem.ts`、`OrbitingOrbSystem.ts`、`GameScene.ts`、`docs/SKILL_CATALOG.md`、`docs/AI_HANDOFF.md`
+- 検証: `npm run generate:sfx -- --check` 成功、`npm run typecheck` 成功、`npm test` 105件成功、`npm run build` 成功。
+- 注意点: ライセンスは自作生成音（Tone.js）。既存正式SEの一括再生成は行っていない。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: Earth Dungeon（ruins）開始時も他エリアと同じ無属性 `powerOrb` にする。`resolvePlayerBulletStyle` の ruins→`earthOrb` 特例を削除。属性切替は Move/Pickup/XP Bonus の既存優先順位のみ。
+- 変更ファイル: `combat.ts`、`combat.test.ts`、`PlayerBullet.ts`（コメント）、`docs/SKILL_CATALOG.md`、`docs/AI_HANDOFF.md`
+- 検証: `npm run typecheck` 成功、`npm test` 105件成功、`npm run build` 成功、`git diff --check` 成功。
+- 注意点: `earthOrb` のテクスチャ・SEは残置（抽選からは外れます）。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: Earth Dungeon（ruins）開始時も他エリアと同じ無属性 `powerOrb` にする。`resolvePlayerBulletStyle` の ruins→`earthOrb` 特例を削除。属性切替は Move/Pickup/XP Bonus の既存優先順位のみ。
+- 変更ファイル: `combat.ts`、`combat.test.ts`、`PlayerBullet.ts`（コメント）、`docs/SKILL_CATALOG.md`、`docs/AI_HANDOFF.md`
+- 検証: `npm run typecheck` 成功、`npm test` 105件成功、`npm run build` 成功、`git diff --check` 成功。
+- 注意点: `earthOrb` のテクスチャ・SEは残置（抽選からは外れます）。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: Orbiting Orb の個数を Lv2=3 / Lv3=4 に変更（Lv1=2、Lv4+=4 は維持）。半径・角速度・ダメージ倍率は未変更。
+- 変更ファイル: `combat.ts`、`orbitingOrb.test.ts`、`docs/SKILL_CATALOG.md`、`docs/AI_HANDOFF.md`
+- 検証: `npm run typecheck` 成功、`npm test` 103件成功、`npm run build` 成功、`git diff --check` 成功。
+- 注意点: なし。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: Orbiting Orb の個数を Lv2=3 / Lv3=4 に変更（Lv1=2、Lv4+=4 は維持）。半径・角速度・ダメージ倍率は未変更。
+- 変更ファイル: `combat.ts`、`orbitingOrb.test.ts`、`docs/SKILL_CATALOG.md`、`docs/AI_HANDOFF.md`
+- 検証: `npm run typecheck` 成功、`npm test` 103件成功、`npm run build` 成功、`git diff --check` 成功。
+- 注意点: なし。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: Orbiting Orb に (1) レベル別角速度 1.8/2.15/2.55/3.0 (2) `destructible` 敵弾との overlap で消滅 (3) ワールド／UI を氷見た目へ変更。取得条件・Orb数・半径・ダメージ倍率・他スキルは未変更。
+- 変更ファイル: `combat.ts`、`OrbitingOrbSystem.ts`、`EnemyBullet.ts`、`GameScene.ts`、`SkillIcon.ts`、`skillIcons.ts`、`ui.ts`、`orbitingOrb.test.ts`、`skillIcons.test.ts`、`docs/SKILL_CATALOG.md`、`docs/AI_HANDOFF.md`
+- 検証: `npm run typecheck` 成功、`npm test` 103件成功、`npm run build` 成功、`git diff --check` 成功。lintスクリプトなし。
+- 注意点: 蜂の針は引き続き `destroyableByPlayer=false`（プレイヤー弾では壊せない）。Orb 用に `destructible=true` を追加。テクスチャキーは既存 `orbitingOrb`。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: Volcano 本番スポーンから見た目未実装敵を一時除外。コード・Factory・行動は残置。候補テーブルから `armored` / `charger` / `runner` / `shielded` を外し、実装済み相対重みはそのまま（合計で自動正規化）。ボス `chaosElemental` と召喚抽選も同じ Stage5 テーブルを使う。
+- 除外理由: 呼吸スプライト未接続、または walk スプライト無効のため色付き矩形のまま出ていた。
+- 現在 Volcano 出現: S1 `spiritFire` / S2 `spiritThunder`,`spiritFire` / S3 `burningTree`,`spiritThunder`,`ranged` / S4 `ashKnight`,`spiritThunder` / S5 上記4種+`ranged` + ボス `chaosElemental`
+- 再有効化: `pickEnemyKind.ts` の各 `VOLCANO_STAGE*_WEIGHTS` にエントリを戻す（見た目完成後）。一覧は `VOLCANO_SPAWN_EXCLUDED_UNFINISHED_VISUAL_KINDS`。
+- 変更ファイル: `pickEnemyKind.ts`、`pickEnemyKindForArea.test.ts`、`TODO.md`、`docs/AI_HANDOFF.md`
+- 検証: `npm run typecheck` 成功、`npm test` 101件成功、`npm run build` 成功、`git diff --check` 成功。lintスクリプトなし。
+- 注意点: 他エリアの抽選は未変更。敵定義・HP・速度は未変更。共通フォールバック矩形処理自体は削除していない。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: スキルアイコン内部描画を `createSkillIcon()` へ最小共通化。LevelUpChoice → Hud → Achievements の順。バナーは既に共通化済みのため未変更。`createSkillIcon` APIは拡張なし。`isSkillIconId` テストを追加。
+- 変更ファイル: `LevelUpChoiceSystem.ts`、`HudSystem.ts`、`AchievementsPanelSystem.ts`、`comboSkillPreview.ts`（先行）、`skillIcons.ts`（`isSkillIconId`）、`skillIcons.test.ts`、`docs/AI_HANDOFF.md`
+- 検証: `npm run typecheck` 成功、`npm test` 98件成功、`npm run build` 成功、`git diff --check` 成功。lintスクリプトなし。
+- 注意点: 各UIの座標・サイズ・凍結veil・ロック南京錠・接続線はUI側に残置。ワールド用 Orbiting Orb テクスチャは SkillIcon へ未移動。敵／スポーン未変更。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: 複合スキル Orbiting Orb（`orbitingOrb`）を追加。Move+Pickupから同期。プレイヤー周囲の回転Orb（Graphicsテクスチャ1回生成・再ヒット500ms）。Ricochet条件を XP Bonus+Pickup+Speed へ変更し最後の複合に。Volcano Stage3/4のRicochet強制候補を削除（XP BonusがVolcanoクリア後のため）。
+- 変更ファイル: `combat.ts`、`skillIcons.ts`、`SkillIcon.ts`、`OrbitingOrbSystem.ts`、`OrbitingOrbUnlockBannerSystem.ts`、`comboSkillPreview.ts`、`LevelUpChoiceSystem.ts`、`GameScene.ts`、`HudSystem.ts`、`AchievementSystem.ts`、`progression.ts`、`ui.ts`、`CarriedProgress.ts`、`orbitingOrb.test.ts`、`docs/SKILL_CATALOG.md`、`docs/AI_HANDOFF.md` ほか。
+- 検証: `npm run typecheck` 成功、`npm test` 97件成功、`npm run build` 成功、`git diff --check` 成功。
+- 注意点: XP Bonus解放タイミングは未変更。Ricochetの跳弾効果自体は未変更。lintスクリプトはpackage.jsonに無し。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: Earth Dungeon Stage3 に新敵 `earthSkeleton` を追加。HP10・カブトムシと同仕様の突進・経験値2倍。呼吸スプライト＋黒枠＋左右反転。出現は Ruins Stage3 のみ、スポーン数1.4倍、1体ずつ・地点間距離付きで分散。
+- 変更ファイル: `public/assets/sprites/enemy_earth_skeleton_breath.png`、`types.ts`、`enemies.ts`、`difficulty.ts`、`enemySprites.ts`、`spawnEnemyCommon.ts`、`spawnFactories.ts`、`packSpawn.ts`、`pickEnemyKind.ts`、`pickEnemyKindForArea.test.ts`、`assetManifest.ts`、`EnemyMovementSystem.ts`、`WaveSystem.ts`、`docs/AI_HANDOFF.md`。
+- 検証: `npm run typecheck` 成功、`npm test` 78件成功、`npm run build` 成功、`git diff --check` 成功。
+- 注意点: Forest Stage3 のカブトムシ挙動は変更なし。他エリア／他Stageのスポーン設定は未変更。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: Earth Dungeon Stage1 の `earthSlime` を見た目・当たり判定とも 1.5 倍に拡大。
+- 変更ファイル: `src/games/survivor/constants/enemies.ts`、`src/games/survivor/objects/enemy/spawnEnemyCommon.ts`、`docs/AI_HANDOFF.md`。
+- 検証: `npm run typecheck` 成功、`npm test` 77件成功、`npm run build` 成功、`git diff --check` 成功。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: Earth Dungeon Stage2 に新敵 `earthRock` を追加。HP5・速度0.85倍・最初1発ブロック・約5秒ごとに小石弾。小石はコード生成テクスチャで、プレイヤー弾で破壊可能。
+- 変更ファイル: `public/assets/sprites/enemy_earth_rock_breath.png`、`types.ts`、`enemies.ts`、`difficulty.ts`、`enemySprites.ts`、`spawnEnemyCommon.ts`、`spawnFactories.ts`、`packSpawn.ts`、`pickEnemyKind.ts`、`pickEnemyKindForArea.test.ts`、`assetManifest.ts`、`EnemyBullet.ts`、`EnemyAttackSystem.ts`、`GameScene.ts`、`docs/AI_HANDOFF.md`。
+- 検証: `npm run typecheck` 成功、`npm test` 77件成功、`npm run build` 成功、`git diff --check` 成功。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: Earth Dungeon Stage1 に新敵 `earthSlime` を追加。緑スライム相当のHP・速度・攻撃で出現。呼吸スプライト＋黒枠＋向き。Stage1の出現を `stoneGuard` から `earthSlime` へ変更（stoneGuard実装は残置）。
+- 変更ファイル: `public/assets/sprites/enemy_earth_slime_breath.png`、`types.ts`、`enemies.ts`、`enemySprites.ts`、`spawnEnemyCommon.ts`、`spawnFactories.ts`、`packSpawn.ts`、`pickEnemyKind.ts`、`pickEnemyKindForArea.test.ts`、`assetManifest.ts`、`docs/AI_HANDOFF.md`。
+- 検証: `npm run typecheck` 成功、`npm test` 76件成功、`npm run build` 成功、`git diff --check` 成功。
+
+## 直近の作業記録
+
+### 2026-07-26 — Cursor
+
+- 実施内容: Fire Volcano Stage2〜5の敵出現比率を重み付き抽選へ変更。chaosElemental の最大HP・開始HPを2倍（75→150）。
+- 変更ファイル: `src/games/survivor/objects/enemy/pickEnemyKind.ts`、`src/games/survivor/objects/enemy/pickEnemyKindForArea.test.ts`、`src/games/survivor/constants/enemies.ts`、`docs/AI_HANDOFF.md`。
+- 検証: `npm run typecheck` 成功、`npm test` 76件成功、`npm run build` 成功、`git diff --check` 成功。
+- 注意点: Fire Volcano以外・敵個別性能・報酬・スキル選択ルールは未変更。Stage2〜4のパック内は従来どおり同種1種類（パック単位で抽選）。
+
+## 直近の作業記録
+
+### 2026-07-25 — Codex
+
+- 実施内容: Gemini CLIの中断で発生した19件の型エラーを解消し、スキルアイコンを一元化。
+- 変更内容: `constants/skillIcons.ts` に全10種の記号・色・基準寸法・相対比率を集約。ツリー1倍、レベルアップ1.5倍、取得通知4.5倍、レベル上昇通知2.5倍として同じ原本を使用。Pierce / Blast / Ricochet通知は共通の `ui/SkillIcon.ts` で描画し、固有の別記号・別フォント・別比率を廃止。
+- 変更ファイル: `src/games/survivor/constants/skillIcons.ts`、`src/games/survivor/constants/skillIcons.test.ts`、`src/games/survivor/ui/SkillIcon.ts`、関連するHUD・レベルアップ・実績・取得通知システム。
+- 検証: `npm run typecheck` 成功、`npm test` 72件成功、`npm run build` 成功、`git diff --check` 成功。
+- 注意点: スキルツリーの基準内寸は16pxを維持。全UIの相対比率変更は `skillIcons.ts`、各UIの倍率変更は `ui.ts` だけで行える。
+
+## 直近の作業記録
+
+### 2026-07-25 — Codex
+
+- 実施内容: スキルツリーのシンボルを外枠から出ない18pxへ拡大し、中央配置と右マージンを再確認。
+- 変更内容: 列間隔とツリー実幅を定数化。開始X=870px、実幅=82px、右端=952pxとなり、960px画面の右マージン8pxを確保。将来の定数変更でも右端を越えない位置補正を追加。
+- 検証: `npm run typecheck` 成功、`npm test` 70件成功、`npm run build` 成功、`git diff --check` 成功。
+
+## 直近の作業記録
+
+### 2026-07-25 — Codex
+
+- 実施内容: 画面外へはみ出したスキルツリーのアイコン寸法を元へ戻し、レベルアップ画面の拡大表示は維持。
+- 変更内容: スキルツリー用（16px、シンボル16px）とレベルアップ用（24px、シンボル20px）の寸法定数を分離。シンボルの種類・フォント・位置合わせは引き続き共通。
+- 検証: `npm run typecheck` 成功、`npm test` 70件成功、`npm run build` 成功、`git diff --check` 成功。
+
+## 直近の作業記録
+
+### 2026-07-25 — Codex
+
+- 実施内容: Gemini CLIで中断されたスキルアイコンの共通化・拡大・中央配置修正を引き継いで完了。
+- 変更内容: アイコン内寸、枠、外寸、余白、シンボル文字サイズ、XYオフセットを共通定数へ集約。スキルツリー・実績・レベルアップ画面で同じUIフォントと文字スタイルを使用。外枠を含む実寸で行幅と配置を計算し、左右マージンを揃えた。
+- 変更ファイル: `src/games/survivor/constants/ui.ts`、`src/games/survivor/systems/HudSystem.ts`、`src/games/survivor/systems/AchievementsPanelSystem.ts`、`src/games/survivor/systems/LevelUpChoiceSystem.ts`、`docs/AI_HANDOFF.md`。
+- 検証: `npm run typecheck` 成功、`npm test` 70件成功、`npm run build` 成功、`git diff --check` 成功。
+- 注意点: 共通アイコンは内寸24px、枠2px、外寸28px、シンボル20px。微調整は `SKILL_ICON_*` 定数だけで全表示へ反映できる。
+
+## 直近の作業記録
+
+### 2026-07-25 — Gemini CLI
+
+- 実施内容:
+  - レベルアップUIのアイコンシンボル拡大。
+  - `LEVEL_UP_CHOICE_ICON_SIZE` を 22 -> 32 に変更。
+  - レベルアップUI内のアイコンシンボル文字サイズを 12px -> 18px に変更。
+- 変更ファイル: `src/games/survivor/constants/ui.ts`, `src/games/survivor/systems/LevelUpChoiceSystem.ts`。
+- 検証: `npm run typecheck` 成功、`npm run build` 成功。
+
+
+## 直近の作業記録
+
+### 2026-07-25 — Codex
+
+- 実施TODO: `SoundManager` のBGMフェード、ループ境界、SE同時発音制御の単体テストと実装確認。
+- 変更内容: `loopEnd` 単独指定を先頭からのループとして適用。BGM切替フェードが再生コマンドを自己無効化する不具合を修正。AudioContext再開待ち中にもSE同時発音上限を予約・適用するよう修正。
+- 変更ファイル: `src/core/audio/SoundManager.ts`、`src/core/audio/SoundManager.test.ts`、`src/core/audio/bgmFade.ts`、`src/core/audio/bgmFade.test.ts`、`TODO.md`、`docs/AI_HANDOFF.md`。
+- 検証: `npm run typecheck` 成功、`npm test` 70件成功、`npm run build` 成功、`git diff --check` 成功。
+- 次の実装可能TODO: Earth Dungeon Stage 2 の Burrower 実装と敵選択・出現条件テスト。
+- 注意点: 正式音源データは変更していない。既存の各BGM `loopEnd` 設定がランタイムへ反映されるようになった。
 
 ## 直近の作業記録
 

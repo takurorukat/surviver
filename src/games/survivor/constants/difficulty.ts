@@ -24,6 +24,7 @@ import {
   ENEMY_RANGED_SPEED_FACTOR,
   ENEMY_SPEED_GROWTH_PER_STAGE,
   ENEMY_STONE_GUARD_SPEED_FACTOR,
+  ENEMY_EARTH_ROCK_SPEED_FACTOR,
   ENEMY_STUMP_SPEED_FACTOR,
   ENEMY_TOUGH_MELEE_MAX_HP,
   ENEMY_TOUGH_MELEE_MIN_HP,
@@ -31,6 +32,7 @@ import {
   EXPECTED_LEVEL_UPS_PER_STAGE,
   EXPECTED_POWER_GROWTH_PER_LEVEL_UP,
   FOREST_STAGE5_SPAWN_COUNT_FACTOR,
+  RUINS_STAGE3_SPAWN_COUNT_FACTOR,
 } from './enemies'
 
 // --- ステージ進行・制限時間・スポーン量 ---
@@ -189,6 +191,16 @@ export function shouldScatterVolcanoEnemySpawns(
 }
 
 /**
+ * Ruins Stage3 は固まらず各地に散らして出す。
+ */
+export function shouldScatterRuinsStage3EnemySpawns(
+  areaId: StageAreaId,
+  stageNumber: number,
+): boolean {
+  return areaId === 'ruins' && stageNumber === 3
+}
+
+/**
  * 定期スポーン（バースト）の間隔（秒）。
  * Forest 最終は早め。
  */
@@ -286,6 +298,20 @@ export function applyForestStage5SpawnCountFactor(
 }
 
 /**
+ * Ruins Stage3 の出現数を Forest Stage3 より増やす。
+ */
+export function applyRuinsStage3SpawnCountFactor(
+  areaId: StageAreaId,
+  stageNumber: number,
+  enemyCount: number,
+): number {
+  if (areaId === 'ruins' && stageNumber === 3) {
+    return Math.max(1, Math.round(enemyCount * RUINS_STAGE3_SPAWN_COUNT_FACTOR))
+  }
+  return enemyCount
+}
+
+/**
  * 全ステージ共通: 最初に数体、以降一定間隔でバーストする予定表を返す。
  * WaveSystem がこのスケジュールに沿って警告付きスポーンを予約する。
  */
@@ -298,6 +324,8 @@ export function getSpawnScheduleForStage(
   let recurringCount = getRecurringEnemyCountForStage(stageNumber, totalStages)
   initialCount = applyForestStage5SpawnCountFactor(areaId, stageNumber, initialCount)
   recurringCount = applyForestStage5SpawnCountFactor(areaId, stageNumber, recurringCount)
+  initialCount = applyRuinsStage3SpawnCountFactor(areaId, stageNumber, initialCount)
+  recurringCount = applyRuinsStage3SpawnCountFactor(areaId, stageNumber, recurringCount)
   const burstIntervalSeconds = getSpawnBurstIntervalSeconds(areaId, stageNumber, totalStages)
 
   const schedule: SpawnBurst[] = [
@@ -409,6 +437,13 @@ export function calculateBranchSpeed(stageNumber: number, totalStages: number): 
  */
 export function calculateStoneGuardSpeed(stageNumber: number, totalStages: number): number {
   return calculateEnemySpeedForStage(stageNumber, totalStages) * ENEMY_STONE_GUARD_SPEED_FACTOR
+}
+
+/**
+ * Ruins Stage2 岩敵の移動速度（通常敵より少し遅め）。
+ */
+export function calculateEarthRockSpeed(stageNumber: number, totalStages: number): number {
+  return calculateEnemySpeedForStage(stageNumber, totalStages) * ENEMY_EARTH_ROCK_SPEED_FACTOR
 }
 
 /**

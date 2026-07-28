@@ -287,10 +287,13 @@ function validateProbe(preset: SfxPreset, probe: ProbeResult): string[] {
   return errors
 }
 
-async function backupFormalTargets(stamp: string): Promise<string> {
+async function backupFormalTargets(
+  stamp: string,
+  presets: SfxPreset[],
+): Promise<string> {
   const backupRoot = path.join(BACKUPS_DIR, stamp)
   await mkdir(backupRoot, { recursive: true })
-  for (const preset of SFX_PRESETS) {
+  for (const preset of presets) {
     const src = path.join(FORMAL_DIR, `${preset.id}.ogg`)
     if (existsSync(src)) {
       await copyFile(src, path.join(backupRoot, `${preset.id}.ogg`))
@@ -301,7 +304,7 @@ async function backupFormalTargets(stamp: string): Promise<string> {
     JSON.stringify(
       {
         createdAt: stamp,
-        files: SFX_PRESETS.map((p) => `${p.id}.ogg`),
+        files: presets.map((p) => `${p.id}.ogg`),
         note: 'Formal SE backup before Tone.js generate:sfx',
       },
       null,
@@ -479,21 +482,43 @@ async function main() {
   await mkdir(OUTPUT_DIR, { recursive: true })
   await mkdir(BACKUPS_DIR, { recursive: true })
 
+  // --only=id1,id2 で対象を限定（他の正式 SE を上書きしない）
+  let onlyIds: string[] | null = null
+  for (let index = 0; index < process.argv.length; index++) {
+    const arg = process.argv[index]
+    if (arg.startsWith('--only=')) {
+      onlyIds = arg
+        .slice('--only='.length)
+        .split(',')
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0)
+    }
+  }
+
   console.log('=== Tone.js SFX Designer ===')
   console.log(`Tone ${Tone.version}`)
   console.log(`Presets: ${SFX_PRESETS.length}`)
+  if (onlyIds !== null) {
+    console.log(`Only: ${onlyIds.join(', ')}`)
+  }
 
   const bgmBefore = await snapshotBgmHashes()
   console.log('BGM hashes captured.')
 
-  const backupRoot = await backupFormalTargets(stamp)
-  console.log(`Backup: ${path.relative(REPO_ROOT, backupRoot)}`)
-
   // power を先に、player_fire コピーは後
-  const ordered = [
+  let ordered = [
     ...SFX_PRESETS.filter((p) => p.patch !== 'copy_player_fire_power'),
     ...SFX_PRESETS.filter((p) => p.patch === 'copy_player_fire_power'),
   ]
+  if (onlyIds !== null) {
+    ordered = ordered.filter((preset) => onlyIds.includes(preset.id))
+    if (ordered.length === 0) {
+      throw new Error(`--only に一致するプリセットがありません: ${onlyIds.join(', ')}`)
+    }
+  }
+
+  const backupRoot = await backupFormalTargets(stamp, ordered)
+  console.log(`Backup: ${path.relative(REPO_ROOT, backupRoot)}`)
 
   const rows: RowResult[] = []
   for (const preset of ordered) {

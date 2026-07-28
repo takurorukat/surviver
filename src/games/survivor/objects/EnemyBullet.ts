@@ -2,11 +2,11 @@
  * 敵弾（射撃型敵が撃つ弾）の Group・発射・メンテ・削除。
  *
  * 接続先:
- * - 発射: EnemyAttackSystem がプレイヤー座標へ fireEnemyBullet
+ * - 発射: EnemyAttackSystem がプレイヤー座標へ fireEnemyBullet / firePebbleEnemyBullet
  * - 当たり: physics.add.overlap（敵弾 × プレイヤー）
  * - プレイヤー弾と同様、collisionAge / flightVx・flightVy で同フレーム事故と速度復元に対応
  *
- * 見た目は蜂の針（黄色い二等辺三角＋黒枠）。先端が飛行方向を向く。
+ * 見た目: 蜂の針（黄色い二等辺三角＋黒枠）／小石（コード生成テクスチャ）。
  * ダメージ量は定数 ENEMY_BULLET_DAMAGE（弾ごとに変えない）。
  */
 import Phaser from 'phaser'
@@ -19,6 +19,13 @@ import {
   ENEMY_BULLET_SPEED,
   ENEMY_BULLET_RADIUS,
   ENEMY_BULLET_DAMAGE,
+  ENEMY_PEBBLE_BULLET_FILL_COLOR,
+  ENEMY_PEBBLE_BULLET_HIGHLIGHT_COLOR,
+  ENEMY_PEBBLE_BULLET_OUTLINE_COLOR,
+  ENEMY_PEBBLE_BULLET_RADIUS,
+  ENEMY_PEBBLE_BULLET_SHADOW_COLOR,
+  ENEMY_PEBBLE_BULLET_SIZE,
+  ENEMY_PEBBLE_BULLET_TEXTURE_KEY,
   MAX_ENEMY_BULLETS,
   ENEMY_WIDTH,
   PLAY_AREA_ORIGIN_X,
@@ -29,8 +36,10 @@ import {
 import { setupCircleHitbox } from '../utils/setupCircleHitbox'
 import { applyDevEntityDepth } from '../utils/applyDevEntityDepth'
 
-/** 敵弾の見た目（三角）。物理 Body は別途付ける。 */
-export type EnemyBulletVisual = Phaser.GameObjects.Triangle
+/** 敵弾の見た目。物理 Body は別途付ける。 */
+export type EnemyBulletVisual =
+  | Phaser.GameObjects.Triangle
+  | Phaser.GameObjects.Image
 
 /**
  * 敵弾用の Arcade Group を作る（重力なし）。
@@ -53,12 +62,15 @@ function applyEnemyBulletBodySettings(
   body: Phaser.Physics.Arcade.Body,
   directionX: number,
   directionY: number,
+  hitRadius: number,
+  hitWidth: number,
+  hitHeight: number,
 ): { flightVx: number; flightVy: number } {
   body.setAllowGravity(false)
   body.setCollideWorldBounds(false)
   body.enable = true
   body.moves = true
-  setupCircleHitbox(body, ENEMY_BULLET_RADIUS, ENEMY_BULLET_WIDTH, ENEMY_BULLET_HEIGHT)
+  setupCircleHitbox(body, hitRadius, hitWidth, hitHeight)
   const flightVx = directionX * ENEMY_BULLET_SPEED
   const flightVy = directionY * ENEMY_BULLET_SPEED
   body.setVelocity(flightVx, flightVy)
@@ -75,10 +87,9 @@ function createStingerTriangle(
   y: number,
   directionX: number,
   directionY: number,
-): EnemyBulletVisual {
+): Phaser.GameObjects.Triangle {
   const halfWidth = ENEMY_BULLET_WIDTH / 2
   const halfHeight = ENEMY_BULLET_HEIGHT / 2
-  // 先端(右) / 左上 / 左下 —— 回転0のとき右向き
   const bullet = scene.add.triangle(
     x,
     y,
@@ -96,9 +107,77 @@ function createStingerTriangle(
 }
 
 /**
- * 敵弾をプールへ戻す（destroy しない）。
+ * 小さめのいびつな灰色小石テクスチャを1回だけ生成する。
+ */
+export function ensurePebbleBulletTexture(scene: Phaser.Scene): void {
+  if (scene.textures.exists(ENEMY_PEBBLE_BULLET_TEXTURE_KEY)) {
+    return
+  }
+
+  const size = Math.max(8, Math.round(ENEMY_PEBBLE_BULLET_SIZE))
+  const graphics = scene.make.graphics({ x: 0, y: 0 })
+  const center = size / 2
+
+  graphics.fillStyle(ENEMY_PEBBLE_BULLET_FILL_COLOR, 1)
+  graphics.beginPath()
+  graphics.moveTo(center + size * 0.38, center - size * 0.12)
+  graphics.lineTo(center + size * 0.18, center - size * 0.4)
+  graphics.lineTo(center - size * 0.22, center - size * 0.36)
+  graphics.lineTo(center - size * 0.42, center - size * 0.05)
+  graphics.lineTo(center - size * 0.32, center + size * 0.32)
+  graphics.lineTo(center + size * 0.05, center + size * 0.4)
+  graphics.lineTo(center + size * 0.4, center + size * 0.18)
+  graphics.closePath()
+  graphics.fillPath()
+
+  graphics.fillStyle(ENEMY_PEBBLE_BULLET_SHADOW_COLOR, 0.85)
+  graphics.beginPath()
+  graphics.moveTo(center + size * 0.05, center + size * 0.08)
+  graphics.lineTo(center + size * 0.32, center + size * 0.02)
+  graphics.lineTo(center + size * 0.34, center + size * 0.16)
+  graphics.lineTo(center + size * 0.02, center + size * 0.34)
+  graphics.lineTo(center - size * 0.18, center + size * 0.26)
+  graphics.closePath()
+  graphics.fillPath()
+
+  graphics.fillStyle(ENEMY_PEBBLE_BULLET_HIGHLIGHT_COLOR, 1)
+  graphics.beginPath()
+  graphics.moveTo(center - size * 0.08, center - size * 0.28)
+  graphics.lineTo(center + size * 0.08, center - size * 0.3)
+  graphics.lineTo(center - size * 0.02, center - size * 0.12)
+  graphics.closePath()
+  graphics.fillPath()
+
+  graphics.lineStyle(2, ENEMY_PEBBLE_BULLET_OUTLINE_COLOR, 1)
+  graphics.beginPath()
+  graphics.moveTo(center + size * 0.38, center - size * 0.12)
+  graphics.lineTo(center + size * 0.18, center - size * 0.4)
+  graphics.lineTo(center - size * 0.22, center - size * 0.36)
+  graphics.lineTo(center - size * 0.42, center - size * 0.05)
+  graphics.lineTo(center - size * 0.32, center + size * 0.32)
+  graphics.lineTo(center + size * 0.05, center + size * 0.4)
+  graphics.lineTo(center + size * 0.4, center + size * 0.18)
+  graphics.closePath()
+  graphics.strokePath()
+
+  graphics.generateTexture(ENEMY_PEBBLE_BULLET_TEXTURE_KEY, size, size)
+  graphics.destroy()
+}
+
+/** Orbiting Orb などが壊せる敵弾か（接触攻撃・召喚物は対象外）。 */
+export function isDestructibleEnemyBullet(bullet: EnemyBulletVisual): boolean {
+  return bullet.active === true && bullet.getData('destructible') === true
+}
+
+/**
+ * 敵弾をプールへ戻す（小石は destroy、蜂の針は再利用）。
  */
 export function recycleEnemyBullet(bullet: EnemyBulletVisual): void {
+  if (bullet.getData('bulletStyle') === 'pebble') {
+    bullet.destroy()
+    return
+  }
+
   if (bullet.body !== null) {
     const body = bullet.body as Phaser.Physics.Arcade.Body
     body.enable = false
@@ -140,6 +219,10 @@ export function fireEnemyBullet(
   const bulletStartY = startY + directionY * spawnOffset
 
   let bullet = bulletGroup.getFirstDead(false) as EnemyBulletVisual | null
+  if (bullet !== null && bullet.getData('bulletStyle') === 'pebble') {
+    bullet = null
+  }
+
   if (bullet === null) {
     bullet = createStingerTriangle(
       scene,
@@ -149,20 +232,93 @@ export function fireEnemyBullet(
       directionY,
     )
     bullet.setDepth(9)
+    bullet.setData('bulletStyle', 'stinger')
     bulletGroup.add(bullet)
   } else {
     bullet.setPosition(bulletStartX, bulletStartY)
-    bullet.setRotation(Math.atan2(directionY, directionX))
+    if (bullet instanceof Phaser.GameObjects.Triangle) {
+      bullet.setRotation(Math.atan2(directionY, directionX))
+    }
     bullet.setActive(true)
     bullet.setVisible(true)
   }
 
   bullet.setData('damage', ENEMY_BULLET_DAMAGE)
-  // 0 のフレームはプレイヤーとの overlap を無視
+  // プレイヤー弾では壊せないが、Orbiting Orb などでは消滅させられる
+  bullet.setData('destroyableByPlayer', false)
+  bullet.setData('destructible', true)
   bullet.setData('collisionAge', 0)
 
   const body = bullet.body as Phaser.Physics.Arcade.Body
-  const flight = applyEnemyBulletBodySettings(body, directionX, directionY)
+  const flight = applyEnemyBulletBodySettings(
+    body,
+    directionX,
+    directionY,
+    ENEMY_BULLET_RADIUS,
+    ENEMY_BULLET_WIDTH,
+    ENEMY_BULLET_HEIGHT,
+  )
+  bullet.setData('flightVx', flight.flightVx)
+  bullet.setData('flightVy', flight.flightVy)
+  applyDevEntityDepth(bullet)
+
+  return bullet
+}
+
+/**
+ * プレイヤー現在位置へ向けて小石弾を1発撃つ（岩敵用）。
+ * 速度は蜂の弾と同じ。プレイヤー弾で破壊可能。
+ */
+export function firePebbleEnemyBullet(
+  scene: Phaser.Scene,
+  bulletGroup: Phaser.Physics.Arcade.Group,
+  startX: number,
+  startY: number,
+  targetX: number,
+  targetY: number,
+): EnemyBulletVisual | null {
+  const activeBulletCount = countActiveEnemyBullets(bulletGroup)
+  if (activeBulletCount >= MAX_ENEMY_BULLETS) {
+    return null
+  }
+
+  const dx = targetX - startX
+  const dy = targetY - startY
+  const distance = Math.sqrt(dx * dx + dy * dy)
+  if (distance === 0) {
+    return null
+  }
+
+  const directionX = dx / distance
+  const directionY = dy / distance
+  const spawnOffset = ENEMY_WIDTH * 0.75 + 4
+  const bulletStartX = startX + directionX * spawnOffset
+  const bulletStartY = startY + directionY * spawnOffset
+
+  ensurePebbleBulletTexture(scene)
+  const bullet = scene.add.image(
+    bulletStartX,
+    bulletStartY,
+    ENEMY_PEBBLE_BULLET_TEXTURE_KEY,
+  )
+  bullet.setDepth(9)
+  bullet.setData('bulletStyle', 'pebble')
+  bullet.setData('destroyableByPlayer', true)
+  bullet.setData('destructible', true)
+  bullet.setData('damage', ENEMY_BULLET_DAMAGE)
+  bullet.setData('collisionAge', 0)
+  bulletGroup.add(bullet)
+
+  const body = bullet.body as Phaser.Physics.Arcade.Body
+  const size = ENEMY_PEBBLE_BULLET_SIZE
+  const flight = applyEnemyBulletBodySettings(
+    body,
+    directionX,
+    directionY,
+    ENEMY_PEBBLE_BULLET_RADIUS,
+    size,
+    size,
+  )
   bullet.setData('flightVx', flight.flightVx)
   bullet.setData('flightVy', flight.flightVy)
   applyDevEntityDepth(bullet)
@@ -172,7 +328,6 @@ export function fireEnemyBullet(
 
 /**
  * 毎フレーム: collisionAge を進め、1以上で当たり判定可能にする。
- * プレイヤー弾の advancePlayerBulletCollisionAge と同役割。
  */
 export function advanceEnemyBulletCollisionAge(
   bulletGroup: Phaser.Physics.Arcade.Group,
@@ -284,7 +439,6 @@ export function countActiveEnemyBullets(
 
 /**
  * 敵弾の毎フレーム更新エントリ（現状は画面外削除のみ）。
- * 速度メンテや age 更新は GameScene 側で別途呼ぶ構成でもよい。
  */
 export function updateEnemyBullets(bulletGroup: Phaser.Physics.Arcade.Group): void {
   removeEnemyBulletsOutsidePlayArea(bulletGroup)

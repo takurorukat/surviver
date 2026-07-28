@@ -6,7 +6,8 @@ export const BGM_ENABLED_STORAGE_KEY = 'survivor-bgm-enabled-v2'
 // --- 効果音 ---
 // 発射・ヒット・撃破・クリア・コイン・被弾などは外部 OGG（SoundFont レンダー）。
 export const SFX_KEY_ENEMY_DEFEAT = 'sfx-enemy-defeat'
-export const SFX_PATH_ENEMY_DEFEAT = 'assets/audio/library/kenney/enemy_defeat_candidate.ogg'
+export const SFX_PATH_ENEMY_DEFEAT =
+  'assets/audio/library/kenney/enemy_defeat_candidate.ogg'
 export const SFX_KEY_ENEMY_HIT = 'sfx-enemy-hit'
 export const SFX_PATH_ENEMY_HIT = 'assets/audio/library/kenney/enemy_hit_candidate.ogg'
 export const SFX_KEY_ENEMY_BLOCKED = 'sfx-enemy-blocked'
@@ -53,6 +54,20 @@ export const SFX_KEY_SHOP_PURCHASE = 'sfx-shop-purchase'
 export const SFX_PATH_SHOP_PURCHASE = 'assets/audio/library/kenney/purchase_candidate.ogg'
 export const SFX_KEY_MENU_CANCEL = 'sfx-menu-cancel'
 export const SFX_PATH_MENU_CANCEL = 'assets/audio/library/kenney/menu_cancel_candidate.ogg'
+// Orbiting Orb（氷）: Tone.js オフライン生成
+export const SFX_KEY_ORBITING_ORB_OBTAIN = 'sfx-orbiting-orb-obtain'
+export const SFX_PATH_ORBITING_ORB_OBTAIN = 'assets/audio/orbiting_orb_obtain.ogg'
+export const SFX_KEY_ORBITING_ORB_HIT = 'sfx-orbiting-orb-hit'
+export const SFX_PATH_ORBITING_ORB_HIT = 'assets/audio/orbiting_orb_hit.ogg'
+export const SFX_KEY_ORBITING_ORB_SHATTER = 'sfx-orbiting-orb-shatter'
+export const SFX_PATH_ORBITING_ORB_SHATTER = 'assets/audio/orbiting_orb_shatter.ogg'
+/** Orbiting Orb 命中・迎撃 SE の最短間隔（高頻度防止） */
+export const ORBITING_ORB_HIT_SFX_COOLDOWN_MS = 70
+export const ORBITING_ORB_SHATTER_SFX_COOLDOWN_MS = 55
+/** Power 発射・敵撃破の最短間隔（高頻度防止・他SEへは影響しない） */
+export const PLAYER_FIRE_POWER_SFX_COOLDOWN_MS = 55
+export const ENEMY_DEFEAT_SFX_COOLDOWN_MS = 60
+export const COIN_PICKUP_SFX_COOLDOWN_MS = 60
 export const SFX_VOLUME = 0.35
 
 // --- BGM（ループ再生）---
@@ -60,7 +75,7 @@ export const SFX_VOLUME = 0.35
 export const BGM_KEY = 'bgm'
 export const BGM_PATHS = ['assets/audio/library/cc0-loop-pack/plains.ogg']
 // 外部ループBGMは音圧が高いため、従来値の60%へ下げる。
-export const BGM_VOLUME = 0.27
+export const BGM_VOLUME = 0.162
 export const FOREST_BGM_KEY = 'bgm-forest'
 export const FOREST_BGM_PATH = 'assets/audio/library/cc0-loop-pack/forest.ogg'
 // Fire Volcano BGM（game_music_generator の volcano テーマ）

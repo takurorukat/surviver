@@ -228,6 +228,11 @@ export class WaveSystem {
       return ENEMY_STONE_GUARD_PACK_SIZE
     }
 
+    // Ruins Stage3 のスケルトンは1体ずつ散らして出す（固まって出現しない）
+    if (this.areaId === 'ruins' && this.stageNumber === 3) {
+      return 1
+    }
+
     // Plains Stage3 の蜂は2体固定（泥スライムの大群とは別）
     if (spawnAsRanged && this.areaId === 'plains' && this.stageNumber >= 3) {
       if (remainingCount < ENEMY_RANGED_PACK_SIZE) {

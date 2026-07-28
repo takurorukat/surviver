@@ -53,7 +53,7 @@ const LEVEL_UP_CHOICE_POOL: LevelUpChoice[] = [
     title: 'Pickup',
     description: 'Coin pickup range +1',
   },
-  // Pierce / Blast / Ricochet はレベルアップ選択肢に出さない（他スキルの組み合わせで同期）
+  // Pierce / Blast / Orbiting Orb / Ricochet はレベルアップ選択肢に出さない（他スキルの組み合わせで同期）
   {
     id: 'xpBonus',
     title: 'XP Bonus',
@@ -70,7 +70,7 @@ export const GOLD_FALLBACK_CHOICE: LevelUpChoice = {
 
 /**
  * 解放済みスキルだけ候補に入れる。
- * Pierce / Blast / Ricochet はプール外（他スキル同期のみ）。
+ * Pierce / Blast / Orbiting Orb / Ricochet はプール外（他スキル同期のみ）。
  */
 export function buildAvailableLevelUpChoicePool(
   maxedChoiceIds: LevelUpChoiceId[] = [],

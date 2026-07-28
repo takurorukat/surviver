@@ -8,11 +8,11 @@
  * - collisionAge: 発射フレームでは overlap を無視（同フレーム撃破事故防止）
  *
  * 見た目は5種類:
- * - powerOrb: 初期のエネルギー弾
+ * - powerOrb: 初期のエネルギー弾（無属性）
  * - waterOrb: Pickup 強化後の水魔法弾
  * - windVortex: Move 強化後の風魔法の渦弾
  * - fireOrb: XP Bonus 強化後の火魔法弾
- * - earthOrb: Dungeon（土）の岩弾
+ * - earthOrb: 土の岩弾（見た目・SE用に残置。現行の属性抽選では未使用）
  * パワーが高いほど大きくなる。
  * 弾も座標直書きせず、body.setVelocity で飛ばす。
  * 消すときは destroy せず inactive にして Group 内で再利用する（Phaser のプール）。

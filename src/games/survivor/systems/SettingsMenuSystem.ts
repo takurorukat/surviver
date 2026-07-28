@@ -267,6 +267,11 @@ export class SettingsMenuSystem {
     this.overlay.setScrollFactor(0)
     this.overlay.setInteractive()
     this.overlay.on('pointerdown', () => {
+      // SFX Catalog / Credits 表示中は背後の Settings 閉じを発火させない。
+      // DOM の Play クリックが Phaser の window mousedown 経由でここへ届くため必須。
+      if (this.isCreditsOpen || this.isSfxPreviewOpen()) {
+        return
+      }
       this.close()
     })
 
@@ -592,6 +597,12 @@ export class SettingsMenuSystem {
     this.clearKeyboard()
     this.destroySfxPreview()
 
+    // DOM overlay 上のクリックが Phaser window 入力へ漏れた場合の保険。
+    // Catalog 表示中は Settings 背面の全画面 overlay を一時的に無効化する。
+    if (this.overlay !== null) {
+      this.overlay.disableInteractive()
+    }
+
     this.sfxPreviewSystem = new SfxPreviewSystem(this.scene, {
       audioSystem: this.callbacks.audioSystem,
       onUiObjectsReady: (objects) => {
@@ -602,6 +613,7 @@ export class SettingsMenuSystem {
       },
       onClose: () => {
         this.sfxPreviewSystem = null
+        this.restoreSettingsOverlayInteractive()
         if (this.isOpen) {
           this.setupKeyboard()
         }
@@ -623,6 +635,15 @@ export class SettingsMenuSystem {
     }
     this.sfxPreviewSystem.destroy()
     this.sfxPreviewSystem = null
+    this.restoreSettingsOverlayInteractive()
+  }
+
+  /** SFX Catalog を閉じたあと、Settings 背面 overlay のクリック閉じを再開する */
+  private restoreSettingsOverlayInteractive(): void {
+    if (this.overlay === null || !this.isOpen || this.isCreditsOpen) {
+      return
+    }
+    this.overlay.setInteractive()
   }
 
   // 役割: 指定オブジェクトをメインカメラ（ブラー）から外す

@@ -1,183 +1,146 @@
 // ============================================================
 // SfxPreviewSystem.ts
 // ------------------------------------------------------------
-// 効果音の聴き比べ用パネル。
-// Settings → SFX Preview から開く。
-// 正式 SE 一覧と、波形合成 a/b/c 候補の再生画面を切り替える。
+// Settings → SFX Preview から開く SFX Catalog（Review All 専用）。
+// Manifest: constants/sfxCatalog.ts
 // ============================================================
 
 import Phaser from 'phaser'
 import {
   GAME_WIDTH,
   GAME_HEIGHT,
-  FONT_FAMILY_HEADING,
-  FONT_FAMILY_UI,
-  SETTINGS_MENU_PANEL_COLOR,
-  SETTINGS_MENU_BORDER_COLOR,
-  SETTINGS_MENU_BUTTON_HEIGHT,
-  SFX_PREVIEW_PANEL_WIDTH,
-  SFX_PREVIEW_PANEL_HEIGHT,
   SFX_PREVIEW_DEPTH,
-  SFX_PREVIEW_ROW_HEIGHT,
-  SFX_PREVIEW_VOLUME_STEP,
   SFX_VOLUME,
-  SFX_CANDIDATE_DIR,
-  SFX_CANDIDATE_VARIANTS,
-  type SfxCandidateVariant,
-  SFX_KEY_PLAYER_FIRE_POWER,
-  SFX_KEY_PLAYER_HIT_POWER,
-  SFX_KEY_PLAYER_FIRE_WIND,
-  SFX_KEY_PLAYER_HIT_WIND,
-  SFX_KEY_PLAYER_FIRE_WATER,
-  SFX_KEY_PLAYER_HIT_WATER,
-  SFX_KEY_PLAYER_FIRE_FIRE,
-  SFX_KEY_PLAYER_HIT_FIRE,
-  SFX_KEY_PLAYER_FIRE_EARTH,
-  SFX_KEY_PLAYER_HIT_EARTH,
-  SFX_KEY_ENEMY_DEFEAT,
-  SFX_KEY_ENEMY_HIT,
-  SFX_KEY_ENEMY_BLOCKED,
-  SFX_KEY_COIN_PICKUP,
-  SFX_KEY_PLAYER_HURT,
-  SFX_KEY_LEVEL_UP,
-  SFX_KEY_STAGE_CLEAR,
-  SFX_KEY_AREA_CLEAR,
-  SFX_KEY_GAME_OVER,
-  SFX_KEY_MENU_MOVE,
-  SFX_KEY_SHOP_PURCHASE,
-  SFX_KEY_MENU_CANCEL,
 } from '../GameConstants'
 import { GameAudioSystem } from './GameAudioSystem'
-import { shrinkTextToFitWidth } from '../utils/fitTextToWidth'
+import {
+  SFX_CATALOG,
+  findCatalogEntry,
+  findCatalogVariant,
+  getReviewAllEntries,
+  pickDefaultVariantId,
+  sortVariantsForReview,
+  type SfxCatalogCategory,
+  type SfxCatalogEntry,
+  type SfxCatalogEntryStatus,
+  type SfxCatalogRecommendation,
+  type SfxCatalogVariant,
+} from '../constants/sfxCatalog'
+import {
+  buildAdoptionExportJson,
+  buildAdoptionSummaryText,
+  clearAllAdoptions,
+  getAdoptedVariantId,
+  getVariantMemo,
+  getVariantRating,
+  getVariantReviewStatus,
+  setAdoptedVariantId,
+  setVariantMemo,
+  setVariantRating,
+  setVariantReviewStatus,
+} from './SfxCatalogReviewStore'
 
 export type SfxPreviewCallbacks = {
   audioSystem: GameAudioSystem
-  /** パネル内オブジェクトをメインカメラのブラーから外すとき */
   onUiObjectsReady?: (objects: Phaser.GameObjects.GameObject[]) => void
   onClose?: () => void
   onCancelled?: () => void
 }
 
-type SfxPreviewEntry =
-  | { kind: 'header'; label: string }
-  | { kind: 'file'; label: string; note: string; audioKey: string }
-  | { kind: 'openCandidates'; label: string; note: string }
-
-type CandidateRowDef = {
-  label: string
-  sfxId: string
+type EntryUiState = {
+  selectedVariantId: string | null
+  aVariantId: string | null
+  bVariantId: string | null
+  burstModeIndex: number
+  ratings: Record<string, number>
+  reviewStatus: SfxCatalogEntryStatus
+  memo: string
 }
 
-type SelectableRow =
-  | { kind: 'volume' }
-  | { kind: 'sfx'; entryIndex: number }
-  | { kind: 'candidate'; rowIndex: number }
-  | { kind: 'openCandidates' }
-  | { kind: 'backToCatalog' }
-  | { kind: 'back' }
-
-type RowView = {
-  background: Phaser.GameObjects.Rectangle
-  label: Phaser.GameObjects.Text
-  note: Phaser.GameObjects.Text | null
+type ReviewRowRefs = {
+  rowEl: HTMLDivElement
+  checkbox: HTMLInputElement
+  badgesEl: HTMLSpanElement
+  statusEl: HTMLSpanElement
 }
 
-type PreviewMode = 'catalog' | 'candidates'
+type ReviewSectionRefs = {
+  rowsByVariantId: Record<string, ReviewRowRefs>
+  abLabelEl: HTMLSpanElement | null
+}
 
-const SFX_CATALOG: SfxPreviewEntry[] = [
-  { kind: 'header', label: 'Bullet Fire / Hit' },
-  { kind: 'file', label: 'Power Fire', note: 'shoot', audioKey: SFX_KEY_PLAYER_FIRE_POWER },
-  { kind: 'file', label: 'Power Hit', note: 'shoot', audioKey: SFX_KEY_PLAYER_HIT_POWER },
-  { kind: 'file', label: 'Wind Fire', note: 'cut', audioKey: SFX_KEY_PLAYER_FIRE_WIND },
-  { kind: 'file', label: 'Wind Hit', note: 'cut', audioKey: SFX_KEY_PLAYER_HIT_WIND },
-  { kind: 'file', label: 'Water Fire', note: 'freeze', audioKey: SFX_KEY_PLAYER_FIRE_WATER },
-  { kind: 'file', label: 'Water Hit', note: 'freeze', audioKey: SFX_KEY_PLAYER_HIT_WATER },
-  { kind: 'file', label: 'Fire Fire', note: 'burn', audioKey: SFX_KEY_PLAYER_FIRE_FIRE },
-  { kind: 'file', label: 'Fire Hit', note: 'burn', audioKey: SFX_KEY_PLAYER_HIT_FIRE },
-  { kind: 'file', label: 'Earth Fire', note: 'impact', audioKey: SFX_KEY_PLAYER_FIRE_EARTH },
-  { kind: 'file', label: 'Earth Hit', note: 'impact', audioKey: SFX_KEY_PLAYER_HIT_EARTH },
-  { kind: 'header', label: 'Combat / Pickup' },
-  { kind: 'file', label: 'Enemy Defeat', note: 'ogg', audioKey: SFX_KEY_ENEMY_DEFEAT },
-  { kind: 'file', label: 'Enemy Hit', note: 'ogg', audioKey: SFX_KEY_ENEMY_HIT },
-  { kind: 'file', label: 'Enemy Blocked', note: 'ogg', audioKey: SFX_KEY_ENEMY_BLOCKED },
-  { kind: 'file', label: 'Player Hurt', note: 'ogg', audioKey: SFX_KEY_PLAYER_HURT },
-  { kind: 'file', label: 'Coin Pickup', note: 'ogg', audioKey: SFX_KEY_COIN_PICKUP },
-  { kind: 'header', label: 'UI / Events' },
-  { kind: 'file', label: 'Menu Move', note: 'ogg', audioKey: SFX_KEY_MENU_MOVE },
-  { kind: 'file', label: 'Shop Purchase', note: 'ogg', audioKey: SFX_KEY_SHOP_PURCHASE },
-  { kind: 'file', label: 'Menu Cancel', note: 'ogg', audioKey: SFX_KEY_MENU_CANCEL },
-  { kind: 'file', label: 'Level Up', note: 'ogg', audioKey: SFX_KEY_LEVEL_UP },
-  { kind: 'file', label: 'Stage Clear', note: 'ogg', audioKey: SFX_KEY_STAGE_CLEAR },
-  { kind: 'file', label: 'Area Clear', note: 'ogg', audioKey: SFX_KEY_AREA_CLEAR },
-  { kind: 'file', label: 'Game Over', note: 'ogg', audioKey: SFX_KEY_GAME_OVER },
+type PreviewPlaybackStatus =
+  | 'idle'
+  | 'loading'
+  | 'playing'
+  | 'load-failed'
+  | 'decode-failed'
+  | 'file-not-found'
+  | 'audio-blocked'
+
+const CATEGORY_FILTERS: Array<SfxCatalogCategory | 'all'> = [
+  'all',
+  'combat-core',
+  'player',
+  'enemy',
+  'skill',
+  'pickup',
+  'progression',
+  'ui',
+  'system',
 ]
 
-/** 波形合成候補の聴き比べ対象（regen_element_bullet_sfx.py と対応） */
-const CANDIDATE_ROWS: CandidateRowDef[] = [
-  { label: 'Enemy Defeat', sfxId: 'enemy_defeat' },
-  { label: 'Enemy Hit', sfxId: 'enemy_hit' },
-  { label: 'Enemy Blocked', sfxId: 'enemy_blocked' },
-  { label: 'Coin Pickup', sfxId: 'coin_pickup' },
-  { label: 'Player Hurt', sfxId: 'player_hurt' },
-  { label: 'Menu Move', sfxId: 'menu_move' },
-  { label: 'Menu Cancel', sfxId: 'menu_cancel' },
-  { label: 'Shop Purchase', sfxId: 'shop_purchase' },
-  { label: 'Power Fire', sfxId: 'player_fire_power' },
-  { label: 'Power Hit', sfxId: 'player_hit_power' },
-  { label: 'Wind Fire', sfxId: 'player_fire_wind' },
-  { label: 'Wind Hit', sfxId: 'player_hit_wind' },
+const STATUS_FILTERS: Array<SfxCatalogEntryStatus | 'all'> = [
+  'all',
+  'unreviewed',
+  'reviewing',
+  'preferred',
+  'missing-candidates',
 ]
-
-const ROW_NORMAL = 0x1e293b
-const ROW_SELECTED = 0x475569
-const BODY_PADDING_X = 20
 
 export class SfxPreviewSystem {
   private scene: Phaser.Scene
   private callbacks: SfxPreviewCallbacks
   private isOpenFlag = false
   private previewVolume = SFX_VOLUME
-  private selectedIndex = 0
-  private mode: PreviewMode = 'catalog'
-  private selectableRows: SelectableRow[] = []
-  private rowViews: RowView[] = []
-  private volumeLabel: Phaser.GameObjects.Text | null = null
   private ownedObjects: Phaser.GameObjects.GameObject[] = []
-  // 候補行ごとの選択中バリアント（a/b/c）
-  private candidateVariantByRow: SfxCandidateVariant[] = []
-  private loadingCandidateKeys: Record<string, boolean> = {}
+  private entryUiById: Record<string, EntryUiState> = {}
+  private failedKeys: Record<string, boolean> = {}
+  private burstTimers: Phaser.Time.TimerEvent[] = []
 
-  private keyW: Phaser.Input.Keyboard.Key | null = null
-  private keyS: Phaser.Input.Keyboard.Key | null = null
-  private keyUp: Phaser.Input.Keyboard.Key | null = null
-  private keyDown: Phaser.Input.Keyboard.Key | null = null
-  private keyLeft: Phaser.Input.Keyboard.Key | null = null
-  private keyRight: Phaser.Input.Keyboard.Key | null = null
-  private keyA: Phaser.Input.Keyboard.Key | null = null
-  private keyD: Phaser.Input.Keyboard.Key | null = null
-  private keySpace: Phaser.Input.Keyboard.Key | null = null
-  private keyEnter: Phaser.Input.Keyboard.Key | null = null
+  private categoryFilter: SfxCatalogCategory | 'all' = 'all'
+  private statusFilter: SfxCatalogEntryStatus | 'all' = 'all'
+  private searchQuery = ''
 
-  private readonly onMoveUp = (): void => {
-    this.moveSelection(-1)
-  }
-  private readonly onMoveDown = (): void => {
-    this.moveSelection(1)
-  }
-  private readonly onLeft = (): void => {
-    this.handleHorizontal(-1)
-  }
-  private readonly onRight = (): void => {
-    this.handleHorizontal(1)
-  }
-  private readonly onConfirm = (): void => {
-    this.confirmSelection()
+  private reviewOverlayEl: HTMLDivElement | null = null
+  private reviewSequenceTimers: Phaser.Time.TimerEvent[] = []
+  private reviewCurrentPlayingEl: HTMLSpanElement | null = null
+  private reviewCountsEl: HTMLSpanElement | null = null
+  private reviewUndecidedListEl: HTMLUListElement | null = null
+  private reviewSectionRefsByEntryId: Record<string, ReviewSectionRefs> = {}
+  private reviewAbByEntryId: Record<string, { aVariantId: string | null; bVariantId: string | null }> =
+    {}
+  private previewHtmlAudio: HTMLAudioElement | null = null
+  private previewPlayToken = 0
+  private savedSceneInputEnabled = true
+  private overlayIsolationBound = false
+  private playbackStatusByVariantId: Record<string, PreviewPlaybackStatus> = {}
+
+  /**
+   * Overlay 内のクリックが Phaser の window 入力へ届かないようにする。
+   * 重要: capture ではなく bubble で止める。
+   * capture だと子の Play ボタンより先に実行され、click が届かなくなる。
+   */
+  private readonly onOverlayBlockGameInput = (event: Event): void => {
+    // 子要素（Play / checkbox / input 等）のハンドラ実行後にここに来る。
+    // 上位（document / window / Phaser）へは渡さない。
+    event.stopPropagation()
   }
 
   constructor(scene: Phaser.Scene, callbacks: SfxPreviewCallbacks) {
     this.scene = scene
     this.callbacks = callbacks
-    this.resetCandidateVariants()
+    this.initEntryUiStates()
   }
 
   isOpen(): boolean {
@@ -189,11 +152,10 @@ export class SfxPreviewSystem {
       return
     }
     this.isOpenFlag = true
-    this.mode = 'catalog'
-    this.selectedIndex = 0
-    this.buildPanel()
-    this.setupKeyboard()
-    this.refreshSelectionVisual()
+    this.savedSceneInputEnabled = this.scene.input.enabled
+    // DOM Catalog 操作が Phaser の window mousedown 経由で背面 UI に届くのを防ぐ
+    this.scene.input.enabled = false
+    this.renderReviewAll()
   }
 
   close(playCancelSound: boolean = true): void {
@@ -203,634 +165,1380 @@ export class SfxPreviewSystem {
     if (playCancelSound) {
       this.callbacks.onCancelled?.()
     }
-    this.clearKeyboard()
-    this.destroyPanel()
+    this.teardownUi()
     this.isOpenFlag = false
     this.callbacks.onClose?.()
   }
 
   destroy(): void {
-    this.clearKeyboard()
-    this.destroyPanel()
+    this.teardownUi()
     this.isOpenFlag = false
   }
 
-  private resetCandidateVariants(): void {
-    this.candidateVariantByRow = []
-    for (let index = 0; index < CANDIDATE_ROWS.length; index++) {
-      this.candidateVariantByRow.push('a')
+  private teardownUi(): void {
+    this.clearBurstTimers()
+    this.clearReviewSequenceTimers()
+    this.stopPreviewSound()
+    this.unbindOverlayInputIsolation()
+    this.unmountReviewOverlay()
+    this.reviewAbByEntryId = {}
+    this.destroyPanel()
+    this.scene.input.enabled = this.savedSceneInputEnabled
+  }
+
+  private renderReviewAll(): void {
+    this.clearBurstTimers()
+    this.buildReviewShellPanel()
+    this.mountReviewOverlay()
+  }
+
+  private variantLabel(entry: SfxCatalogEntry, variantId: string | null): string {
+    if (variantId === null) {
+      return '(none)'
+    }
+    const variant = findCatalogVariant(entry, variantId)
+    if (variant === null) {
+      return '(missing)'
+    }
+    return variant.label
+  }
+
+  private initEntryUiStates(): void {
+    for (let index = 0; index < SFX_CATALOG.length; index++) {
+      const entry = SFX_CATALOG[index]
+      const defaultId = pickDefaultVariantId(entry)
+      const revision = this.findFirstVariantByStatus(entry, 'revision')
+      const candidate = this.findFirstVariantByStatus(entry, 'candidate')
+      const runtime = this.findFirstVariantByStatus(entry, 'runtime')
+      let bId = revision?.id ?? candidate?.id ?? runtime?.id ?? defaultId
+      if (entry.variants.length <= 1) {
+        bId = null
+      }
+      this.entryUiById[entry.id] = {
+        selectedVariantId: defaultId,
+        aVariantId: runtime?.id ?? defaultId,
+        bVariantId: bId,
+        burstModeIndex: 0,
+        ratings: {},
+        reviewStatus: entry.initialStatus,
+        memo: '',
+      }
     }
   }
 
-  private buildPanel(): void {
-    this.destroyPanel()
-    this.selectableRows = []
-    this.rowViews = []
+  private findFirstVariantByStatus(
+    entry: SfxCatalogEntry,
+    status: SfxCatalogVariant['status'],
+  ): SfxCatalogVariant | null {
+    for (let index = 0; index < entry.variants.length; index++) {
+      if (entry.variants[index].status === status) {
+        return entry.variants[index]
+      }
+    }
+    return null
+  }
 
+  private getEntryUi(entryId: string): EntryUiState {
+    return this.entryUiById[entryId]
+  }
+
+  private entryMatchesQuery(entry: SfxCatalogEntry, query: string): boolean {
+    const parts: string[] = [
+      entry.id,
+      entry.label,
+      entry.category,
+      entry.description ?? '',
+      entry.runtimeKey ?? '',
+      entry.runtimePath ?? '',
+    ]
+    for (let index = 0; index < entry.variants.length; index++) {
+      const variant = entry.variants[index]
+      parts.push(variant.id)
+      parts.push(variant.label)
+      parts.push(variant.path)
+      parts.push(variant.sourceName ?? '')
+      parts.push(variant.source ?? '')
+      parts.push(variant.author ?? '')
+    }
+    const recommendations = entry.recommendations ?? []
+    for (let index = 0; index < recommendations.length; index++) {
+      const recommendation = recommendations[index]
+      parts.push(recommendation.reason ?? '')
+      if (recommendation.direction !== undefined) {
+        for (let dirIndex = 0; dirIndex < recommendation.direction.length; dirIndex++) {
+          parts.push(recommendation.direction[dirIndex])
+        }
+      }
+    }
+    for (let index = 0; index < parts.length; index++) {
+      if (parts[index].toLowerCase().indexOf(query) >= 0) {
+        return true
+      }
+    }
+    return false
+  }
+
+  private variantMatchesQuery(entry: SfxCatalogEntry, variant: SfxCatalogVariant, query: string): boolean {
+    if (query === '') {
+      return true
+    }
+    const parts: string[] = [
+      entry.id,
+      entry.label,
+      entry.description ?? '',
+      variant.id,
+      variant.label,
+      variant.path,
+      variant.sourceName ?? '',
+      variant.source ?? '',
+      variant.author ?? '',
+    ]
+    const recommendation = (entry.recommendations ?? []).find((item) => item.variantId === variant.id)
+    if (recommendation !== undefined) {
+      parts.push(recommendation.reason ?? '')
+      if (recommendation.direction !== undefined) {
+        for (let index = 0; index < recommendation.direction.length; index++) {
+          parts.push(recommendation.direction[index])
+        }
+      }
+    }
+    for (let index = 0; index < parts.length; index++) {
+      if (parts[index].toLowerCase().indexOf(query) >= 0) {
+        return true
+      }
+    }
+    return false
+  }
+
+  private getFilteredReviewAllEntries(): SfxCatalogEntry[] {
+    const allEntries = getReviewAllEntries()
+    const query = this.searchQuery.trim().toLowerCase()
+    const result: SfxCatalogEntry[] = []
+    for (let index = 0; index < allEntries.length; index++) {
+      const entry = allEntries[index]
+      if (this.categoryFilter !== 'all' && entry.category !== this.categoryFilter) {
+        continue
+      }
+      const ui = this.getEntryUi(entry.id)
+      if (this.statusFilter !== 'all' && ui.reviewStatus !== this.statusFilter) {
+        continue
+      }
+      if (query !== '' && !this.entryMatchesQuery(entry, query)) {
+        continue
+      }
+      result.push(entry)
+    }
+    return result
+  }
+
+  private buildReviewShellPanel(): void {
+    this.destroyPanel()
     const centerX = GAME_WIDTH / 2
     const centerY = GAME_HEIGHT / 2
-    const panelTop = centerY - SFX_PREVIEW_PANEL_HEIGHT / 2
-    const panelBottom = centerY + SFX_PREVIEW_PANEL_HEIGHT / 2
-
-    const overlay = this.scene.add.rectangle(
-      centerX,
-      centerY,
-      GAME_WIDTH,
-      GAME_HEIGHT,
-      0x000000,
-      0.55,
-    )
-    overlay.setDepth(SFX_PREVIEW_DEPTH)
-    overlay.setScrollFactor(0)
-    overlay.setInteractive()
-    overlay.on('pointerdown', () => {
-      this.close(true)
-    })
-    this.ownedObjects.push(overlay)
-
-    const border = this.scene.add.rectangle(
-      centerX,
-      centerY,
-      SFX_PREVIEW_PANEL_WIDTH + 4,
-      SFX_PREVIEW_PANEL_HEIGHT + 4,
-      SETTINGS_MENU_BORDER_COLOR,
-    )
-    border.setDepth(SFX_PREVIEW_DEPTH + 1)
-    border.setScrollFactor(0)
-    this.ownedObjects.push(border)
-
-    const panel = this.scene.add.rectangle(
-      centerX,
-      centerY,
-      SFX_PREVIEW_PANEL_WIDTH,
-      SFX_PREVIEW_PANEL_HEIGHT,
-      SETTINGS_MENU_PANEL_COLOR,
-    )
-    panel.setDepth(SFX_PREVIEW_DEPTH + 2)
-    panel.setScrollFactor(0)
-    panel.setInteractive()
-    this.ownedObjects.push(panel)
-
-    const titleText = this.mode === 'candidates' ? 'SFX Candidates' : 'SFX Preview'
-    const title = this.scene.add.text(centerX, panelTop + 18, titleText, {
-      fontFamily: FONT_FAMILY_HEADING,
-      fontSize: '14px',
-      color: '#fde68a',
-    })
-    title.setOrigin(0.5)
-    title.setDepth(SFX_PREVIEW_DEPTH + 3)
-    title.setScrollFactor(0)
-    shrinkTextToFitWidth(title, SFX_PREVIEW_PANEL_WIDTH - BODY_PADDING_X)
-    this.ownedObjects.push(title)
-
-    const hintText =
-      this.mode === 'candidates'
-        ? 'W/S select  ·  ←/→ a/b/c  ·  SPACE play  ·  ESC back'
-        : 'W/S select  ·  SPACE play  ·  ←/→ volume  ·  ESC back'
-    const hint = this.scene.add.text(centerX, panelTop + 36, hintText, {
-      fontFamily: FONT_FAMILY_UI,
-      fontSize: '10px',
-      color: '#71717a',
-    })
-    hint.setOrigin(0.5)
-    hint.setDepth(SFX_PREVIEW_DEPTH + 3)
-    hint.setScrollFactor(0)
-    shrinkTextToFitWidth(hint, SFX_PREVIEW_PANEL_WIDTH - BODY_PADDING_X)
-    this.ownedObjects.push(hint)
-
-    let cursorY = panelTop + 52
-
-    this.selectableRows.push({ kind: 'volume' })
-    const volumeRow = this.createRow(
-      centerX,
-      cursorY,
-      this.getVolumeRowText(),
-      '← →',
-      () => {
-        this.selectRowByKind('volume')
-      },
-      () => {
-        this.selectRowByKind('volume')
-      },
-    )
-    this.volumeLabel = volumeRow.label
-    this.rowViews.push(volumeRow)
-    cursorY = cursorY + SFX_PREVIEW_ROW_HEIGHT + 1
-
-    if (this.mode === 'catalog') {
-      cursorY = this.buildCatalogRows(centerX, cursorY)
-    } else {
-      cursorY = this.buildCandidateRows(centerX, cursorY)
-    }
-
-    if (this.mode === 'catalog') {
-      this.selectableRows.push({ kind: 'openCandidates' })
-      const candidatesRow = this.createRow(
-        centerX,
-        panelBottom - 50,
-        'Synth Candidates',
-        'a/b/c',
-        () => {
-          this.selectRowByKind('openCandidates')
-        },
-        () => {
-          this.openCandidatesMode()
-        },
-        SETTINGS_MENU_BUTTON_HEIGHT - 8,
-      )
-      this.rowViews.push(candidatesRow)
-    } else {
-      this.selectableRows.push({ kind: 'backToCatalog' })
-      const catalogRow = this.createRow(
-        centerX,
-        panelBottom - 50,
-        'Back to Catalog',
-        null,
-        () => {
-          this.selectRowByKind('backToCatalog')
-        },
-        () => {
-          this.openCatalogMode()
-        },
-        SETTINGS_MENU_BUTTON_HEIGHT - 8,
-      )
-      this.rowViews.push(catalogRow)
-    }
-
-    this.selectableRows.push({ kind: 'back' })
-    const backRow = this.createRow(
-      centerX,
-      panelBottom - 24,
-      'Back',
-      null,
-      () => {
-        this.selectRowByKind('back')
-      },
-      () => {
-        this.close(true)
-      },
-      SETTINGS_MENU_BUTTON_HEIGHT - 6,
-    )
-    this.rowViews.push(backRow)
-
+    const dim = this.scene.add.rectangle(centerX, centerY, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.65)
+    dim.setDepth(SFX_PREVIEW_DEPTH)
+    dim.setScrollFactor(0)
+    this.ownedObjects.push(dim)
     if (this.callbacks.onUiObjectsReady !== undefined) {
       this.callbacks.onUiObjectsReady(this.ownedObjects.slice())
     }
   }
 
-  private buildCatalogRows(centerX: number, startY: number): number {
-    let cursorY = startY
-    for (let index = 0; index < SFX_CATALOG.length; index++) {
-      const entry = SFX_CATALOG[index]
-      if (entry.kind === 'header') {
-        const header = this.scene.add.text(
-          centerX - SFX_PREVIEW_PANEL_WIDTH / 2 + BODY_PADDING_X,
-          cursorY + 1,
-          entry.label,
-          {
-            fontFamily: FONT_FAMILY_UI,
-            fontSize: '10px',
-            color: '#94a3b8',
-          },
-        )
-        header.setOrigin(0, 0.5)
-        header.setDepth(SFX_PREVIEW_DEPTH + 3)
-        header.setScrollFactor(0)
-        this.ownedObjects.push(header)
-        cursorY = cursorY + 13
-        continue
-      }
-      if (entry.kind !== 'file') {
-        continue
-      }
+  private mountReviewOverlay(): void {
+    const previousScrollTop = this.reviewOverlayEl !== null ? this.reviewOverlayEl.scrollTop : 0
+    const previousAbByEntryId = { ...this.reviewAbByEntryId }
+    const activeElement = document.activeElement as HTMLElement | null
+    const restoreSearchFocus =
+      activeElement !== null &&
+      activeElement.tagName === 'INPUT' &&
+      (activeElement as HTMLInputElement).type === 'search'
+    const searchSelectionStart =
+      restoreSearchFocus && activeElement instanceof HTMLInputElement
+        ? activeElement.selectionStart
+        : null
+    const searchSelectionEnd =
+      restoreSearchFocus && activeElement instanceof HTMLInputElement
+        ? activeElement.selectionEnd
+        : null
+    this.unmountReviewOverlay()
+    const entries = this.getFilteredReviewAllEntries()
+    this.reviewSectionRefsByEntryId = {}
+    this.reviewAbByEntryId = previousAbByEntryId
 
-      const entryIndex = index
-      this.selectableRows.push({ kind: 'sfx', entryIndex })
-      const row = this.createRow(
-        centerX,
-        cursorY,
-        entry.label,
-        entry.note,
-        () => {
-          this.selectRowByEntryIndex(entryIndex)
-        },
-        () => {
-          this.selectRowByEntryIndex(entryIndex)
-          this.playEntry(entry)
-        },
-      )
-      this.rowViews.push(row)
-      cursorY = cursorY + SFX_PREVIEW_ROW_HEIGHT
+    const container = document.createElement('div')
+    container.setAttribute('data-sfx-review-all-overlay', '1')
+    container.style.cssText = [
+      'position:fixed',
+      'inset:0',
+      'z-index:2147483000',
+      'background:#0b1120',
+      'color:#e5e7eb',
+      'overflow-y:auto',
+      'overflow-x:hidden',
+      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+      'padding:16px',
+      'box-sizing:border-box',
+    ].join(';')
+
+    container.appendChild(this.buildReviewHeader(entries))
+
+    const list = document.createElement('div')
+    for (let index = 0; index < entries.length; index++) {
+      list.appendChild(this.buildReviewEntrySection(entries[index]))
     }
-    return cursorY
-  }
+    container.appendChild(list)
 
-  private buildCandidateRows(centerX: number, startY: number): number {
-    let cursorY = startY
-    const header = this.scene.add.text(
-      centerX - SFX_PREVIEW_PANEL_WIDTH / 2 + BODY_PADDING_X,
-      cursorY + 1,
-      'Wave synth a / b / c  (← → switch)',
-      {
-        fontFamily: FONT_FAMILY_UI,
-        fontSize: '10px',
-        color: '#94a3b8',
-      },
-    )
-    header.setOrigin(0, 0.5)
-    header.setDepth(SFX_PREVIEW_DEPTH + 3)
-    header.setScrollFactor(0)
-    this.ownedObjects.push(header)
-    cursorY = cursorY + 14
-
-    for (let rowIndex = 0; rowIndex < CANDIDATE_ROWS.length; rowIndex++) {
-      const def = CANDIDATE_ROWS[rowIndex]
-      this.selectableRows.push({ kind: 'candidate', rowIndex })
-      const variant = this.candidateVariantByRow[rowIndex]
-      const row = this.createRow(
-        centerX,
-        cursorY,
-        def.label,
-        this.getCandidateNote(variant),
-        () => {
-          this.selectCandidateRow(rowIndex)
-        },
-        () => {
-          this.selectCandidateRow(rowIndex)
-          this.playCandidate(rowIndex)
-        },
-      )
-      this.rowViews.push(row)
-      cursorY = cursorY + SFX_PREVIEW_ROW_HEIGHT
+    document.body.appendChild(container)
+    this.reviewOverlayEl = container
+    this.bindOverlayInputIsolation(container)
+    this.updateReviewCounts()
+    container.scrollTop = previousScrollTop
+    if (restoreSearchFocus) {
+      const nextSearch = container.querySelector('input[type="search"]') as HTMLInputElement | null
+      if (nextSearch !== null) {
+        nextSearch.focus()
+        if (searchSelectionStart !== null && searchSelectionEnd !== null) {
+          nextSearch.setSelectionRange(searchSelectionStart, searchSelectionEnd)
+        }
+      }
     }
-    return cursorY
   }
 
-  private getCandidateNote(variant: SfxCandidateVariant): string {
-    return `[${variant}]`
+  private bindOverlayInputIsolation(container: HTMLElement): void {
+    this.unbindOverlayInputIsolation()
+    const eventNames = [
+      'pointerdown',
+      'pointerup',
+      'mousedown',
+      'mouseup',
+      'touchstart',
+      'touchend',
+      'click',
+    ]
+    for (let index = 0; index < eventNames.length; index++) {
+      // bubble（第3引数 false）: 子ボタンの click を先に実行させてから背後へ漏れないよう止める
+      container.addEventListener(eventNames[index], this.onOverlayBlockGameInput, false)
+    }
+    this.overlayIsolationBound = true
   }
 
-  private createRow(
-    centerX: number,
-    y: number,
-    labelText: string,
-    noteText: string | null,
-    onHover: () => void,
-    onClick: () => void,
-    rowHeight: number = SFX_PREVIEW_ROW_HEIGHT,
-  ): RowView {
-    const rowWidth = SFX_PREVIEW_PANEL_WIDTH - BODY_PADDING_X * 2
-    const background = this.scene.add.rectangle(
-      centerX,
-      y,
-      rowWidth,
-      rowHeight,
-      ROW_NORMAL,
-      0.95,
+  private unbindOverlayInputIsolation(): void {
+    if (!this.overlayIsolationBound || this.reviewOverlayEl === null) {
+      this.overlayIsolationBound = false
+      return
+    }
+    const eventNames = [
+      'pointerdown',
+      'pointerup',
+      'mousedown',
+      'mouseup',
+      'touchstart',
+      'touchend',
+      'click',
+    ]
+    for (let index = 0; index < eventNames.length; index++) {
+      this.reviewOverlayEl.removeEventListener(
+        eventNames[index],
+        this.onOverlayBlockGameInput,
+        false,
+      )
+    }
+    this.overlayIsolationBound = false
+  }
+
+  private unmountReviewOverlay(): void {
+    this.clearReviewSequenceTimers()
+    this.unbindOverlayInputIsolation()
+    if (this.reviewOverlayEl !== null) {
+      this.reviewOverlayEl.remove()
+      this.reviewOverlayEl = null
+    }
+    const leftovers = document.querySelectorAll('[data-sfx-review-all-overlay="1"]')
+    for (let index = 0; index < leftovers.length; index++) {
+      leftovers[index].remove()
+    }
+    this.reviewCurrentPlayingEl = null
+    this.reviewCountsEl = null
+    this.reviewUndecidedListEl = null
+    this.reviewSectionRefsByEntryId = {}
+    // A/B は mount 側で previous を引き継ぐため、ここでは消さない
+  }
+
+  private buildReviewHeader(entries: SfxCatalogEntry[]): HTMLDivElement {
+    const header = document.createElement('div')
+    header.style.cssText =
+      'position:sticky;top:0;background:#0b1120;padding-bottom:12px;border-bottom:1px solid #334155;margin-bottom:16px;z-index:1;'
+
+    const titleRow = document.createElement('div')
+    titleRow.style.cssText =
+      'display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;'
+    const title = document.createElement('h2')
+    title.textContent = 'SFX Catalog - Review All'
+    title.style.cssText = 'margin:0;font-size:18px;color:#fde68a;'
+    titleRow.appendChild(title)
+    titleRow.appendChild(
+      this.createReviewButton(
+        'Close',
+        () => {
+          this.close(true)
+        },
+        'primary',
+      ),
     )
-    background.setDepth(SFX_PREVIEW_DEPTH + 3)
-    background.setScrollFactor(0)
-    background.setInteractive({ useHandCursor: true })
-    background.on('pointerover', onHover)
-    background.on('pointerdown', onClick)
-    this.ownedObjects.push(background)
+    header.appendChild(titleRow)
 
-    const label = this.scene.add.text(centerX - rowWidth / 2 + 10, y, labelText, {
-      fontFamily: FONT_FAMILY_UI,
-      fontSize: '11px',
-      color: '#e5e7eb',
+    const filterRow = document.createElement('div')
+    filterRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;'
+    const searchInput = document.createElement('input')
+    searchInput.type = 'search'
+    searchInput.placeholder = 'Search entry / variant / source / direction'
+    searchInput.value = this.searchQuery
+    searchInput.style.cssText =
+      'flex:1;min-width:180px;background:#0f172a;color:#e5e7eb;border:1px solid #334155;border-radius:4px;padding:6px 8px;font-size:12px;'
+    searchInput.addEventListener('input', () => {
+      this.searchQuery = searchInput.value
+      this.mountReviewOverlay()
     })
-    label.setOrigin(0, 0.5)
-    label.setDepth(SFX_PREVIEW_DEPTH + 4)
-    label.setScrollFactor(0)
-    shrinkTextToFitWidth(label, rowWidth - 90)
-    this.ownedObjects.push(label)
+    filterRow.appendChild(searchInput)
 
-    let note: Phaser.GameObjects.Text | null = null
-    if (noteText !== null) {
-      note = this.scene.add.text(centerX + rowWidth / 2 - 10, y, noteText, {
-        fontFamily: FONT_FAMILY_UI,
-        fontSize: '10px',
-        color: '#a1a1aa',
-      })
-      note.setOrigin(1, 0.5)
-      note.setDepth(SFX_PREVIEW_DEPTH + 4)
-      note.setScrollFactor(0)
-      this.ownedObjects.push(note)
+    const categorySelect = document.createElement('select')
+    categorySelect.style.cssText =
+      'background:#0f172a;color:#e5e7eb;border:1px solid #334155;border-radius:4px;padding:6px;font-size:12px;'
+    const categoryOptions = CATEGORY_FILTERS
+    for (let index = 0; index < categoryOptions.length; index++) {
+      const option = document.createElement('option')
+      option.value = categoryOptions[index]
+      option.textContent = `Category: ${categoryOptions[index]}`
+      option.selected = this.categoryFilter === categoryOptions[index]
+      categorySelect.appendChild(option)
+    }
+    categorySelect.addEventListener('change', () => {
+      this.categoryFilter = categorySelect.value as SfxCatalogCategory | 'all'
+      this.mountReviewOverlay()
+    })
+    filterRow.appendChild(categorySelect)
+
+    const statusSelect = document.createElement('select')
+    statusSelect.style.cssText =
+      'background:#0f172a;color:#e5e7eb;border:1px solid #334155;border-radius:4px;padding:6px;font-size:12px;'
+    const statusOptions = STATUS_FILTERS
+    for (let index = 0; index < statusOptions.length; index++) {
+      const option = document.createElement('option')
+      option.value = statusOptions[index]
+      option.textContent = `Status: ${statusOptions[index]}`
+      option.selected = this.statusFilter === statusOptions[index]
+      statusSelect.appendChild(option)
+    }
+    statusSelect.addEventListener('change', () => {
+      this.statusFilter = statusSelect.value as SfxCatalogEntryStatus | 'all'
+      this.mountReviewOverlay()
+    })
+    filterRow.appendChild(statusSelect)
+    header.appendChild(filterRow)
+
+    const countsEl = document.createElement('div')
+    countsEl.style.cssText = 'margin-top:8px;font-size:13px;color:#94a3b8;'
+    header.appendChild(countsEl)
+    this.reviewCountsEl = countsEl
+
+    const playingRow = document.createElement('div')
+    playingRow.style.cssText = 'margin-top:4px;font-size:12px;color:#a1a1aa;'
+    const playingLabel = document.createElement('span')
+    playingLabel.textContent = '現在再生中: '
+    const playingValue = document.createElement('span')
+    playingValue.textContent = '(なし)'
+    playingRow.appendChild(playingLabel)
+    playingRow.appendChild(playingValue)
+    const volumeHint = document.createElement('span')
+    volumeHint.style.cssText = 'margin-left:12px;color:#94a3b8;'
+    volumeHint.textContent = `Preview volume ${Math.round(this.previewVolume * 100)}%`
+    playingRow.appendChild(volumeHint)
+    header.appendChild(playingRow)
+    this.reviewCurrentPlayingEl = playingValue
+
+    const actionsRow = document.createElement('div')
+    actionsRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;'
+    actionsRow.appendChild(
+      this.createReviewButton('Stop Preview', () => {
+        this.stopReviewPlayback()
+      }),
+    )
+    actionsRow.appendChild(
+      this.createReviewButton('Export Adoption JSON', () => {
+        this.exportReviewJson(getReviewAllEntries())
+      }),
+    )
+    actionsRow.appendChild(
+      this.createReviewButton('Copy Adoption Summary', () => {
+        this.copyReviewSummary(getReviewAllEntries())
+      }),
+    )
+    actionsRow.appendChild(
+      this.createReviewButton(
+        'Clear All Adoption Selections',
+        () => {
+          this.clearAllAdoptionsWithConfirm(getReviewAllEntries())
+        },
+        'danger',
+      ),
+    )
+    header.appendChild(actionsRow)
+
+    const notice = document.createElement('p')
+    notice.style.cssText = 'margin:10px 0 0;font-size:11px;color:#facc15;line-height:1.5;'
+    notice.textContent =
+      '採用候補の選択はレビュー用に保存されます。この操作だけではゲーム内のRuntime音源は変更されません。'
+    header.appendChild(notice)
+
+    const undecidedTitle = document.createElement('div')
+    undecidedTitle.style.cssText = 'margin-top:10px;font-size:12px;color:#94a3b8;'
+    undecidedTitle.textContent = '未決定Entry一覧:'
+    header.appendChild(undecidedTitle)
+
+    const undecidedList = document.createElement('ul')
+    undecidedList.style.cssText = 'margin:4px 0 0;padding-left:18px;font-size:11px;color:#f87171;'
+    header.appendChild(undecidedList)
+    this.reviewUndecidedListEl = undecidedList
+
+    const anchorTitle = document.createElement('div')
+    anchorTitle.style.cssText = 'margin-top:10px;font-size:12px;color:#94a3b8;'
+    anchorTitle.textContent = 'Entryアンカー:'
+    header.appendChild(anchorTitle)
+
+    const anchorNav = document.createElement('div')
+    anchorNav.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;'
+    for (let index = 0; index < entries.length; index++) {
+      const entry = entries[index]
+      const link = document.createElement('a')
+      link.href = `#sfx-review-${entry.id}`
+      link.textContent = entry.label
+      link.style.cssText =
+        'font-size:11px;color:#93c5fd;text-decoration:none;border:1px solid #1e3a8a;border-radius:4px;padding:2px 6px;'
+      anchorNav.appendChild(link)
+    }
+    header.appendChild(anchorNav)
+
+    return header
+  }
+
+  private buildReviewEntrySection(entry: SfxCatalogEntry): HTMLDivElement {
+    const section = document.createElement('div')
+    section.id = `sfx-review-${entry.id}`
+    section.style.cssText =
+      'border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:16px;background:#111827;'
+
+    const headingTitle = document.createElement('div')
+    const categoryText = this.escapeHtml(entry.category)
+    const idText = this.escapeHtml(entry.id)
+    headingTitle.innerHTML = `<strong style="font-size:15px;color:#fde68a;">${this.escapeHtml(entry.label)}</strong> <span style="color:#94a3b8;font-size:11px;">(${idText} / ${categoryText})</span>`
+    section.appendChild(headingTitle)
+
+    if (entry.eventId !== undefined || entry.runtimeKey !== undefined) {
+      const meta = document.createElement('div')
+      meta.style.cssText = 'color:#7dd3fc;font-size:11px;margin-top:4px;'
+      const eventPart =
+        entry.eventId !== undefined ? `Event: ${entry.eventId}` : 'Event: (none)'
+      const keyPart =
+        entry.runtimeKey !== undefined ? `Runtime key: ${entry.runtimeKey}` : 'Runtime key: (none)'
+      meta.textContent = `${eventPart} · ${keyPart}`
+      section.appendChild(meta)
     }
 
-    return { background, label, note }
+    if (entry.description !== undefined) {
+      const desc = document.createElement('div')
+      desc.style.cssText = 'color:#a1a1aa;font-size:12px;margin-top:4px;'
+      desc.textContent = entry.description
+      section.appendChild(desc)
+    }
+
+    const adoptedVariantId = getAdoptedVariantId(entry.id)
+    const adoptedVariant =
+      adoptedVariantId !== null ? findCatalogVariant(entry, adoptedVariantId) : null
+    let externalCount = 0
+    for (let index = 0; index < entry.variants.length; index++) {
+      if (entry.variants[index].origin === 'external-free') {
+        externalCount = externalCount + 1
+      }
+    }
+    const hasRuntime = this.findFirstVariantByStatus(entry, 'runtime') !== null
+    const sharedWithText =
+      entry.sharedWith !== undefined && entry.sharedWith.length > 0
+        ? entry.sharedWith.join(', ')
+        : '(none)'
+    const decidedLabel = adoptedVariantId !== null ? 'Decided' : 'Undecided'
+    const adoptLabel = adoptedVariant !== null ? adoptedVariant.label : '(none)'
+
+    const metaLine = document.createElement('div')
+    metaLine.style.cssText = 'color:#94a3b8;font-size:11px;margin-top:4px;line-height:1.6;'
+    metaLine.textContent = [
+      `External candidates: ${externalCount}`,
+      `Total variants: ${entry.variants.length}`,
+      `Runtime variant: ${hasRuntime ? 'yes' : 'no'}`,
+      `Shared: ${sharedWithText}`,
+      `Adopt Selected: ${adoptLabel}`,
+      decidedLabel,
+    ].join('  ·  ')
+    section.appendChild(metaLine)
+
+    const recommendations: SfxCatalogRecommendation[] = (entry.recommendations ?? [])
+      .slice()
+      .sort((a, b) => a.rank - b.rank)
+    if (recommendations.length > 0) {
+      const topLine = document.createElement('div')
+      topLine.style.cssText = 'color:#fde68a;font-size:11px;margin-top:6px;'
+      const topParts: string[] = []
+      for (let index = 0; index < recommendations.length; index++) {
+        const rec = recommendations[index]
+        const variant = findCatalogVariant(entry, rec.variantId)
+        const label = variant !== null ? variant.label : rec.variantId
+        topParts.push(`#${rec.rank} ${label}`)
+      }
+      topLine.textContent = `Recommended Top 3: ${topParts.join(' / ')}`
+      section.appendChild(topLine)
+
+      const recRow = document.createElement('div')
+      recRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;'
+      for (let index = 0; index < recommendations.length; index++) {
+        const rec = recommendations[index]
+        const variant = findCatalogVariant(entry, rec.variantId)
+        if (variant === null) {
+          continue
+        }
+        recRow.appendChild(
+          this.createReviewButton(
+            `Play Recommended #${rec.rank}`,
+            () => {
+              this.playReviewVariant(entry, variant)
+            },
+            'primary',
+          ),
+        )
+      }
+      section.appendChild(recRow)
+    }
+
+    if (this.reviewAbByEntryId[entry.id] === undefined) {
+      this.reviewAbByEntryId[entry.id] = { aVariantId: null, bVariantId: null }
+    }
+
+    const controlsRow = document.createElement('div')
+    controlsRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;'
+    controlsRow.appendChild(
+      this.createReviewButton('Play All Candidates', () => {
+        this.playAllCandidatesForEntry(entry)
+      }),
+    )
+    controlsRow.appendChild(
+      this.createReviewButton('Stop', () => {
+        this.stopReviewPlayback()
+      }),
+    )
+    controlsRow.appendChild(
+      this.createReviewButton('Play A', () => {
+        const ab = this.reviewAbByEntryId[entry.id]
+        const variant = ab.aVariantId !== null ? findCatalogVariant(entry, ab.aVariantId) : null
+        if (variant !== null) {
+          this.playReviewVariant(entry, variant)
+        }
+      }),
+    )
+    controlsRow.appendChild(
+      this.createReviewButton('Play B', () => {
+        const ab = this.reviewAbByEntryId[entry.id]
+        const variant = ab.bVariantId !== null ? findCatalogVariant(entry, ab.bVariantId) : null
+        if (variant !== null) {
+          this.playReviewVariant(entry, variant)
+        }
+      }),
+    )
+    controlsRow.appendChild(
+      this.createReviewButton('Alternate A/B', () => {
+        this.playAlternateAb(entry)
+      }),
+    )
+    controlsRow.appendChild(
+      this.createReviewButton('Clear A/B', () => {
+        this.reviewAbByEntryId[entry.id] = { aVariantId: null, bVariantId: null }
+        this.updateReviewAbLabel(entry.id)
+      }),
+    )
+    const abLabel = document.createElement('span')
+    abLabel.style.cssText = 'color:#a1a1aa;font-size:11px;'
+    controlsRow.appendChild(abLabel)
+    section.appendChild(controlsRow)
+
+    this.reviewSectionRefsByEntryId[entry.id] = { rowsByVariantId: {}, abLabelEl: abLabel }
+    this.updateReviewAbLabel(entry.id)
+
+    const query = this.searchQuery.trim().toLowerCase()
+    const sortedVariants = sortVariantsForReview(entry, adoptedVariantId)
+    const rowsContainer = document.createElement('div')
+    rowsContainer.style.cssText = 'margin-top:10px;display:flex;flex-direction:column;gap:6px;'
+    for (let index = 0; index < sortedVariants.length; index++) {
+      const variant = sortedVariants[index]
+      if (query !== '' && !this.variantMatchesQuery(entry, variant, query)) {
+        continue
+      }
+      rowsContainer.appendChild(this.buildReviewVariantRow(entry, variant, adoptedVariantId))
+    }
+    section.appendChild(rowsContainer)
+
+    return section
   }
 
-  private getVolumeRowText(): string {
-    const percent = Math.round(this.previewVolume * 100)
-    return `Volume  ${percent}%`
+  private buildReviewVariantRow(
+    entry: SfxCatalogEntry,
+    variant: SfxCatalogVariant,
+    adoptedVariantId: string | null,
+  ): HTMLDivElement {
+    const row = document.createElement('div')
+    row.style.cssText =
+      'display:flex;align-items:flex-start;gap:8px;padding:6px;border:1px solid #1e293b;border-radius:6px;background:#0b1220;flex-wrap:wrap;'
+
+    const isMissing = this.failedKeys[variant.audioKey] === true
+
+    const checkbox = document.createElement('input')
+    checkbox.type = 'checkbox'
+    checkbox.checked = adoptedVariantId === variant.id
+    checkbox.disabled = isMissing
+    checkbox.title = 'Adopt（レビュー記録のみ。Runtimeには影響しません）'
+    checkbox.addEventListener('change', () => {
+      this.handleAdoptToggle(entry, variant.id, checkbox)
+    })
+    row.appendChild(checkbox)
+
+    const playButton = this.createReviewButton('Play', () => {
+      this.playReviewVariant(entry, variant)
+    })
+    playButton.disabled = isMissing
+    row.appendChild(playButton)
+
+    const statusEl = document.createElement('span')
+    statusEl.style.cssText = 'font-size:10px;font-weight:bold;color:#93c5fd;min-width:90px;'
+    row.appendChild(statusEl)
+
+    const badgesEl = document.createElement('span')
+    badgesEl.style.cssText =
+      'font-size:10px;font-weight:bold;color:#fde68a;min-width:110px;line-height:1.4;'
+    row.appendChild(badgesEl)
+
+    const infoEl = document.createElement('div')
+    infoEl.style.cssText = 'flex:1;min-width:220px;font-size:12px;color:#e5e7eb;line-height:1.45;'
+
+    // 初期は短い表示名だけ。クリックで provenance / 技術情報を展開する
+    const summaryButton = document.createElement('button')
+    summaryButton.type = 'button'
+    summaryButton.textContent = variant.label
+    summaryButton.title = 'クリックで詳細を表示 / 隠す'
+    summaryButton.style.cssText =
+      'display:block;width:100%;text-align:left;background:transparent;border:none;padding:0;margin:0;color:#e5e7eb;font-size:12px;font-weight:600;cursor:pointer;line-height:1.45;'
+
+    const detailsEl = document.createElement('div')
+    detailsEl.style.cssText =
+      'display:none;margin-top:4px;color:#cbd5e1;font-size:11px;font-weight:normal;white-space:pre-wrap;word-break:break-word;'
+    detailsEl.textContent = this.buildReviewVariantInfoText(entry, variant)
+
+    let isDetailsOpen = false
+    summaryButton.addEventListener('click', (event) => {
+      event.stopPropagation()
+      isDetailsOpen = !isDetailsOpen
+      if (isDetailsOpen) {
+        detailsEl.style.display = 'block'
+        summaryButton.style.color = '#fde68a'
+      } else {
+        detailsEl.style.display = 'none'
+        summaryButton.style.color = '#e5e7eb'
+      }
+    })
+
+    infoEl.appendChild(summaryButton)
+    infoEl.appendChild(detailsEl)
+    row.appendChild(infoEl)
+
+    if (isMissing) {
+      const missingEl = document.createElement('span')
+      missingEl.textContent = 'FILE NOT FOUND'
+      missingEl.style.cssText = 'color:#f87171;font-size:11px;font-weight:bold;'
+      row.appendChild(missingEl)
+    }
+
+    const reviewControls = document.createElement('div')
+    reviewControls.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;align-items:center;'
+
+    const ratingSelect = document.createElement('select')
+    ratingSelect.title = 'Rating'
+    ratingSelect.style.cssText =
+      'background:#0f172a;color:#e5e7eb;border:1px solid #334155;border-radius:4px;padding:2px;font-size:11px;'
+    const currentRating = getVariantRating(entry.id, variant.id)
+    for (let rating = 0; rating <= 5; rating++) {
+      const option = document.createElement('option')
+      option.value = String(rating)
+      option.textContent = rating === 0 ? 'Rating -' : `★${rating}`
+      option.selected = currentRating === rating
+      ratingSelect.appendChild(option)
+    }
+    ratingSelect.addEventListener('change', () => {
+      const nextRating = Number(ratingSelect.value)
+      setVariantRating(entry.id, variant.id, nextRating)
+      const ui = this.getEntryUi(entry.id)
+      ui.ratings[variant.id] = nextRating
+    })
+    reviewControls.appendChild(ratingSelect)
+
+    const statusSelect = document.createElement('select')
+    statusSelect.title = 'Status'
+    statusSelect.style.cssText =
+      'background:#0f172a;color:#e5e7eb;border:1px solid #334155;border-radius:4px;padding:2px;font-size:11px;'
+    const statusValues = ['unreviewed', 'reviewing', 'preferred', 'missing-candidates']
+    const currentStatus = getVariantReviewStatus(entry.id, variant.id)
+    for (let index = 0; index < statusValues.length; index++) {
+      const option = document.createElement('option')
+      option.value = statusValues[index]
+      option.textContent = statusValues[index]
+      option.selected = currentStatus === statusValues[index]
+      statusSelect.appendChild(option)
+    }
+    statusSelect.addEventListener('change', () => {
+      setVariantReviewStatus(entry.id, variant.id, statusSelect.value)
+      this.updateReviewRowBadges(entry, variant, badgesEl, getAdoptedVariantId(entry.id))
+    })
+    reviewControls.appendChild(statusSelect)
+
+    const memoInput = document.createElement('input')
+    memoInput.type = 'text'
+    memoInput.placeholder = 'Memo'
+    memoInput.value = getVariantMemo(entry.id, variant.id)
+    memoInput.style.cssText =
+      'min-width:120px;background:#0f172a;color:#e5e7eb;border:1px solid #334155;border-radius:4px;padding:2px 6px;font-size:11px;'
+    memoInput.addEventListener('change', () => {
+      setVariantMemo(entry.id, variant.id, memoInput.value)
+      const ui = this.getEntryUi(entry.id)
+      if (ui.selectedVariantId === variant.id) {
+        ui.memo = memoInput.value
+      }
+    })
+    reviewControls.appendChild(memoInput)
+
+    const setAButton = this.createReviewButton('Set A', () => {
+      this.reviewAbByEntryId[entry.id].aVariantId = variant.id
+      this.updateReviewAbLabel(entry.id)
+    })
+    setAButton.disabled = isMissing
+    reviewControls.appendChild(setAButton)
+
+    const setBButton = this.createReviewButton('Set B', () => {
+      this.reviewAbByEntryId[entry.id].bVariantId = variant.id
+      this.updateReviewAbLabel(entry.id)
+    })
+    setBButton.disabled = isMissing
+    reviewControls.appendChild(setBButton)
+
+    row.appendChild(reviewControls)
+
+    const sectionRefs = this.reviewSectionRefsByEntryId[entry.id]
+    sectionRefs.rowsByVariantId[variant.id] = { rowEl: row, checkbox, badgesEl, statusEl }
+    this.updateReviewRowBadges(entry, variant, badgesEl, adoptedVariantId)
+    this.renderRowPlaybackStatus(entry.id, variant.id)
+
+    return row
   }
 
-  private openCandidatesMode(): void {
-    this.mode = 'candidates'
-    this.selectedIndex = 0
-    this.buildPanel()
-    this.refreshSelectionVisual()
+  private buildReviewVariantInfoText(entry: SfxCatalogEntry, variant: SfxCatalogVariant): string {
+    const lines: string[] = []
+    lines.push(`${variant.label}  [${variant.id}]`)
+    lines.push(variant.status.toUpperCase())
+    const metaParts: string[] = []
+    if (variant.sourceName !== undefined && variant.sourceName !== '') {
+      metaParts.push(`Source: ${variant.sourceName}`)
+    } else if (variant.source !== undefined && variant.source !== '') {
+      metaParts.push(`Source: ${variant.source}`)
+    }
+    if (variant.sourcePageUrl !== undefined && variant.sourcePageUrl !== '') {
+      metaParts.push(`Page: ${variant.sourcePageUrl}`)
+    }
+    if (variant.author !== undefined && variant.author !== '') {
+      metaParts.push(`Author: ${variant.author}`)
+    }
+    if (variant.licenseName !== undefined && variant.licenseName !== '') {
+      metaParts.push(`License: ${variant.licenseName}`)
+    } else if (variant.license !== undefined && variant.license !== '') {
+      metaParts.push(`License: ${variant.license}`)
+    }
+    if (variant.attributionRequired === true) {
+      metaParts.push('Attribution required')
+    } else if (variant.attributionRequired === false) {
+      metaParts.push('Attribution: not required')
+    }
+    if (variant.originalFilename !== undefined && variant.originalFilename !== '') {
+      metaParts.push(`Original: ${variant.originalFilename}`)
+    }
+    if (variant.modifiedFromOriginal === false) {
+      metaParts.push('Unmodified original')
+    } else if (variant.modifiedFromOriginal === true) {
+      metaParts.push('Modified from original')
+    }
+    if (variant.soundFeatures !== undefined && variant.soundFeatures !== '') {
+      metaParts.push(`Features: ${variant.soundFeatures}`)
+    }
+    if (variant.durationMs !== undefined) {
+      metaParts.push(`${variant.durationMs}ms`)
+    }
+    if (variant.format !== undefined) {
+      metaParts.push(variant.format)
+    }
+    if (variant.sampleRate !== undefined) {
+      metaParts.push(`${variant.sampleRate}Hz`)
+    }
+    if (variant.channels !== undefined) {
+      metaParts.push(`${variant.channels}ch`)
+    }
+    if (metaParts.length > 0) {
+      lines.push(metaParts.join(' · '))
+    }
+    const rec = (entry.recommendations ?? []).find((item) => item.variantId === variant.id)
+    if (rec !== undefined) {
+      if (rec.direction !== undefined && rec.direction.length > 0) {
+        lines.push(
+          rec.direction
+            .map((direction) => direction.toUpperCase())
+            .join(' '),
+        )
+      }
+      if (rec.reason !== undefined && rec.reason !== '') {
+        lines.push(rec.reason)
+      }
+    }
+    return lines.join('\n')
   }
 
-  private openCatalogMode(): void {
-    this.mode = 'catalog'
-    this.selectedIndex = 0
-    this.buildPanel()
-    this.refreshSelectionVisual()
+  private updateReviewRowBadges(
+    entry: SfxCatalogEntry,
+    variant: SfxCatalogVariant,
+    badgesEl: HTMLSpanElement,
+    adoptedVariantId: string | null,
+  ): void {
+    const badges: string[] = []
+    if (adoptedVariantId === variant.id) {
+      badges.push('ADOPT SELECTED')
+    }
+    if (variant.status === 'runtime') {
+      badges.push('RUNTIME SELECTED')
+    }
+    const rec = (entry.recommendations ?? []).find((item) => item.variantId === variant.id)
+    if (rec !== undefined) {
+      badges.push(`RECOMMENDED #${rec.rank}`)
+    }
+    if (getVariantReviewStatus(entry.id, variant.id) === 'preferred') {
+      badges.push('PREFERRED')
+    }
+    if ((entry.deprioritizedVariantIds ?? []).indexOf(variant.id) >= 0) {
+      badges.push('LOW PRIORITY')
+    }
+    badgesEl.textContent = badges.join(' · ')
   }
 
-  private setupKeyboard(): void {
-    this.clearKeyboard()
-    if (this.scene.input.keyboard === null) {
+  private updateReviewAbLabel(entryId: string): void {
+    const refs = this.reviewSectionRefsByEntryId[entryId]
+    const ab = this.reviewAbByEntryId[entryId]
+    if (refs === undefined || refs.abLabelEl === null || ab === undefined) {
+      return
+    }
+    const entry = findCatalogEntry(entryId)
+    const aLabel = entry !== null ? this.variantLabel(entry, ab.aVariantId) : '(none)'
+    const bLabel = entry !== null ? this.variantLabel(entry, ab.bVariantId) : '(none)'
+    refs.abLabelEl.textContent = `A: ${aLabel}   B: ${bLabel}`
+  }
+
+  private handleAdoptToggle(
+    entry: SfxCatalogEntry,
+    variantId: string,
+    checkbox: HTMLInputElement,
+  ): void {
+    const refs = this.reviewSectionRefsByEntryId[entry.id]
+    const nextAdoptedVariantId = checkbox.checked ? variantId : null
+    if (refs !== undefined) {
+      const otherVariantIds = Object.keys(refs.rowsByVariantId)
+      for (let index = 0; index < otherVariantIds.length; index++) {
+        const otherVariantId = otherVariantIds[index]
+        if (otherVariantId !== variantId) {
+          refs.rowsByVariantId[otherVariantId].checkbox.checked = false
+        }
+      }
+    }
+    setAdoptedVariantId(entry.id, nextAdoptedVariantId)
+    if (refs !== undefined) {
+      const variantIds = Object.keys(refs.rowsByVariantId)
+      for (let index = 0; index < variantIds.length; index++) {
+        const rowVariantId = variantIds[index]
+        const rowVariant = findCatalogVariant(entry, rowVariantId)
+        if (rowVariant !== null) {
+          this.updateReviewRowBadges(
+            entry,
+            rowVariant,
+            refs.rowsByVariantId[rowVariantId].badgesEl,
+            nextAdoptedVariantId,
+          )
+        }
+      }
+    }
+    this.updateReviewCounts()
+    // 並び順（Adopt を先頭）を反映するため、スクロール位置を保ったまま再描画する
+    this.mountReviewOverlay()
+  }
+
+  private updateReviewCounts(): void {
+    const entries = getReviewAllEntries()
+    let decided = 0
+    let variantTotal = 0
+    const undecidedLabels: string[] = []
+    for (let index = 0; index < entries.length; index++) {
+      const entry = entries[index]
+      variantTotal = variantTotal + entry.variants.length
+      const adoptedVariantId = getAdoptedVariantId(entry.id)
+      if (adoptedVariantId !== null) {
+        decided = decided + 1
+      } else {
+        undecidedLabels.push(`${entry.label} (${entry.id})`)
+      }
+    }
+    if (this.reviewCountsEl !== null) {
+      this.reviewCountsEl.textContent = [
+        `Entry ${entries.length}`,
+        `Variant ${variantTotal}`,
+        `Decided ${decided}`,
+        `Undecided ${entries.length - decided}`,
+      ].join('  ·  ')
+    }
+    if (this.reviewUndecidedListEl !== null) {
+      this.reviewUndecidedListEl.innerHTML = ''
+      if (undecidedLabels.length === 0) {
+        const li = document.createElement('li')
+        li.textContent = 'なし（すべて決定済み）'
+        li.style.color = '#4ade80'
+        this.reviewUndecidedListEl.appendChild(li)
+      } else {
+        for (let index = 0; index < undecidedLabels.length; index++) {
+          const li = document.createElement('li')
+          li.textContent = undecidedLabels[index]
+          this.reviewUndecidedListEl.appendChild(li)
+        }
+      }
+    }
+  }
+
+  private playReviewVariant(entry: SfxCatalogEntry, variant: SfxCatalogVariant): void {
+    // Play クリックはユーザー操作なので、ここで AudioContext を起こす
+    this.unlockPreviewAudio()
+
+    if (this.failedKeys[variant.audioKey] === true) {
+      this.setPlaybackStatus(variant.id, 'file-not-found')
+      this.setReviewCurrentPlaying(`FILE NOT FOUND: ${variant.label}`)
       return
     }
 
-    this.keyW = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W)
-    this.keyS = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S)
-    this.keyUp = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP)
-    this.keyDown = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN)
-    this.keyLeft = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT)
-    this.keyRight = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT)
-    this.keyA = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A)
-    this.keyD = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D)
-    this.keySpace = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
-    this.keyEnter = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)
+    if (this.previewVolume <= 0) {
+      this.setPlaybackStatus(variant.id, 'idle')
+      this.setReviewCurrentPlaying(`SFX MUTED (volume ${Math.round(this.previewVolume * 100)}%)`)
+      return
+    }
 
-    this.keyW.on('down', this.onMoveUp)
-    this.keyUp.on('down', this.onMoveUp)
-    this.keyS.on('down', this.onMoveDown)
-    this.keyDown.on('down', this.onMoveDown)
-    this.keyLeft.on('down', this.onLeft)
-    this.keyA.on('down', this.onLeft)
-    this.keyRight.on('down', this.onRight)
-    this.keyD.on('down', this.onRight)
-    this.keySpace.on('down', this.onConfirm)
-    this.keyEnter.on('down', this.onConfirm)
+    const previewUrl = this.resolvePreviewUrl(variant)
+    const playToken = this.previewPlayToken + 1
+    this.previewPlayToken = playToken
+
+    this.stopPreviewSoundKeepingToken()
+    this.setPlaybackStatus(variant.id, 'loading')
+    this.setReviewCurrentPlaying(`Loading: ${variant.label}`)
+
+    const audio = new Audio(previewUrl)
+    audio.preload = 'auto'
+    audio.volume = Math.max(0, Math.min(1, this.previewVolume))
+    this.previewHtmlAudio = audio
+
+    const failWith = (status: PreviewPlaybackStatus, message: string): void => {
+      if (playToken !== this.previewPlayToken) {
+        return
+      }
+      this.failedKeys[variant.audioKey] = status === 'file-not-found' || status === 'load-failed'
+      this.setPlaybackStatus(variant.id, status)
+      this.setReviewCurrentPlaying(message)
+      console.error('SFX catalog preview failed:', {
+        variantId: variant.id,
+        url: previewUrl,
+        status,
+      })
+    }
+
+    audio.addEventListener('error', () => {
+      const mediaError = audio.error
+      if (mediaError !== null && mediaError.code === mediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+        failWith('decode-failed', `DECODE FAILED: ${variant.label}`)
+        return
+      }
+      failWith('load-failed', `LOAD FAILED: ${variant.label}`)
+    })
+
+    const playPromise = audio.play()
+    if (playPromise === undefined) {
+      // 古いブラウザ互換: play() が undefined を返す場合は再生開始とみなす
+      if (playToken === this.previewPlayToken) {
+        this.setPlaybackStatus(variant.id, 'playing')
+        this.setReviewCurrentPlaying(`${entry.label} - ${variant.label} [${variant.id}]`)
+      }
+      return
+    }
+
+    playPromise
+      .then(() => {
+        if (playToken !== this.previewPlayToken) {
+          return
+        }
+        this.setPlaybackStatus(variant.id, 'playing')
+        this.setReviewCurrentPlaying(`${entry.label} - ${variant.label} [${variant.id}]`)
+      })
+      .catch((error: unknown) => {
+        const errorName =
+          error instanceof DOMException
+            ? error.name
+            : typeof error === 'object' && error !== null && 'name' in error
+              ? String((error as { name: unknown }).name)
+              : undefined
+        const errorMessage =
+          error instanceof Error ? error.message : String(error)
+        console.error('[SFX Preview] Playback failed', {
+          variantId: variant.id,
+          url: previewUrl,
+          name: errorName,
+          message: errorMessage,
+        })
+        if (errorName === 'NotAllowedError') {
+          failWith('audio-blocked', `AUDIO CONTEXT BLOCKED: ${variant.label}`)
+          return
+        }
+        failWith('decode-failed', `DECODE FAILED: ${variant.label}`)
+      })
   }
 
-  private clearKeyboard(): void {
-    if (this.keyW !== null) {
-      this.keyW.off('down', this.onMoveUp)
+  private playAllCandidatesForEntry(entry: SfxCatalogEntry): void {
+    this.clearReviewSequenceTimers()
+    const adoptedVariantId = getAdoptedVariantId(entry.id)
+    const variants = sortVariantsForReview(entry, adoptedVariantId)
+    let delayMs = 0
+    for (let index = 0; index < variants.length; index++) {
+      const variant = variants[index]
+      if (this.failedKeys[variant.audioKey] === true) {
+        continue
+      }
+      const timer = this.scene.time.delayedCall(delayMs, () => {
+        if (!this.isOpenFlag) {
+          return
+        }
+        this.playReviewVariant(entry, variant)
+      })
+      this.reviewSequenceTimers.push(timer)
+      const estimatedDurationMs = variant.durationMs !== undefined ? variant.durationMs : 900
+      const stepMs = Math.max(400, Math.min(2500, estimatedDurationMs + 200))
+      delayMs = delayMs + stepMs
     }
-    if (this.keyUp !== null) {
-      this.keyUp.off('down', this.onMoveUp)
+  }
+
+  private playAlternateAb(entry: SfxCatalogEntry): void {
+    this.clearReviewSequenceTimers()
+    const ab = this.reviewAbByEntryId[entry.id]
+    if (ab === undefined || ab.aVariantId === null || ab.bVariantId === null) {
+      this.setReviewCurrentPlaying('A/B が未設定です')
+      return
     }
-    if (this.keyS !== null) {
-      this.keyS.off('down', this.onMoveDown)
+    const variantA = findCatalogVariant(entry, ab.aVariantId)
+    const variantB = findCatalogVariant(entry, ab.bVariantId)
+    if (variantA === null || variantB === null) {
+      return
     }
-    if (this.keyDown !== null) {
-      this.keyDown.off('down', this.onMoveDown)
+    this.playReviewVariant(entry, variantA)
+    const gapMs = 450
+    const durationA = variantA.durationMs !== undefined ? variantA.durationMs : 700
+    const waitMs = Math.min(2500, durationA + gapMs)
+    const timer = this.scene.time.delayedCall(waitMs, () => {
+      if (!this.isOpenFlag) {
+        return
+      }
+      this.playReviewVariant(entry, variantB)
+    })
+    this.reviewSequenceTimers.push(timer)
+  }
+
+  private stopReviewPlayback(): void {
+    this.clearReviewSequenceTimers()
+    this.stopPreviewSound()
+    this.setReviewCurrentPlaying('(停止しました)')
+  }
+
+  /** Preview HTMLAudio だけ止める（BGM / Runtime / stopAll は使わない） */
+  private stopPreviewSound(): void {
+    this.previewPlayToken = this.previewPlayToken + 1
+    this.stopPreviewSoundKeepingToken()
+  }
+
+  private stopPreviewSoundKeepingToken(): void {
+    if (this.previewHtmlAudio !== null) {
+      try {
+        this.previewHtmlAudio.pause()
+        this.previewHtmlAudio.removeAttribute('src')
+        this.previewHtmlAudio.load()
+      } catch (_error) {
+        // Preview 停止失敗で Catalog を壊さない
+      }
+      this.previewHtmlAudio = null
     }
-    if (this.keyLeft !== null) {
-      this.keyLeft.off('down', this.onLeft)
+  }
+
+  private unlockPreviewAudio(): void {
+    this.callbacks.audioSystem.unlock()
+  }
+
+  /** Catalog の path をブラウザ到達可能な public URL へ正規化する */
+  private normalizePublicAssetUrl(pathValue: string): string {
+    let path = pathValue.trim()
+    if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0) {
+      return path
     }
-    if (this.keyA !== null) {
-      this.keyA.off('down', this.onLeft)
+    if (path.indexOf('public/') === 0) {
+      path = path.slice('public/'.length)
     }
-    if (this.keyRight !== null) {
-      this.keyRight.off('down', this.onRight)
+    while (path.indexOf('./') === 0) {
+      path = path.slice(2)
     }
-    if (this.keyD !== null) {
-      this.keyD.off('down', this.onRight)
+    if (path.charAt(0) !== '/') {
+      path = '/' + path
     }
-    if (this.keySpace !== null) {
-      this.keySpace.off('down', this.onConfirm)
+    path = path.replace(/\/{2,}/g, '/')
+    return path
+  }
+
+  private resolvePreviewUrl(variant: SfxCatalogVariant): string {
+    return this.normalizePublicAssetUrl(variant.path)
+  }
+
+  private setPlaybackStatus(variantId: string, status: PreviewPlaybackStatus): void {
+    this.playbackStatusByVariantId[variantId] = status
+    // どの Entry の行か分からないので、開いている全セクションを更新する
+    const entryIds = Object.keys(this.reviewSectionRefsByEntryId)
+    for (let index = 0; index < entryIds.length; index++) {
+      this.renderRowPlaybackStatus(entryIds[index], variantId)
     }
-    if (this.keyEnter !== null) {
-      this.keyEnter.off('down', this.onConfirm)
+  }
+
+  private renderRowPlaybackStatus(entryId: string, variantId: string): void {
+    const sectionRefs = this.reviewSectionRefsByEntryId[entryId]
+    if (sectionRefs === undefined) {
+      return
     }
-    this.keyW = null
-    this.keyS = null
-    this.keyUp = null
-    this.keyDown = null
-    this.keyLeft = null
-    this.keyRight = null
-    this.keyA = null
-    this.keyD = null
-    this.keySpace = null
-    this.keyEnter = null
+    const rowRefs = sectionRefs.rowsByVariantId[variantId]
+    if (rowRefs === undefined) {
+      return
+    }
+    const status = this.playbackStatusByVariantId[variantId] ?? 'idle'
+    let label = ''
+    let color = '#93c5fd'
+    if (status === 'loading') {
+      label = 'LOADING'
+      color = '#fde68a'
+    } else if (status === 'playing') {
+      label = 'PLAYING'
+      color = '#4ade80'
+    } else if (status === 'load-failed') {
+      label = 'LOAD FAILED'
+      color = '#f87171'
+    } else if (status === 'decode-failed') {
+      label = 'DECODE FAILED'
+      color = '#f87171'
+    } else if (status === 'file-not-found') {
+      label = 'FILE NOT FOUND'
+      color = '#f87171'
+    } else if (status === 'audio-blocked') {
+      label = 'AUDIO CONTEXT BLOCKED'
+      color = '#fb923c'
+    }
+    rowRefs.statusEl.textContent = label
+    rowRefs.statusEl.style.color = color
+  }
+
+  private setReviewCurrentPlaying(text: string): void {
+    if (this.reviewCurrentPlayingEl !== null) {
+      this.reviewCurrentPlayingEl.textContent = text
+    }
+  }
+
+  private clearReviewSequenceTimers(): void {
+    for (let index = 0; index < this.reviewSequenceTimers.length; index++) {
+      this.reviewSequenceTimers[index].remove(false)
+    }
+    this.reviewSequenceTimers = []
+  }
+
+  private exportReviewJson(entries: SfxCatalogEntry[]): void {
+    const json = buildAdoptionExportJson(entries)
+    const didDownload = this.tryDownloadTextFile(
+      'sfx-catalog-review-adoptions.json',
+      json,
+      'application/json',
+    )
+    if (!didDownload) {
+      this.showTextModal('Export JSON', json)
+    }
+  }
+
+  private copyReviewSummary(entries: SfxCatalogEntry[]): void {
+    const text = buildAdoptionSummaryText(entries)
+    if (navigator.clipboard !== undefined && navigator.clipboard.writeText !== undefined) {
+      navigator.clipboard.writeText(text).catch(() => {
+        this.showTextModal('Copy Summary', text)
+      })
+      return
+    }
+    this.showTextModal('Copy Summary', text)
+  }
+
+  private clearAllAdoptionsWithConfirm(entries: SfxCatalogEntry[]): void {
+    const confirmed = window.confirm(
+      'すべての採用記録を消去します。よろしいですか？（この操作は元に戻せません）',
+    )
+    if (!confirmed) {
+      return
+    }
+    clearAllAdoptions()
+    for (let index = 0; index < entries.length; index++) {
+      const entry = entries[index]
+      const refs = this.reviewSectionRefsByEntryId[entry.id]
+      if (refs === undefined) {
+        continue
+      }
+      const variantIds = Object.keys(refs.rowsByVariantId)
+      for (let rowIndex = 0; rowIndex < variantIds.length; rowIndex++) {
+        const variantId = variantIds[rowIndex]
+        refs.rowsByVariantId[variantId].checkbox.checked = false
+        const variant = findCatalogVariant(entry, variantId)
+        if (variant !== null) {
+          this.updateReviewRowBadges(entry, variant, refs.rowsByVariantId[variantId].badgesEl, null)
+        }
+      }
+    }
+    this.updateReviewCounts()
+  }
+
+  private tryDownloadTextFile(filename: string, content: string, mimeType: string): boolean {
+    try {
+      const blob = new Blob([content], { type: mimeType })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => {
+        URL.revokeObjectURL(url)
+      }, 1000)
+      return true
+    } catch (_error) {
+      return false
+    }
+  }
+
+  private showTextModal(title: string, content: string): void {
+    const modalOverlay = document.createElement('div')
+    modalOverlay.style.cssText =
+      'position:fixed;inset:0;z-index:2147483600;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;'
+
+    const modalBox = document.createElement('div')
+    modalBox.style.cssText =
+      'background:#111827;border:1px solid #334155;border-radius:8px;padding:16px;max-width:640px;width:100%;max-height:80vh;display:flex;flex-direction:column;gap:8px;'
+
+    const modalTitle = document.createElement('div')
+    modalTitle.textContent = title
+    modalTitle.style.cssText = 'font-size:14px;color:#fde68a;font-weight:bold;'
+    modalBox.appendChild(modalTitle)
+
+    const hint = document.createElement('div')
+    hint.textContent =
+      '自動コピー・自動ダウンロードができなかったため、下のテキストを手動でコピーしてください。'
+    hint.style.cssText = 'font-size:11px;color:#a1a1aa;'
+    modalBox.appendChild(hint)
+
+    const textarea = document.createElement('textarea')
+    textarea.value = content
+    textarea.readOnly = true
+    textarea.style.cssText =
+      'flex:1;min-height:240px;background:#0b1120;color:#e5e7eb;border:1px solid #334155;border-radius:4px;padding:8px;font-size:11px;font-family:monospace;'
+    modalBox.appendChild(textarea)
+
+    const closeRow = document.createElement('div')
+    closeRow.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;'
+    closeRow.appendChild(
+      this.createReviewButton(
+        'Close',
+        () => {
+          modalOverlay.remove()
+        },
+        'primary',
+      ),
+    )
+    modalBox.appendChild(closeRow)
+
+    modalOverlay.appendChild(modalBox)
+    document.body.appendChild(modalOverlay)
+    textarea.focus()
+    textarea.select()
+  }
+
+  private createReviewButton(
+    label: string,
+    onClick: () => void,
+    variant: 'default' | 'primary' | 'danger' = 'default',
+  ): HTMLButtonElement {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.textContent = label
+    let background = '#1e293b'
+    let borderColor = '#334155'
+    if (variant === 'primary') {
+      background = '#78350f'
+      borderColor = '#fde68a'
+    }
+    if (variant === 'danger') {
+      background = '#7f1d1d'
+      borderColor = '#f87171'
+    }
+    button.style.cssText = `background:${background};color:#f8fafc;border:1px solid ${borderColor};border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;`
+    button.addEventListener('click', (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      onClick()
+    })
+    return button
+  }
+
+  private escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+  }
+
+  private clearBurstTimers(): void {
+    for (let index = 0; index < this.burstTimers.length; index++) {
+      this.burstTimers[index].remove(false)
+    }
+    this.burstTimers = []
   }
 
   private destroyPanel(): void {
+    this.clearBurstTimers()
     for (let index = 0; index < this.ownedObjects.length; index++) {
       this.ownedObjects[index].destroy()
     }
     this.ownedObjects = []
-    this.rowViews = []
-    this.selectableRows = []
-    this.volumeLabel = null
-  }
-
-  private moveSelection(direction: number): void {
-    if (!this.isOpenFlag || this.selectableRows.length <= 0) {
-      return
-    }
-    let nextIndex = this.selectedIndex + direction
-    if (nextIndex < 0) {
-      nextIndex = this.selectableRows.length - 1
-    }
-    if (nextIndex >= this.selectableRows.length) {
-      nextIndex = 0
-    }
-    if (nextIndex === this.selectedIndex) {
-      return
-    }
-    this.selectedIndex = nextIndex
-    this.refreshSelectionVisual()
-  }
-
-  private selectRowByKind(
-    kind: 'volume' | 'back' | 'openCandidates' | 'backToCatalog',
-  ): void {
-    for (let index = 0; index < this.selectableRows.length; index++) {
-      if (this.selectableRows[index].kind === kind) {
-        this.selectedIndex = index
-        this.refreshSelectionVisual()
-        return
-      }
-    }
-  }
-
-  private selectRowByEntryIndex(entryIndex: number): void {
-    for (let index = 0; index < this.selectableRows.length; index++) {
-      const row = this.selectableRows[index]
-      if (row.kind === 'sfx' && row.entryIndex === entryIndex) {
-        this.selectedIndex = index
-        this.refreshSelectionVisual()
-        return
-      }
-    }
-  }
-
-  private selectCandidateRow(rowIndex: number): void {
-    for (let index = 0; index < this.selectableRows.length; index++) {
-      const row = this.selectableRows[index]
-      if (row.kind === 'candidate' && row.rowIndex === rowIndex) {
-        this.selectedIndex = index
-        this.refreshSelectionVisual()
-        return
-      }
-    }
-  }
-
-  private refreshSelectionVisual(): void {
-    for (let index = 0; index < this.rowViews.length; index++) {
-      const row = this.rowViews[index]
-      const isSelected = index === this.selectedIndex
-      row.background.setFillStyle(isSelected ? ROW_SELECTED : ROW_NORMAL, 0.95)
-      row.background.setStrokeStyle(isSelected ? 2 : 0, isSelected ? 0xfde68a : 0x000000)
-      row.label.setColor(isSelected ? '#fef3c7' : '#e5e7eb')
-      if (row.note !== null) {
-        row.note.setColor(isSelected ? '#fde68a' : '#a1a1aa')
-      }
-    }
-  }
-
-  private handleHorizontal(direction: number): void {
-    if (!this.isOpenFlag) {
-      return
-    }
-    const row = this.selectableRows[this.selectedIndex]
-    if (row !== undefined && row.kind === 'candidate') {
-      this.cycleCandidateVariant(row.rowIndex, direction)
-      return
-    }
-    this.adjustVolume(direction * SFX_PREVIEW_VOLUME_STEP)
-  }
-
-  private cycleCandidateVariant(rowIndex: number, direction: number): void {
-    const current = this.candidateVariantByRow[rowIndex]
-    let variantIndex = 0
-    for (let index = 0; index < SFX_CANDIDATE_VARIANTS.length; index++) {
-      if (SFX_CANDIDATE_VARIANTS[index] === current) {
-        variantIndex = index
-        break
-      }
-    }
-    let nextIndex = variantIndex + direction
-    if (nextIndex < 0) {
-      nextIndex = SFX_CANDIDATE_VARIANTS.length - 1
-    }
-    if (nextIndex >= SFX_CANDIDATE_VARIANTS.length) {
-      nextIndex = 0
-    }
-    this.candidateVariantByRow[rowIndex] = SFX_CANDIDATE_VARIANTS[nextIndex]
-    this.refreshCandidateRowNote(rowIndex)
-    this.playCandidate(rowIndex)
-  }
-
-  private refreshCandidateRowNote(rowIndex: number): void {
-    // volume 行が先頭なので、候補行の rowViews 位置を探す
-    for (let index = 0; index < this.selectableRows.length; index++) {
-      const row = this.selectableRows[index]
-      if (row.kind === 'candidate' && row.rowIndex === rowIndex) {
-        const view = this.rowViews[index]
-        if (view !== undefined && view.note !== null) {
-          view.note.setText(this.getCandidateNote(this.candidateVariantByRow[rowIndex]))
-        }
-        return
-      }
-    }
-  }
-
-  private adjustVolume(delta: number): void {
-    if (!this.isOpenFlag) {
-      return
-    }
-    const next = Math.max(0, Math.min(1, this.previewVolume + delta))
-    this.previewVolume = Math.round(next * 100) / 100
-    if (this.volumeLabel !== null) {
-      this.volumeLabel.setText(this.getVolumeRowText())
-    }
-  }
-
-  private confirmSelection(): void {
-    if (!this.isOpenFlag) {
-      return
-    }
-    const row = this.selectableRows[this.selectedIndex]
-    if (row === undefined) {
-      return
-    }
-    if (row.kind === 'back') {
-      this.close(true)
-      return
-    }
-    if (row.kind === 'openCandidates') {
-      this.openCandidatesMode()
-      return
-    }
-    if (row.kind === 'backToCatalog') {
-      this.openCatalogMode()
-      return
-    }
-    if (row.kind === 'volume') {
-      this.callbacks.audioSystem.playSfxByKey(SFX_KEY_PLAYER_FIRE_POWER, this.previewVolume)
-      return
-    }
-    if (row.kind === 'candidate') {
-      this.playCandidate(row.rowIndex)
-      return
-    }
-    const entry = SFX_CATALOG[row.entryIndex]
-    if (entry === undefined || entry.kind !== 'file') {
-      return
-    }
-    this.playEntry(entry)
-  }
-
-  private playEntry(entry: Extract<SfxPreviewEntry, { kind: 'file' }>): void {
-    this.callbacks.audioSystem.playSfxByKey(entry.audioKey, this.previewVolume)
-  }
-
-  private getCandidateAudioKey(sfxId: string, variant: SfxCandidateVariant): string {
-    return `sfx-cand-${sfxId}-${variant}`
-  }
-
-  private getCandidatePath(sfxId: string, variant: SfxCandidateVariant): string {
-    return `${SFX_CANDIDATE_DIR}/${sfxId}_${variant}.ogg`
-  }
-
-  private playCandidate(rowIndex: number): void {
-    const def = CANDIDATE_ROWS[rowIndex]
-    if (def === undefined) {
-      return
-    }
-    const variant = this.candidateVariantByRow[rowIndex]
-    const audioKey = this.getCandidateAudioKey(def.sfxId, variant)
-    if (this.scene.cache.audio.exists(audioKey)) {
-      this.callbacks.audioSystem.playSfxByKey(audioKey, this.previewVolume)
-      return
-    }
-    if (this.loadingCandidateKeys[audioKey] === true) {
-      return
-    }
-    this.loadingCandidateKeys[audioKey] = true
-    const path = this.getCandidatePath(def.sfxId, variant)
-    this.scene.load.audio(audioKey, path)
-    const onComplete = (key: string): void => {
-      if (key !== audioKey) {
-        return
-      }
-      this.scene.load.off(Phaser.Loader.Events.FILE_COMPLETE, onComplete)
-      this.loadingCandidateKeys[audioKey] = false
-      if (!this.isOpenFlag) {
-        return
-      }
-      if (!this.scene.cache.audio.exists(audioKey)) {
-        console.warn('SFX candidate missing (run --preview-pack):', path)
-        return
-      }
-      this.callbacks.audioSystem.playSfxByKey(audioKey, this.previewVolume)
-    }
-    this.scene.load.on(Phaser.Loader.Events.FILE_COMPLETE, onComplete)
-    this.scene.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => {
-      this.loadingCandidateKeys[audioKey] = false
-      this.scene.load.off(Phaser.Loader.Events.FILE_COMPLETE, onComplete)
-      console.warn('SFX candidate load failed (run --preview-pack):', path)
-    })
-    this.scene.load.start()
   }
 }

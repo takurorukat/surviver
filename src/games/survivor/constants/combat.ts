@@ -177,17 +177,17 @@ export const HP_BONUS_PER_LEVEL_UP = 1
 
 /**
  * 弾の見た目スタイルを決める。
- * - 初期: エネルギー弾（パワー）
+ * - 初期: エネルギー弾（パワー・無属性）
  * - Move 強化: 風
  * - Pickup 強化: 水（風より優先）
  * - XP Bonus 強化: 火（さらに優先）
- * - Dungeon（ruins）で元素スキル未強化: 土
+ * エリアによる初期属性の特例は付けない（Earth Dungeon も他エリアと同じ）。
  */
 export function resolvePlayerBulletStyle(
   moveLevel: number,
   magnetLevel: number,
   xpBonusLevel: number = XP_BONUS_LEVEL_START,
-  areaId: string = 'plains',
+  _areaId: string = 'plains',
 ): 'powerOrb' | 'waterOrb' | 'windVortex' | 'fireOrb' | 'earthOrb' {
   if (xpBonusLevel > XP_BONUS_LEVEL_START) {
     return 'fireOrb'
@@ -197,9 +197,6 @@ export function resolvePlayerBulletStyle(
   }
   if (moveLevel > MOVE_LEVEL_START) {
     return 'windVortex'
-  }
-  if (areaId === 'ruins') {
-    return 'earthOrb'
   }
   return 'powerOrb'
 }
@@ -435,24 +432,152 @@ export function calculateBlastLevelFromPowerAndRange(
   }
   return lowerLevel - 1
 }
-// Power / Speed / Pickup の低い方 − 1 が Ricochet（3つとも Lv2 以上のとき）
-// 例: 全部2→Ricochet1 / 全部3→Ricochet2
+// Orbiting Orb: Move / Pickup の低い方 − 1（両方 Lv2 以上）
+export const ORBITING_ORB_LEVEL_START = 0
+export const ORBITING_ORB_AUTO_SYNC_MIN_LEVEL = MOVE_LEVEL_START + 1
+export const ORBITING_ORB_TEXTURE_KEY = 'orbitingOrb'
+export const ORBITING_ORB_TEXTURE_SIZE = 20
+export const ORBITING_ORB_HIT_COOLDOWN_MS = 500
+export const ORBITING_ORB_HITBOX_RADIUS = 8 * WORLD_ENTITY_SCALE
+export const ORBITING_ORB_DEPTH = 25
+
+export type OrbitingOrbLevelStats = {
+  orbCount: number
+  radius: number
+  angularSpeed: number
+  damageMultiplier: number
+}
+
+/** Orbiting Orb のレベル別設定（Lv1〜4。それ以上は Lv4 と同じ）。 */
+export function getOrbitingOrbStatsForLevel(orbitingOrbLevel: number): OrbitingOrbLevelStats {
+  const safeLevel = Math.max(ORBITING_ORB_LEVEL_START, Math.floor(orbitingOrbLevel))
+  if (safeLevel <= 0) {
+    return { orbCount: 0, radius: 0, angularSpeed: 0, damageMultiplier: 0 }
+  }
+  if (safeLevel === 1) {
+    return { orbCount: 2, radius: 70, angularSpeed: 1.8, damageMultiplier: 0.5 }
+  }
+  if (safeLevel === 2) {
+    return { orbCount: 3, radius: 80, angularSpeed: 2.15, damageMultiplier: 0.6 }
+  }
+  if (safeLevel === 3) {
+    return { orbCount: 4, radius: 85, angularSpeed: 2.55, damageMultiplier: 0.6 }
+  }
+  // Lv4+（個数は Lv3 と同じ 4）
+  return { orbCount: 4, radius: 90, angularSpeed: 3.0, damageMultiplier: 0.7 }
+}
+
+/**
+ * Move と Pickup から Orbiting Orb レベルを求める。
+ * 両方とも 2 以上のとき: Orb = 低い方 − 1
+ */
+export function calculateOrbitingOrbLevelFromMoveAndPickup(
+  moveLevel: number,
+  magnetLevel: number,
+): number {
+  const lowerLevel = Math.min(moveLevel, magnetLevel)
+  if (lowerLevel < ORBITING_ORB_AUTO_SYNC_MIN_LEVEL) {
+    return ORBITING_ORB_LEVEL_START
+  }
+  return lowerLevel - 1
+}
+
+/** Orbiting Orb の実ダメージ（最低1）。 */
+export function calculateOrbitingOrbDamage(
+  attackDamage: number,
+  damageMultiplier: number,
+): number {
+  if (damageMultiplier <= 0) {
+    return 0
+  }
+  return Math.max(1, Math.ceil(attackDamage * damageMultiplier))
+}
+
+/**
+ * プレイヤー中心に均等配置した Orb 座標を返す。
+ * baseAngle は最初の Orb の角度（ラジアン）。
+ */
+export function calculateOrbitingOrbPositions(
+  playerX: number,
+  playerY: number,
+  orbCount: number,
+  radius: number,
+  baseAngle: number,
+): { x: number; y: number }[] {
+  const positions: { x: number; y: number }[] = []
+  if (orbCount <= 0 || radius <= 0) {
+    return positions
+  }
+  const step = (Math.PI * 2) / orbCount
+  for (let index = 0; index < orbCount; index++) {
+    const angle = baseAngle + step * index
+    positions.push({
+      x: playerX + Math.cos(angle) * radius,
+      y: playerY + Math.sin(angle) * radius,
+    })
+  }
+  return positions
+}
+
+/**
+ * 同じ敵への再ヒット可否。undefined / 期限切れなら true。
+ */
+export function canOrbitingOrbHitEnemy(
+  lastHitAtMs: number | undefined,
+  nowMs: number,
+  cooldownMs: number = ORBITING_ORB_HIT_COOLDOWN_MS,
+): boolean {
+  if (lastHitAtMs === undefined) {
+    return true
+  }
+  return nowMs - lastHitAtMs >= cooldownMs
+}
+
+/**
+ * 生存中の敵UID以外を履歴から落とす（破棄済みUIDの永久蓄積防止）。
+ */
+export function pruneOrbitingOrbHitHistory(
+  hitHistory: Map<number, number>,
+  activeEnemyUids: Set<number>,
+): void {
+  const staleUids: number[] = []
+  hitHistory.forEach((_lastHitAtMs, enemyUid) => {
+    if (!activeEnemyUids.has(enemyUid)) {
+      staleUids.push(enemyUid)
+    }
+  })
+  for (let index = 0; index < staleUids.length; index++) {
+    hitHistory.delete(staleUids[index])
+  }
+}
+
+// Pickup / Speed が Lv2 以上、かつ XP Bonus Lv1 以上で Ricochet
+// Ricochet = min(Pickup-1, Speed-1, XP Bonus)
 export const RICOCHET_AUTO_SYNC_MIN_LEVEL = FIRE_RATE_LEVEL_START + 1
 
 /**
- * Power・Speed・Pickup から Ricochet レベルを求める。
- * 3つとも 2 以上のとき: Ricochet = 低い方 − 1
+ * XP Bonus・Pickup・Speed から Ricochet レベルを求める。
+ * XP Bonus が 0、または Pickup / Speed が Lv1 以下なら 0。
  */
-export function calculateRicochetLevelFromPowerSpeedAndPickup(
-  powerLevel: number,
-  speedLevel: number,
+export function calculateRicochetLevelFromXpBonusPickupAndSpeed(
+  xpBonusLevel: number,
   magnetLevel: number,
+  speedLevel: number,
 ): number {
-  const lowerLevel = Math.min(powerLevel, speedLevel, magnetLevel)
-  if (lowerLevel < RICOCHET_AUTO_SYNC_MIN_LEVEL) {
+  const safeXpBonus = Math.max(0, Math.floor(xpBonusLevel))
+  if (safeXpBonus <= 0) {
     return RICOCHET_LEVEL_START
   }
-  return lowerLevel - 1
+  if (magnetLevel < RICOCHET_AUTO_SYNC_MIN_LEVEL) {
+    return RICOCHET_LEVEL_START
+  }
+  if (speedLevel < RICOCHET_AUTO_SYNC_MIN_LEVEL) {
+    return RICOCHET_LEVEL_START
+  }
+  return Math.max(
+    0,
+    Math.min(magnetLevel - 1, speedLevel - 1, safeXpBonus),
+  )
 }
 
 // --- 撃破・被弾フラッシュ演出 ---

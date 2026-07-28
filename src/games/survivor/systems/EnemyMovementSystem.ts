@@ -85,7 +85,8 @@ export function updateEnemyChaseMovement(
 
     if (
       enemy.getData('enemyKind') === 'beetle' ||
-      enemy.getData('enemyKind') === 'spiritThunder'
+      enemy.getData('enemyKind') === 'spiritThunder' ||
+      enemy.getData('enemyKind') === 'earthSkeleton'
     ) {
       applyBeetleStyleChargeMovement(enemy, body, playerX, playerY)
       continue

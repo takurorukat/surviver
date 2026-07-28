@@ -15,7 +15,7 @@ npm run sync:audio-library
 | 用途 | 候補ファイル | 配布元 |
 | --- | --- | --- |
 | 敵ヒット | `enemy_hit_candidate.ogg` | Kenney Impact Sounds |
-| 敵撃破 | `enemy_defeat_candidate.ogg` | Kenney Impact Sounds |
+| 敵撃破 | `enemy_defeat.ogg`（Tone.js 再生成。旧候補 `enemy_defeat_candidate.ogg` はライブラリに残置） | Repository 生成 |
 | 土属性ヒット | `earth_hit_candidate.ogg` | Kenney Impact Sounds |
 | コイン | `coin_pickup_candidate.ogg` | Kenney RPG Audio |
 | メニュー移動／戻る／購入 | `menu_move_candidate.ogg`、`menu_cancel_candidate.ogg`、`purchase_candidate.ogg` | Kenney Interface Sounds |

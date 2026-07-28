@@ -10,26 +10,14 @@ import Phaser from 'phaser'
 import {
   GAME_WIDTH,
   GAME_HEIGHT,
-  UNLOCK_ICON_SIZE,
-  UNLOCK_ICON_BORDER_SIZE,
-  UNLOCK_ICON_PIERCE_COLOR,
-  UNLOCK_ICON_BLAST_COLOR,
-  UNLOCK_ICON_RICOCHET_COLOR,
-  UNLOCK_ICON_MOVE_COLOR,
-  UNLOCK_ICON_MAGNET_COLOR,
-  UNLOCK_ICON_XP_BONUS_COLOR,
+  SKILL_TREE_ICON_SCALE,
+  SKILL_TREE_ICON_OUTER_SIZE,
   UNLOCK_ICON_LOCKED_FILL_COLOR,
   UNLOCK_ICON_LOCKED_BORDER_COLOR,
-  UNLOCK_ICON_LETTER_COLOR,
   UNLOCK_ICON_LOCKED_LETTER_COLOR,
-  UNLOCK_ICON_PIERCE_LETTER,
-  UNLOCK_ICON_BLAST_LETTER,
-  UNLOCK_ICON_RICOCHET_LETTER,
-  UNLOCK_ICON_MOVE_LETTER,
-  UNLOCK_ICON_MAGNET_LETTER,
-  UNLOCK_ICON_XP_BONUS_LETTER,
   UNLOCK_SKILL_DESC_PIERCE,
   UNLOCK_SKILL_DESC_BLAST,
+  UNLOCK_SKILL_DESC_ORBITING_ORB,
   UNLOCK_SKILL_DESC_RICOCHET,
   UNLOCK_SKILL_DESC_MOVE,
   UNLOCK_SKILL_DESC_MAGNET,
@@ -38,6 +26,7 @@ import {
   TITLE_LOCK_ICON_COLOR,
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
+  isSkillIconId,
 } from '../GameConstants'
 import { shrinkTextToFitWidth, fitTextInBounds } from '../utils/fitTextToWidth'
 import { ALL_ACHIEVEMENTS, type UnlockableSkillId } from './AchievementSystem'
@@ -47,6 +36,7 @@ import {
   type LifetimeStats,
 } from './UnlockSaveSystem'
 import { createLockIcon, setLockIconVisible } from '../ui/LockIcon'
+import { createSkillIcon } from '../ui/SkillIcon'
 
 // バトルHUD（depth 200 前後）より確実に手前に出す
 const PANEL_DEPTH = 440
@@ -68,28 +58,10 @@ const ACHIEVEMENT_COLUMN_COUNT = 2
 // 解放済みスキルの南京錠（タイトルのロック色より明るい緑）
 const ACHIEVEMENT_UNLOCKED_LOCK_COLOR = 0x86efac
 
-// バトル画面の HUD と同じ、スキルごとのアイコン記号と色
-const SKILL_ICON_LETTERS: Record<UnlockableSkillId, string> = {
-  pierce: UNLOCK_ICON_PIERCE_LETTER,
-  blast: UNLOCK_ICON_BLAST_LETTER,
-  ricochet: UNLOCK_ICON_RICOCHET_LETTER,
-  move: UNLOCK_ICON_MOVE_LETTER,
-  magnet: UNLOCK_ICON_MAGNET_LETTER,
-  xpBonus: UNLOCK_ICON_XP_BONUS_LETTER,
-}
-
-const SKILL_ICON_COLORS: Record<UnlockableSkillId, number> = {
-  pierce: UNLOCK_ICON_PIERCE_COLOR,
-  blast: UNLOCK_ICON_BLAST_COLOR,
-  ricochet: UNLOCK_ICON_RICOCHET_COLOR,
-  move: UNLOCK_ICON_MOVE_COLOR,
-  magnet: UNLOCK_ICON_MAGNET_COLOR,
-  xpBonus: UNLOCK_ICON_XP_BONUS_COLOR,
-}
-
 const SKILL_EFFECT_DESCS: Record<UnlockableSkillId, string> = {
   pierce: UNLOCK_SKILL_DESC_PIERCE,
   blast: UNLOCK_SKILL_DESC_BLAST,
+  orbitingOrb: UNLOCK_SKILL_DESC_ORBITING_ORB,
   ricochet: UNLOCK_SKILL_DESC_RICOCHET,
   move: UNLOCK_SKILL_DESC_MOVE,
   magnet: UNLOCK_SKILL_DESC_MAGNET,
@@ -302,55 +274,31 @@ export function createAchievementsPanelController(
     screenObjects.push(lockIcon.container)
 
     let textLeft = rowLeft + TITLE_LOCK_ICON_SIZE + 10
-    if (def.skillId !== undefined) {
-      const iconHitSize = UNLOCK_ICON_SIZE + UNLOCK_ICON_BORDER_SIZE * 2
-      const iconCenterX = textLeft + iconHitSize / 2
-      let iconFillColor = UNLOCK_ICON_LOCKED_FILL_COLOR
-      let iconBorderColor = UNLOCK_ICON_LOCKED_BORDER_COLOR
-      let iconLetterColor = UNLOCK_ICON_LOCKED_LETTER_COLOR
-      if (unlocked) {
-        iconFillColor = SKILL_ICON_COLORS[def.skillId]
-        iconBorderColor = SKILL_ICON_COLORS[def.skillId]
-        iconLetterColor = UNLOCK_ICON_LETTER_COLOR
+    if (def.skillId !== undefined && isSkillIconId(def.skillId)) {
+      const iconCenterX = textLeft + SKILL_TREE_ICON_OUTER_SIZE / 2
+      const skillIcon = createSkillIcon(
+        scene,
+        def.skillId,
+        SKILL_TREE_ICON_SCALE,
+      )
+      skillIcon.container.setPosition(iconCenterX, rowCenterY)
+      skillIcon.container.setScrollFactor(0)
+      skillIcon.container.setDepth(PANEL_DEPTH + 1)
+
+      // 未解放はグレー枠・塗り・記号（見た目は従来どおり）
+      if (!unlocked) {
+        skillIcon.border.setFillStyle(UNLOCK_ICON_LOCKED_BORDER_COLOR)
+        skillIcon.fill.setFillStyle(UNLOCK_ICON_LOCKED_FILL_COLOR)
+        if (skillIcon.symbol instanceof Phaser.GameObjects.Text) {
+          skillIcon.symbol.setColor(UNLOCK_ICON_LOCKED_LETTER_COLOR)
+        } else {
+          // Orbiting Orb は Graphics のため色変更不可。薄くしてロック感を維持
+          skillIcon.symbol.setAlpha(0.55)
+        }
       }
 
-      const iconBorder = scene.add.rectangle(
-        iconCenterX,
-        rowCenterY,
-        iconHitSize,
-        iconHitSize,
-        iconBorderColor,
-      )
-      iconBorder.setScrollFactor(0)
-      iconBorder.setDepth(PANEL_DEPTH + 1)
-
-      const iconFill = scene.add.rectangle(
-        iconCenterX,
-        rowCenterY,
-        UNLOCK_ICON_SIZE,
-        UNLOCK_ICON_SIZE,
-        iconFillColor,
-      )
-      iconFill.setScrollFactor(0)
-      iconFill.setDepth(PANEL_DEPTH + 2)
-
-      const iconLetter = scene.add.text(
-        iconCenterX,
-        rowCenterY,
-        SKILL_ICON_LETTERS[def.skillId],
-        {
-          fontFamily: FONT_FAMILY_UI,
-          fontSize: '16px',
-          color: iconLetterColor,
-          fontStyle: 'bold',
-        },
-      )
-      iconLetter.setOrigin(0.5)
-      iconLetter.setScrollFactor(0)
-      iconLetter.setDepth(PANEL_DEPTH + 3)
-
-      screenObjects.push(iconBorder, iconFill, iconLetter)
-      textLeft = textLeft + iconHitSize + 10
+      screenObjects.push(skillIcon.container)
+      textLeft = textLeft + SKILL_TREE_ICON_OUTER_SIZE + 10
     }
 
     // 行内の3行テキスト（上端基準で並べ、行ブロック内に収める）

@@ -6,12 +6,54 @@ import type { StageAreaId } from '../../GameConstants'
 import type { EnemyKind } from './types'
 
 const FOREST_STAGE5_ENEMY_KINDS: EnemyKind[] = ['mushroom', 'stump', 'beetle', 'branch']
-// Volcano Stage1〜4 で登場した敵（混沌エレメンタルが出すのも同じ）
-const VOLCANO_STAGE5_ENEMY_KINDS: EnemyKind[] = [
-  'spiritFire',
-  'spiritThunder',
-  'burningTree',
-  'ashKnight',
+
+/** 重み付き抽選の1エントリ。weight は相対比率（合計が100でなくてよい）。 */
+export type WeightedEnemyKind = {
+  kind: EnemyKind
+  weight: number
+}
+
+/**
+ * Volcano 本番スポーンから一時除外している敵（定義・Factory・行動は残置）。
+ * 理由: 現設定では専用見た目が付かず色付き矩形のまま出る。
+ * - armored / charger: walk 画像はあるが ENEMY_WALK_SPRITES_ENABLED=false
+ * - runner / shielded: スプライト未接続
+ * 戻し方: 見た目を付けたうえで、下の WEIGHTS にエントリを復元する。
+ */
+export const VOLCANO_SPAWN_EXCLUDED_UNFINISHED_VISUAL_KINDS: EnemyKind[] = [
+  'armored',
+  'charger',
+  'runner',
+  'shielded',
+]
+
+// Volcano Stage2: spiritThunder / spiritFire（armored は見た目未実装のため除外）
+const VOLCANO_STAGE2_WEIGHTS: WeightedEnemyKind[] = [
+  { kind: 'spiritThunder', weight: 60 },
+  { kind: 'spiritFire', weight: 25 },
+]
+
+// Volcano Stage3: burningTree / spiritThunder / ranged
+const VOLCANO_STAGE3_WEIGHTS: WeightedEnemyKind[] = [
+  { kind: 'burningTree', weight: 55 },
+  { kind: 'spiritThunder', weight: 25 },
+  { kind: 'ranged', weight: 20 },
+]
+
+// Volcano Stage4: ashKnight / spiritThunder（shielded は見た目未実装のため除外）
+const VOLCANO_STAGE4_WEIGHTS: WeightedEnemyKind[] = [
+  { kind: 'ashKnight', weight: 55 },
+  { kind: 'spiritThunder', weight: 25 },
+]
+
+// Volcano Stage5: Stage1〜4 実装済み4種＋蜂（runner/charger は見た目未実装のため除外）
+// 相対重みは従来どおり（除外分は抽選から消え、残りが自動で正規化される）
+const VOLCANO_STAGE5_WEIGHTS: WeightedEnemyKind[] = [
+  { kind: 'spiritFire', weight: 175 },
+  { kind: 'spiritThunder', weight: 175 },
+  { kind: 'burningTree', weight: 175 },
+  { kind: 'ashKnight', weight: 175 },
+  { kind: 'ranged', weight: 100 },
 ]
 
 function pickRandomKind(kinds: EnemyKind[]): EnemyKind {
@@ -19,12 +61,58 @@ function pickRandomKind(kinds: EnemyKind[]): EnemyKind {
   return kinds[index]
 }
 
+/**
+ * 重み付きで敵種類を1つ選ぶ。
+ * Python: random.choices(kinds, weights=weights, k=1)[0] に相当
+ */
+export function pickWeightedEnemyKind(entries: WeightedEnemyKind[]): EnemyKind {
+  let totalWeight = 0
+  for (let index = 0; index < entries.length; index++) {
+    totalWeight = totalWeight + entries[index].weight
+  }
+
+  let roll = Math.random() * totalWeight
+  for (let index = 0; index < entries.length; index++) {
+    const entry = entries[index]
+    roll = roll - entry.weight
+    if (roll < 0) {
+      return entry.kind
+    }
+  }
+
+  return entries[entries.length - 1].kind
+}
+
 export function pickForestStage5EnemyKind(): EnemyKind {
   return pickRandomKind(FOREST_STAGE5_ENEMY_KINDS)
 }
 
+/** Volcano Stage5 のウェーブ／混沌エレメンタル召喚で使う抽選。 */
 export function pickVolcanoStage5EnemyKind(): EnemyKind {
-  return pickRandomKind(VOLCANO_STAGE5_ENEMY_KINDS)
+  return pickWeightedEnemyKind(VOLCANO_STAGE5_WEIGHTS)
+}
+
+/**
+ * Volcano 各ステージの本番スポーン候補（重み付き）を返す。
+ * Stage1 は単一候補のため weight 1。候補が空にならないことをテストで検証する。
+ */
+export function getVolcanoSpawnWeightTable(stageNumber: number): WeightedEnemyKind[] {
+  if (stageNumber === 1) {
+    return [{ kind: 'spiritFire', weight: 1 }]
+  }
+  if (stageNumber === 2) {
+    return VOLCANO_STAGE2_WEIGHTS
+  }
+  if (stageNumber === 3) {
+    return VOLCANO_STAGE3_WEIGHTS
+  }
+  if (stageNumber === 4) {
+    return VOLCANO_STAGE4_WEIGHTS
+  }
+  if (stageNumber === 5) {
+    return VOLCANO_STAGE5_WEIGHTS
+  }
+  return [{ kind: 'spiritFire', weight: 1 }]
 }
 
 /**
@@ -66,9 +154,19 @@ export function pickEnemyKindForArea(
     return pickForestStage5EnemyKind()
   }
 
-  // Ruins Stage 1 は Stone Guard だけ（遅い基本追跡）
+  // Ruins Stage 1 は土スライムだけ（緑スライム相当の基本追跡）
   if (areaId === 'ruins' && stageNumber === 1) {
-    return 'stoneGuard'
+    return 'earthSlime'
+  }
+
+  // Ruins Stage 2 は岩敵だけ（HP5・やや遅い・1発ブロック・小石弾）
+  if (areaId === 'ruins' && stageNumber === 2) {
+    return 'earthRock'
+  }
+
+  // Ruins Stage 3 はスケルトンだけ（HP10・カブトムシと同じ突進）
+  if (areaId === 'ruins' && stageNumber === 3) {
+    return 'earthSkeleton'
   }
 
   // Plains Stage3+ の近接は Stage2 と同じ硬い泥スライム（射撃は蜂）
@@ -86,37 +184,26 @@ export function pickEnemyKindForArea(
     return 'spiritFire'
   }
 
-  // Volcano Stage 2 は雷の精霊だけ（HP3・プレイヤー初期速度）
+  // Volcano Stage 2: 雷精霊中心＋火精霊（armored は見た目未実装のため除外）
   if (stageNumber === 2) {
-    return 'spiritThunder'
+    return pickWeightedEnemyKind(VOLCANO_STAGE2_WEIGHTS)
   }
 
-  // Volcano Stage 3 は燃え木だけ（HP8・火の精霊をスポーン）
+  // Volcano Stage 3: 燃え木中心＋雷精霊・射撃の混成
   if (stageNumber === 3) {
-    return 'burningTree'
+    return pickWeightedEnemyKind(VOLCANO_STAGE3_WEIGHTS)
   }
 
-  // Volcano Stage 4 は灰騎士だけ（HP6・最初の2発はシールド）
+  // Volcano Stage 4: 灰騎士中心＋雷精霊（shielded は見た目未実装のため除外）
   if (stageNumber === 4) {
-    return 'ashKnight'
+    return pickWeightedEnemyKind(VOLCANO_STAGE4_WEIGHTS)
   }
 
-  // Volcano Stage 5（最終）は Stage1〜4 で登場した敵をランダムに混ぜる
+  // Volcano Stage 5（最終）: 実装済み見た目の敵のみ
   if (stageNumber === 5) {
     return pickVolcanoStage5EnemyKind()
   }
 
-  // 半分は通常敵を残し、必要スキルを取った後も攻撃の手応えを保つ
-  if (stageNumber < 5 && Math.random() < 0.4) {
-    return 'melee'
-  }
-
-  const mixedKinds: EnemyKind[] = [
-    'runner',
-    'charger',
-    'armored',
-    'shielded',
-    'ranged',
-  ]
-  return pickRandomKind(mixedKinds)
+  // Stage 1〜5 以外は来ない想定。未実装見た目の混成に落とさず火精霊のみ
+  return 'spiritFire'
 }

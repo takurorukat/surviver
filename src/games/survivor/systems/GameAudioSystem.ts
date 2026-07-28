@@ -29,13 +29,31 @@ import {
   TITLE_BGM_VOLUME,
   AREA_CLEAR_BGM_KEY,
   BGM_ENABLED_STORAGE_KEY,
+  SFX_KEY_ORBITING_ORB_OBTAIN,
+  SFX_KEY_ORBITING_ORB_HIT,
+  SFX_KEY_ORBITING_ORB_SHATTER,
+  ORBITING_ORB_HIT_SFX_COOLDOWN_MS,
+  ORBITING_ORB_SHATTER_SFX_COOLDOWN_MS,
+  PLAYER_FIRE_POWER_SFX_COOLDOWN_MS,
+  ENEMY_DEFEAT_SFX_COOLDOWN_MS,
+  COIN_PICKUP_SFX_COOLDOWN_MS,
+  SFX_KEY_PLAYER_FIRE_POWER,
 } from '../GameConstants'
 import type { PlayerBulletStyle } from '../objects/PlayerBullet'
 import {
   getSurvivorFireSfxKey,
   getSurvivorHitSfxKey,
 } from '../audio/survivorBulletSfx'
+import {
+  resolveSurvivorSfxEventKey,
+  SURVIVOR_SFX_EVENT_IDS,
+  type SurvivorSfxEventId,
+} from '../audio/sfxEvents'
 import { getSurvivorBgmLoopBounds } from '../constants/bgmLoop'
+import { SfxCooldownGate } from '../audio/SfxCooldownGate'
+
+/** 開発時のみ Event→キー解決を確認する（通常再生の大量ログは出さない） */
+const DEBUG_SFX_EVENTS = false
 
 const SURVIVOR_SOUND_PREFERENCES: SoundPreferencesConfig = {
   bgmEnabledKey: BGM_ENABLED_STORAGE_KEY,
@@ -52,6 +70,7 @@ export function isBgmEnabled(): boolean {
 export class GameAudioSystem {
   private scene: Phaser.Scene
   private readonly soundManager = getDefaultSoundManager(SURVIVOR_SOUND_PREFERENCES)
+  private readonly sfxCooldownGate = new SfxCooldownGate()
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene
@@ -205,7 +224,14 @@ export class GameAudioSystem {
   }
 
   playPlayerFire(bulletStyle: PlayerBulletStyle = 'powerOrb'): void {
-    this.playSound(getSurvivorFireSfxKey(bulletStyle))
+    // Power 通常弾は skill.power.cast（playEvent）へ寄せる。属性弾は従来どおりキー再生。
+    // Pierce / Ricochet が同じ powerOrb 発射経路を共有する間は cast も共有する。
+    if (bulletStyle === 'powerOrb') {
+      this.playEvent(SURVIVOR_SFX_EVENT_IDS.SKILL_POWER_CAST)
+      return
+    }
+    const soundKey = getSurvivorFireSfxKey(bulletStyle)
+    this.playSound(soundKey)
   }
 
   playGameOver(): void {
@@ -229,6 +255,12 @@ export class GameAudioSystem {
   }
 
   playBulletHit(bulletStyle: PlayerBulletStyle): void {
+    // Power 通常弾命中は skill.power.impact。Pierce/Ricochet 後続も同じ経路の間は共有。
+    // 将来: skill.pierce.impact / skill.ricochet.impact へ分離可能。
+    if (bulletStyle === 'powerOrb') {
+      this.playEvent(SURVIVOR_SFX_EVENT_IDS.SKILL_POWER_IMPACT)
+      return
+    }
     this.playSound(getSurvivorHitSfxKey(bulletStyle))
   }
 
@@ -246,12 +278,73 @@ export class GameAudioSystem {
     this.playSound(SFX_KEY_ENEMY_BLOCKED)
   }
 
+  /**
+   * 意味的 Event ID から既存 Runtime SFX キーへ解決して再生する。
+   * クールダウン／音量ゆらぎは解決後のキーに対する共通方針で適用する（Event 専用 switch を増やさない）。
+   */
+  playEvent(eventId: SurvivorSfxEventId): void {
+    const soundKey = resolveSurvivorSfxEventKey(eventId)
+    if (DEBUG_SFX_EVENTS) {
+      console.log(`[SFX Event] ${eventId} -> ${soundKey}`)
+    }
+    this.playResolvedRuntimeSfx(soundKey)
+  }
+
+  /**
+   * Runtime SFX キーを再生する。高頻度キーは既存どおりゲート／ゆらぎを掛ける。
+   * Python: key ごとの再生ポリシー dict を引いて適用するイメージ
+   */
+  private playResolvedRuntimeSfx(soundKey: string): void {
+    if (soundKey === SFX_KEY_PLAYER_FIRE_POWER) {
+      if (
+        !this.sfxCooldownGate.shouldPlay(
+          soundKey,
+          PLAYER_FIRE_POWER_SFX_COOLDOWN_MS,
+        )
+      ) {
+        return
+      }
+      const volumeScale = 0.94 + Math.random() * 0.1
+      this.playSound(soundKey, SFX_VOLUME * volumeScale)
+      return
+    }
+
+    if (soundKey === SFX_KEY_COIN_PICKUP) {
+      if (
+        !this.sfxCooldownGate.shouldPlay(
+          SFX_KEY_COIN_PICKUP,
+          COIN_PICKUP_SFX_COOLDOWN_MS,
+        )
+      ) {
+        return
+      }
+      this.playSound(soundKey)
+      return
+    }
+
+    if (soundKey === SFX_KEY_ENEMY_DEFEAT) {
+      if (
+        !this.sfxCooldownGate.shouldPlay(
+          SFX_KEY_ENEMY_DEFEAT,
+          ENEMY_DEFEAT_SFX_COOLDOWN_MS,
+        )
+      ) {
+        return
+      }
+      const volumeScale = 0.92 + Math.random() * 0.12
+      this.playSound(soundKey, SFX_VOLUME * volumeScale)
+      return
+    }
+
+    this.playSound(soundKey)
+  }
+
   playEnemyDefeat(): void {
-    this.playSound(SFX_KEY_ENEMY_DEFEAT)
+    this.playResolvedRuntimeSfx(SFX_KEY_ENEMY_DEFEAT)
   }
 
   playCoinPickup(): void {
-    this.playSound(SFX_KEY_COIN_PICKUP)
+    this.playResolvedRuntimeSfx(SFX_KEY_COIN_PICKUP)
   }
 
   playPlayerHurt(): void {
@@ -272,6 +365,37 @@ export class GameAudioSystem {
 
   playMenuCancel(): void {
     this.playSound(SFX_KEY_MENU_CANCEL)
+  }
+
+  /** Orbiting Orb 取得・展開（氷魔法が広がる音）。 */
+  playOrbitingOrbObtain(): void {
+    this.playSound(SFX_KEY_ORBITING_ORB_OBTAIN)
+  }
+
+  /** Orbiting Orb が敵に当たったとき（短い氷片）。高頻度はクールダウンで抑える。 */
+  playOrbitingOrbHit(): void {
+    if (
+      !this.sfxCooldownGate.shouldPlay(
+        SFX_KEY_ORBITING_ORB_HIT,
+        ORBITING_ORB_HIT_SFX_COOLDOWN_MS,
+      )
+    ) {
+      return
+    }
+    this.playSound(SFX_KEY_ORBITING_ORB_HIT)
+  }
+
+  /** Orbiting Orb が敵弾を消したとき（冷気でシュッ）。 */
+  playOrbitingOrbShatter(): void {
+    if (
+      !this.sfxCooldownGate.shouldPlay(
+        SFX_KEY_ORBITING_ORB_SHATTER,
+        ORBITING_ORB_SHATTER_SFX_COOLDOWN_MS,
+      )
+    ) {
+      return
+    }
+    this.playSound(SFX_KEY_ORBITING_ORB_SHATTER)
   }
 
   private playSound(soundKey: string, volumeOverride?: number): void {

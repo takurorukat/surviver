@@ -182,7 +182,9 @@ export class SoundManager {
     immediate?: boolean
     onFadeComplete?: () => void
   }): void {
-    bgmCommandSequence = bgmCommandSequence + 1
+    if (options?.onFadeComplete === undefined) {
+      bgmCommandSequence = bgmCommandSequence + 1
+    }
     this.clearPendingBgmFadeTimer()
 
     if (fadingOutBgm !== null) {
@@ -395,12 +397,13 @@ export class SoundManager {
   playOneShot(scene: Phaser.Scene, soundKey: string, volume: number): void {
     this.unlockSceneAudio(scene)
 
-    if (!this.sfxPolicyTracker.canPlay(soundKey)) {
+    const audioContext = getAudioContextFromScene(scene)
+    if (audioContext === null) {
       return
     }
 
-    const audioContext = getAudioContextFromScene(scene)
-    if (audioContext === null) {
+    const audioBuffer = asAudioBuffer(scene.cache.audio.get(soundKey))
+    if (audioBuffer === null || !this.sfxPolicyTracker.canPlay(soundKey)) {
       return
     }
 
@@ -408,14 +411,11 @@ export class SoundManager {
     const baseVolume = Math.max(0, Math.min(1, volume))
     const playVolume = this.sfxPolicyTracker.applyVolumeJitter(baseVolume)
     const playRate = this.sfxPolicyTracker.applyRateJitter(1)
+    this.sfxPolicyTracker.onPlayStarted(soundKey)
 
     const playNow = (): void => {
       if (commandSeq !== sfxCommandSequence) {
-        return
-      }
-
-      const audioBuffer = asAudioBuffer(scene.cache.audio.get(soundKey))
-      if (audioBuffer === null) {
+        this.sfxPolicyTracker.onPlayEnded(soundKey)
         return
       }
 
@@ -432,9 +432,9 @@ export class SoundManager {
           this.sfxPolicyTracker.onPlayEnded(soundKey)
         }
         activeSfxList.push({ source, gainNode, soundKey })
-        this.sfxPolicyTracker.onPlayStarted(soundKey)
         source.start(0)
       } catch (_error) {
+        this.sfxPolicyTracker.onPlayEnded(soundKey)
         // 再生失敗時は無視
       }
     }

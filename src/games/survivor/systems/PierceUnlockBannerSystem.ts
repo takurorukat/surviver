@@ -24,9 +24,6 @@ import {
   PIERCE_UNLOCK_BANNER_POP_MS,
   PIERCE_UNLOCK_BANNER_HOLD_MS,
   PIERCE_UNLOCK_BANNER_FADE_MS,
-  PIERCE_UNLOCK_ICON_SIZE,
-  UNLOCK_ICON_PIERCE_COLOR,
-  UNLOCK_ICON_PIERCE_LETTER,
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
   PIERCE_LEVEL_UP_BANNER_TITLE_PREFIX,
@@ -37,10 +34,12 @@ import {
   SKILL_LEVEL_UP_BANNER_POP_MS,
   SKILL_LEVEL_UP_BANNER_HOLD_MS,
   SKILL_LEVEL_UP_BANNER_FADE_MS,
-  SKILL_LEVEL_UP_BANNER_ICON_SIZE,
   SKILL_LEVEL_UP_BANNER_STROKE_THICKNESS,
+  UNLOCK_BANNER_SKILL_ICON_SCALE,
+  LEVEL_UP_BANNER_SKILL_ICON_SCALE,
 } from '../GameConstants'
 import { shrinkTextToFitWidth } from '../utils/fitTextToWidth'
+import { createSkillIcon } from '../ui/SkillIcon'
 
 /**
  * Pierce 取得の大きな通知。フェード完了後に onComplete を呼ぶ。
@@ -57,29 +56,13 @@ export function playPierceUnlockBanner(
   container.setAlpha(0)
   container.setScale(0.4)
 
-  const iconBorder = scene.add.rectangle(
-    0,
-    -56,
-    PIERCE_UNLOCK_ICON_SIZE + 10,
-    PIERCE_UNLOCK_ICON_SIZE + 10,
-    UNLOCK_ICON_PIERCE_COLOR,
+  const icon = createSkillIcon(
+    scene,
+    'pierce',
+    UNLOCK_BANNER_SKILL_ICON_SCALE,
   )
-  iconBorder.setStrokeStyle(4, 0xffffff, 1)
-
-  const iconFill = scene.add.rectangle(
-    0,
-    -56,
-    PIERCE_UNLOCK_ICON_SIZE,
-    PIERCE_UNLOCK_ICON_SIZE,
-    0x0f172a,
-  )
-
-  const iconLetter = scene.add.text(0, -56, UNLOCK_ICON_PIERCE_LETTER, {
-    fontFamily: FONT_FAMILY_HEADING,
-    fontSize: '40px',
-    color: '#7dd3fc',
-  })
-  iconLetter.setOrigin(0.5)
+  icon.container.setPosition(0, -56)
+  icon.border.setStrokeStyle(4, 0xffffff, 1)
 
   const titleText = scene.add.text(0, 12, PIERCE_UNLOCK_BANNER_TITLE, {
     fontFamily: FONT_FAMILY_HEADING,
@@ -101,7 +84,7 @@ export function playPierceUnlockBanner(
   subtitleText.setOrigin(0.5)
   shrinkTextToFitWidth(subtitleText, GAME_WIDTH - 48)
 
-  container.add([iconBorder, iconFill, iconLetter, titleText, subtitleText])
+  container.add([icon.container, titleText, subtitleText])
 
   // StartCountdown と同じ: time.paused 中でも進む tween 連鎖
   scene.tweens.chain({
@@ -146,24 +129,13 @@ export function playPierceLevelUpBanner(
   container.setAlpha(0)
   container.setScale(0.85)
 
-  const iconSize = SKILL_LEVEL_UP_BANNER_ICON_SIZE
-  const iconBorder = scene.add.rectangle(
-    0,
-    -36,
-    iconSize + 6,
-    iconSize + 6,
-    UNLOCK_ICON_PIERCE_COLOR,
+  const icon = createSkillIcon(
+    scene,
+    'pierce',
+    LEVEL_UP_BANNER_SKILL_ICON_SCALE,
   )
-  iconBorder.setStrokeStyle(2, 0xffffff, 0.7)
-
-  const iconFill = scene.add.rectangle(0, -36, iconSize, iconSize, 0x0f172a)
-
-  const iconLetter = scene.add.text(0, -36, UNLOCK_ICON_PIERCE_LETTER, {
-    fontFamily: FONT_FAMILY_HEADING,
-    fontSize: '22px',
-    color: '#7dd3fc',
-  })
-  iconLetter.setOrigin(0.5)
+  icon.container.setPosition(0, -36)
+  icon.border.setStrokeStyle(2, 0xffffff, 0.7)
 
   const titleText = scene.add.text(
     0,
@@ -190,7 +162,7 @@ export function playPierceLevelUpBanner(
   subtitleText.setOrigin(0.5)
   shrinkTextToFitWidth(subtitleText, GAME_WIDTH - 48)
 
-  container.add([iconBorder, iconFill, iconLetter, titleText, subtitleText])
+  container.add([icon.container, titleText, subtitleText])
 
   scene.tweens.chain({
     tweens: [

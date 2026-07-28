@@ -7,6 +7,8 @@ import {
   ENEMY_ASH_KNIGHT_HP,
   ENEMY_BEETLE_COLOR,
   ENEMY_BEETLE_HP,
+  ENEMY_EARTH_SKELETON_COLOR,
+  ENEMY_EARTH_SKELETON_HP,
   ENEMY_BRANCH_COLOR,
   ENEMY_BRANCH_HP,
   ENEMY_BURNING_TREE_COLOR,
@@ -19,6 +21,9 @@ import {
   ENEMY_GRAVESTONE_SPAWN_OFFSET_Y,
   ENEMY_MELEE_COLOR,
   ENEMY_MUSHROOM_COLOR,
+  ENEMY_EARTH_SLIME_COLOR,
+  ENEMY_EARTH_ROCK_COLOR,
+  ENEMY_EARTH_ROCK_HP,
   ENEMY_RANGED_COLOR,
   ENEMY_SPIRIT_FIRE_COLOR,
   ENEMY_SPIRIT_THUNDER_COLOR,
@@ -109,6 +114,55 @@ export function spawnMushroomEnemy(
     ENEMY_MUSHROOM_COLOR,
     false,
     'mushroom',
+  )
+}
+
+/**
+ * Earth Dungeon Stage1 の土スライムを1体スポーンする。
+ * HP・速度は緑スライム（melee）と同じ値を渡す。
+ */
+export function spawnEarthSlimeEnemy(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  spawnX: number,
+  spawnY: number,
+  hp: number,
+  speed: number,
+): Phaser.GameObjects.Rectangle {
+  return spawnEnemyCommon(
+    scene,
+    enemyGroup,
+    spawnX,
+    spawnY,
+    hp,
+    speed,
+    ENEMY_EARTH_SLIME_COLOR,
+    false,
+    'earthSlime',
+  )
+}
+
+/**
+ * Earth Dungeon Stage2 の岩敵を1体スポーンする。
+ * HP 固定5。速度はやや遅めを呼び出し側で渡す。
+ */
+export function spawnEarthRockEnemy(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  spawnX: number,
+  spawnY: number,
+  speed: number,
+): Phaser.GameObjects.Rectangle {
+  return spawnEnemyCommon(
+    scene,
+    enemyGroup,
+    spawnX,
+    spawnY,
+    ENEMY_EARTH_ROCK_HP,
+    speed,
+    ENEMY_EARTH_ROCK_COLOR,
+    false,
+    'earthRock',
   )
 }
 
@@ -312,6 +366,30 @@ export function spawnBeetleEnemy(
     ENEMY_BEETLE_COLOR,
     false,
     'beetle',
+  )
+}
+
+/**
+ * Earth Dungeon Stage3 のスケルトンを1体スポーンする。
+ * 突進はカブトムシと同じ。HP は固定10。
+ */
+export function spawnEarthSkeletonEnemy(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  spawnX: number,
+  spawnY: number,
+  speed: number,
+): Phaser.GameObjects.Rectangle {
+  return spawnEnemyCommon(
+    scene,
+    enemyGroup,
+    spawnX,
+    spawnY,
+    ENEMY_EARTH_SKELETON_HP,
+    speed,
+    ENEMY_EARTH_SKELETON_COLOR,
+    false,
+    'earthSkeleton',
   )
 }
 

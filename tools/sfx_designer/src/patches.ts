@@ -31,6 +31,12 @@ export function schedulePreset(Tone: ToneNs, preset: SfxPreset): number {
       return scheduleEarth(Tone, preset, 'fire')
     case 'earth_hit':
       return scheduleEarth(Tone, preset, 'hit')
+    case 'ice_obtain':
+      return scheduleIceObtain(Tone, preset)
+    case 'ice_hit':
+      return scheduleIceHit(Tone, preset)
+    case 'ice_shatter':
+      return scheduleIceShatter(Tone, preset)
     case 'enemy_defeat':
       return scheduleEnemyDefeat(Tone, preset)
     case 'enemy_hit':
@@ -341,25 +347,176 @@ function scheduleEarth(Tone: ToneNs, p: SfxPreset, kind: 'fire' | 'hit'): number
   return kind === 'fire' ? Math.max(p.durationTarget, 0.09) : Math.max(p.durationTarget, 0.1)
 }
 
+/**
+ * Orbiting Orb 取得: 氷晶が広がる短い冷気シマー（水滴・泡にしない）。
+ */
+function scheduleIceObtain(Tone: ToneNs, p: SfxPreset): number {
+  const dest = new Tone.Gain(1).toDestination()
+  const air = new Tone.Filter({
+    type: 'highpass',
+    frequency: 700,
+    Q: 0.6,
+  }).connect(dest)
+
+  const frost = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.01, decay: 0.18, sustain: 0, release: 0.08 },
+  }).connect(
+    new Tone.Filter({ type: 'bandpass', frequency: p.filterHz, Q: 1.1 }).connect(
+      new Tone.Gain(p.noiseAmount * 0.55).connect(air),
+    ),
+  )
+
+  const pitches = [p.pitchHz, p.pitchHz * 1.26, p.pitchHz * 1.5]
+  const starts = [0.0, 0.05, 0.1]
+  for (let index = 0; index < pitches.length; index++) {
+    const crystal = new Tone.Synth({
+      oscillator: { type: 'triangle' },
+      envelope: {
+        attack: p.attack,
+        decay: 0.12,
+        sustain: 0,
+        release: p.release,
+      },
+    }).connect(new Tone.Gain(p.gain * (0.55 - index * 0.1)).connect(air))
+    const hz = pitches[index]
+    const t = starts[index]
+    crystal.triggerAttackRelease(hz, 0.14, t, 0.45)
+    crystal.frequency.setValueAtTime(hz, t)
+    crystal.frequency.exponentialRampToValueAtTime(hz * 1.08, t + 0.08)
+  }
+
+  // 細い高音の氷のキラッ
+  const sparkle = new Tone.Synth({
+    oscillator: { type: 'sine' },
+    envelope: { attack: 0.002, decay: 0.08, sustain: 0, release: 0.04 },
+  }).connect(new Tone.Gain(0.18 * p.resonance).connect(dest))
+  sparkle.triggerAttackRelease(p.pitchHz * 2.4, 0.09, 0.12, 0.35)
+
+  frost.triggerAttackRelease(0.22, 0, 0.4)
+  return p.durationTarget
+}
+
+/**
+ * Orbiting Orb 敵命中: 小さな氷片が軽く砕ける（ガラス大割れにしない）。
+ */
+function scheduleIceHit(Tone: ToneNs, p: SfxPreset): number {
+  const dest = new Tone.Gain(1).toDestination()
+  const body = new Tone.Filter({
+    type: 'bandpass',
+    frequency: p.filterHz,
+    Q: p.filterQ,
+  }).connect(dest)
+
+  const crystal = new Tone.Synth({
+    oscillator: { type: 'triangle' },
+    envelope: {
+      attack: p.attack,
+      decay: 0.045,
+      sustain: 0,
+      release: p.release,
+    },
+  }).connect(new Tone.Gain(p.gain).connect(body))
+
+  const tick = new Tone.Synth({
+    oscillator: { type: 'sine' },
+    envelope: { attack: 0.001, decay: 0.03, sustain: 0, release: 0.01 },
+  }).connect(new Tone.Gain(0.28 * p.resonance).connect(dest))
+
+  const flake = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.001, decay: 0.028, sustain: 0, release: 0.008 },
+  }).connect(
+    new Tone.Filter({ type: 'highpass', frequency: 2800, Q: 0.8 }).connect(
+      new Tone.Gain(p.noiseAmount * 0.45).connect(dest),
+    ),
+  )
+
+  crystal.triggerAttackRelease(p.pitchHz, 0.05, 0, 0.5)
+  crystal.frequency.setValueAtTime(p.pitchHz, 0)
+  crystal.frequency.exponentialRampToValueAtTime(p.pitchHz * 0.72, 0.045)
+  tick.triggerAttackRelease(p.pitchHz * 1.9, 0.03, 0.004, 0.4)
+  flake.triggerAttackRelease(0.03, 0, 0.45)
+  return p.durationTarget
+}
+
+/**
+ * Orbiting Orb 敵弾迎撃: 冷気でシュッと消える（派手にしない）。
+ */
+function scheduleIceShatter(Tone: ToneNs, p: SfxPreset): number {
+  const dest = new Tone.Gain(1).toDestination()
+
+  const whoosh = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: {
+      attack: p.attack,
+      decay: 0.05,
+      sustain: 0,
+      release: p.release,
+    },
+  }).connect(
+    new Tone.Filter({ type: 'bandpass', frequency: p.filterHz, Q: p.filterQ }).connect(
+      new Tone.Gain(p.gain * p.noiseAmount).connect(dest),
+    ),
+  )
+
+  const grain = new Tone.Synth({
+    oscillator: { type: 'sine' },
+    envelope: { attack: 0.001, decay: 0.035, sustain: 0, release: 0.015 },
+  }).connect(new Tone.Gain(p.gain * 0.55).connect(dest))
+
+  whoosh.triggerAttackRelease(0.055, 0, 0.55)
+  grain.triggerAttackRelease(p.pitchHz, 0.04, 0.008, 0.4)
+  grain.frequency.setValueAtTime(p.pitchHz, 0.008)
+  grain.frequency.exponentialRampToValueAtTime(p.pitchHz * 1.35, 0.04)
+  return p.durationTarget
+}
+
 function scheduleEnemyDefeat(Tone: ToneNs, p: SfxPreset): number {
   const dest = new Tone.Gain(1).toDestination()
-  const lp = new Tone.Filter({ type: 'lowpass', frequency: p.filterHz, Q: p.filterQ }).connect(dest)
+  const body = new Tone.Filter({
+    type: 'bandpass',
+    frequency: p.filterHz,
+    Q: p.filterQ,
+  }).connect(dest)
 
+  // 軽い破裂ノイズ（ポッ／シュパッ）— 本体を少し長めに聴かせる
   const puff = new Tone.NoiseSynth({
-    noise: { type: 'pink' },
-    envelope: { attack: p.attack, decay: 0.07, sustain: 0, release: p.release },
-  }).connect(new Tone.Gain(p.gain * p.noiseAmount).connect(lp))
+    noise: { type: 'white' },
+    envelope: {
+      attack: p.attack,
+      decay: 0.16,
+      sustain: 0.08,
+      release: 0.06,
+    },
+  }).connect(
+    new Tone.Filter({ type: 'highpass', frequency: 450, Q: 0.55 }).connect(
+      new Tone.Gain(p.gain * p.noiseAmount).connect(body),
+    ),
+  )
 
+  // 短い下降トーンで「消えた」感
   const blip = new Tone.Synth({
     oscillator: { type: 'triangle' },
-    envelope: { attack: 0.002, decay: 0.06, sustain: 0, release: 0.02 },
-  }).connect(new Tone.Gain(p.gain * 0.7).connect(lp))
+    envelope: { attack: 0.001, decay: 0.12, sustain: 0.05, release: 0.07 },
+  }).connect(new Tone.Gain(p.gain * 0.8).connect(dest))
 
-  puff.triggerAttackRelease(0.08, 0, 0.7)
-  blip.triggerAttackRelease(p.pitchHz, 0.07, 0, 0.5)
+  // 小さな二次スパーク（テンポ感）
+  const spark = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.001, decay: 0.06, sustain: 0, release: 0.02 },
+  }).connect(
+    new Tone.Filter({ type: 'bandpass', frequency: 2600, Q: 1.1 }).connect(
+      new Tone.Gain(0.28 * p.variation).connect(dest),
+    ),
+  )
+
+  puff.triggerAttackRelease(0.18, 0, 0.8)
+  blip.triggerAttackRelease(p.pitchHz, 0.18, 0, 0.6)
   blip.frequency.setValueAtTime(p.pitchHz, 0)
-  blip.frequency.exponentialRampToValueAtTime(p.pitchHz * 0.55, 0.07)
-  return p.durationTarget
+  blip.frequency.exponentialRampToValueAtTime(p.pitchHz * 0.45, 0.17)
+  spark.triggerAttackRelease(0.07, 0.03, 0.55)
+  return Math.max(p.durationTarget, 0.16)
 }
 
 function scheduleEnemyHit(Tone: ToneNs, p: SfxPreset): number {

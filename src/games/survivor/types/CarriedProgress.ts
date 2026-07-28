@@ -16,6 +16,7 @@ export type CarriedProgress = {
   currentMoveSpeed: number
   currentPierceLevel: number
   currentBlastLevel: number
+  currentOrbitingOrbLevel: number
   currentRicochetLevel: number
   currentXpBonusLevel: number
   tookDamageThisRun: boolean

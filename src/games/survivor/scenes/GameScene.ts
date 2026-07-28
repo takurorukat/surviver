@@ -14,6 +14,7 @@ import {
   MAGNET_LEVEL_START,
   PIERCE_LEVEL_START,
   BLAST_LEVEL_START,
+  ORBITING_ORB_LEVEL_START,
   RICOCHET_LEVEL_START,
   XP_BONUS_LEVEL_START,
   START_COUNTDOWN_STAGE1_OFFSET_Y,
@@ -35,9 +36,11 @@ import {
   AUTO_GOLD_LEVEL_UP_CHAIN_DELAY_MS,
   calculatePierceLevelFromMoveAndSpeed,
   calculateBlastLevelFromPowerAndRange,
-  calculateRicochetLevelFromPowerSpeedAndPickup,
+  calculateOrbitingOrbLevelFromMoveAndPickup,
+  calculateRicochetLevelFromXpBonusPickupAndSpeed,
   ACHIEVEMENT_ID_PIERCE_UNLOCK,
   ACHIEVEMENT_ID_BLAST_UNLOCK,
+  ACHIEVEMENT_ID_ORBITING_ORB_UNLOCK,
   ACHIEVEMENT_ID_RICOCHET_UNLOCK,
   FOREST_BGM_KEY,
   VOLCANO_BGM_KEY,
@@ -72,7 +75,7 @@ import { stepArcadePhysicsOnce } from '../utils/arcadePhysicsHelpers'
 import { HudSystem } from '../systems/HudSystem'
 import { WaveSystem } from '../systems/WaveSystem'
 import { updateEnemyChaseMovement } from '../systems/EnemyMovementSystem'
-import { updateEnemyRangedAttacks } from '../systems/EnemyAttackSystem'
+import { updateEnemyRangedAttacks, updateEarthRockAttacks } from '../systems/EnemyAttackSystem'
 import {
   createPlayerDamageState,
   canPlayerTakeDamageNow,
@@ -103,6 +106,7 @@ import {
   updateEnemyBullets,
   destroyAllEnemyBullets,
   recycleEnemyBullet,
+  type EnemyBulletVisual,
 } from '../objects/EnemyBullet'
 import {
   updateAllEnemyHpBars,
@@ -141,6 +145,7 @@ import {
   updateCoinMagnetMovement,
 } from '../systems/CoinMagnetSystem'
 import { GameAudioSystem } from '../systems/GameAudioSystem'
+import { SURVIVOR_SFX_EVENT_IDS } from '../audio/sfxEvents'
 import {
   createBgmToggleButton,
   type BgmToggleButtonView,
@@ -181,6 +186,12 @@ import {
   playRicochetUnlockBanner,
   playRicochetLevelUpBanner,
 } from '../systems/RicochetUnlockBannerSystem'
+import {
+  playOrbitingOrbUnlockBanner,
+  playOrbitingOrbLevelUpBanner,
+} from '../systems/OrbitingOrbUnlockBannerSystem'
+import { OrbitingOrbSystem } from '../systems/OrbitingOrbSystem'
+import { SurvivorAutoplayBridge } from '../dev/SurvivorAutoplayBridge'
 import {
   playHpFullText,
   playAutoGoldLevelUpText,
@@ -280,12 +291,16 @@ export class GameScene extends Phaser.Scene {
   private currentAttackRange = PLAYER_ATTACK_RANGE
   private currentPierceLevel = PIERCE_LEVEL_START
   private currentBlastLevel = BLAST_LEVEL_START
+  private currentOrbitingOrbLevel = ORBITING_ORB_LEVEL_START
   private currentRicochetLevel = RICOCHET_LEVEL_START
   private currentXpBonusLevel = XP_BONUS_LEVEL_START
 
   // --- 所有するシステムインスタンス ---
   private hudSystem!: HudSystem
   private waveSystem!: WaveSystem
+  private orbitingOrbSystem!: OrbitingOrbSystem
+  /** 開発専用 E2E Bot（?e2e=1 のときだけ生成） */
+  private autoplayBridge: SurvivorAutoplayBridge | null = null
   private rangeDisplaySystem!: RangeDisplaySystem
   private hitboxDisplaySystem!: HitboxDisplaySystem
   private gameAudioSystem!: GameAudioSystem
@@ -485,6 +500,7 @@ export class GameScene extends Phaser.Scene {
     this.setupPlayerEnemyOverlap()
     this.setupPlayerEnemyBulletOverlap()
     this.setupBulletEnemyOverlap()
+    this.setupPlayerBulletEnemyBulletOverlap()
     this.setupCoinPickupOverlap()
     this.setupGoldCoinPickupOverlap()
     this.setupFixedCamera()
@@ -514,7 +530,9 @@ export class GameScene extends Phaser.Scene {
     this.levelUpChoiceSystem = new LevelUpChoiceSystem(this, () => {
       this.gameAudioSystem.playMenuMove()
     }, () => {
-      this.gameAudioSystem.playLevelUp()
+      this.gameAudioSystem.playEvent(
+        SURVIVOR_SFX_EVENT_IDS.PROGRESSION_LEVEL_UP_CHOICE_CONFIRM,
+      )
     })
     this.stageResultSystem = new StageResultSystem(this)
     // 自動物理更新を止め、update 内で stepArcadePhysicsOnce を自分で呼ぶ
@@ -527,8 +545,50 @@ export class GameScene extends Phaser.Scene {
       this.areaId,
       () => ({ x: this.player.x, y: this.player.y }),
     )
+    this.orbitingOrbSystem = new OrbitingOrbSystem(this)
+    this.orbitingOrbSystem.setupOverlap(this.enemyGroup)
+    this.orbitingOrbSystem.setupEnemyBulletOverlap(this.enemyBulletGroup)
+    this.orbitingOrbSystem.setAudioHooks({
+      playObtain: () => {
+        this.gameAudioSystem.playOrbitingOrbObtain()
+      },
+      playHit: () => {
+        this.gameAudioSystem.playOrbitingOrbHit()
+      },
+      playShatter: () => {
+        this.gameAudioSystem.playOrbitingOrbShatter()
+      },
+    })
+    this.orbitingOrbSystem.resetHitHistory()
+    this.orbitingOrbSystem.syncLevel(this.currentOrbitingOrbLevel)
+    this.orbitingOrbSystem.setAttackDamage(this.currentAttackDamage)
     this.updateHudDisplay()
     this.beginStageWithCountdown()
+
+    // 開発専用: ?e2e=1 のときだけ自動プレイ Bridge を接続する
+    this.autoplayBridge = SurvivorAutoplayBridge.createIfEnabled({
+      getSceneKey: () => this.scene.key,
+      isSceneActive: () => this.isStageActive,
+      getElapsedMs: () => this.stageElapsedMs,
+      getPlayerHp: () => this.currentHp,
+      getPlayerLevel: () => this.currentLevel,
+      getPlayerX: () => this.player.x,
+      getPlayerY: () => this.player.y,
+      getPlayAreaLeft: () => this.playAreaBounds.left,
+      getPlayAreaTop: () => this.playAreaBounds.top,
+      getPlayAreaWidth: () => this.playAreaBounds.width,
+      getPlayAreaHeight: () => this.playAreaBounds.height,
+      getEnemyChildren: () => this.enemyGroup.getChildren(),
+      isLevelUpOpen: () =>
+        this.levelUpChoiceSystem !== undefined && this.levelUpChoiceSystem.isOpen(),
+      isGameOver: () => this.isPlayerDead,
+      confirmLevelUpFirstChoice: () => {
+        if (this.levelUpChoiceSystem === undefined) {
+          return false
+        }
+        return this.levelUpChoiceSystem.confirmFirstChoice()
+      },
+    })
 
     // Stage 1 の新規開始だけトライ回数に数える（次ステージ引き継ぎは数えない）
     if (this.stageNumber === 1 && this.carriedProgress === null) {
@@ -635,6 +695,11 @@ export class GameScene extends Phaser.Scene {
     // 設定メニュー側でBGMを切り替えた場合も、右下アイコンへすぐ反映する
     this.bgmToggleButton?.refresh()
 
+    // 開発専用 E2E: 毎フレーム状態更新とレベルアップ自動選択
+    if (this.autoplayBridge !== null) {
+      this.autoplayBridge.onFrame()
+    }
+
     // ポーズ中も含めて毎フレーム、見た目スプライトを物理位置に追従させる
     if (this.playerWalkSprite !== undefined) {
       updatePlayerWalkSprite(this.playerWalkSprite, this.player, this.playerBody)
@@ -716,6 +781,7 @@ export class GameScene extends Phaser.Scene {
       // 既存の弾だけ年齢を進めてから発射する（新規弾は age=0 のまま物理へ）
       advancePlayerBulletCollisionAge(this.playerBulletGroup)
       advanceEnemyBulletCollisionAge(this.enemyBulletGroup)
+      this.updateOrbitingOrbs()
       this.updatePlayerAttack()
       this.updateEnemyRangedAttack()
       updateSpecialEnemySpawns({
@@ -746,17 +812,25 @@ export class GameScene extends Phaser.Scene {
       this.game.loop.delta,
     )
     if (!isKnockbackActive) {
-      applyPlayerMovement(
-        this,
-        this.player,
-        this.playerBody,
-        this.movementKeys,
-        this.movementState,
-        this.playAreaBounds,
-        this.currentMoveSpeed,
-        this.game.loop.delta / 1000,
-        this.pointerFollowMarker,
-      )
+      if (this.autoplayBridge !== null) {
+        const moveVector = this.autoplayBridge.getMoveVector(this.time.now)
+        this.playerBody.setVelocity(
+          moveVector.x * this.currentMoveSpeed,
+          moveVector.y * this.currentMoveSpeed,
+        )
+      } else {
+        applyPlayerMovement(
+          this,
+          this.player,
+          this.playerBody,
+          this.movementKeys,
+          this.movementState,
+          this.playAreaBounds,
+          this.currentMoveSpeed,
+          this.game.loop.delta / 1000,
+          this.pointerFollowMarker,
+        )
+      }
     }
 
     // 物理はここだけで1回。overlap コールバックもこの中で発火する
@@ -782,6 +856,13 @@ export class GameScene extends Phaser.Scene {
   // 呼び出し先: this.physics.enableUpdate, waveSystem.stopWaves
   // 補足: ステージ遷移では BGM を止めない（共有1本を継続）。止めたいときは明示的に stopBgm
   shutdown(): void {
+    if (this.autoplayBridge !== null) {
+      this.autoplayBridge.destroy()
+      this.autoplayBridge = null
+    }
+    if (this.orbitingOrbSystem !== undefined) {
+      this.orbitingOrbSystem.destroy()
+    }
     this.physics.enableUpdate()
     destroyPointerFollowMarker(this.pointerFollowMarker)
     this.pointerFollowMarker = null
@@ -860,6 +941,7 @@ export class GameScene extends Phaser.Scene {
     this.currentAttackRange = PLAYER_ATTACK_RANGE
     this.currentPierceLevel = PIERCE_LEVEL_START
     this.currentBlastLevel = BLAST_LEVEL_START
+    this.currentOrbitingOrbLevel = ORBITING_ORB_LEVEL_START
     this.currentRicochetLevel = RICOCHET_LEVEL_START
     this.currentXpBonusLevel = XP_BONUS_LEVEL_START
   }
@@ -888,6 +970,7 @@ export class GameScene extends Phaser.Scene {
     this.currentAttackRange = progress.currentAttackRange
     this.currentPierceLevel = progress.currentPierceLevel
     this.currentBlastLevel = progress.currentBlastLevel
+    this.currentOrbitingOrbLevel = progress.currentOrbitingOrbLevel
     this.currentRicochetLevel = progress.currentRicochetLevel
     this.currentXpBonusLevel = progress.currentXpBonusLevel
     this.tookDamageThisRun = progress.tookDamageThisRun
@@ -918,6 +1001,7 @@ export class GameScene extends Phaser.Scene {
       currentMoveSpeed: this.currentMoveSpeed,
       currentPierceLevel: this.currentPierceLevel,
       currentBlastLevel: this.currentBlastLevel,
+      currentOrbitingOrbLevel: this.currentOrbitingOrbLevel,
       currentRicochetLevel: this.currentRicochetLevel,
       currentXpBonusLevel: this.currentXpBonusLevel,
       tookDamageThisRun: this.tookDamageThisRun,
@@ -1089,7 +1173,7 @@ export class GameScene extends Phaser.Scene {
       this.player,
       this.enemyBulletGroup,
       (_playerObject, bulletObject) => {
-        this.handlePlayerEnemyBulletHit(bulletObject as Phaser.GameObjects.Triangle)
+        this.handlePlayerEnemyBulletHit(bulletObject as EnemyBulletVisual)
       },
       undefined,
       this,
@@ -1115,6 +1199,22 @@ export class GameScene extends Phaser.Scene {
           bulletObject as PlayerBulletVisual,
           enemyObject as Phaser.GameObjects.Rectangle,
         )
+      },
+      this,
+    )
+  }
+
+  // 役割: プレイヤー弾と破壊可能な敵弾（小石など）の overlap
+  private setupPlayerBulletEnemyBulletOverlap(): void {
+    this.physics.add.overlap(
+      this.playerBulletGroup,
+      this.enemyBulletGroup,
+      (_playerBulletObject, enemyBulletObject) => {
+        recycleEnemyBullet(enemyBulletObject as EnemyBulletVisual)
+      },
+      (_playerBulletObject, enemyBulletObject) => {
+        const enemyBullet = enemyBulletObject as EnemyBulletVisual
+        return enemyBullet.getData('destroyableByPlayer') === true
       },
       this,
     )
@@ -1300,6 +1400,7 @@ export class GameScene extends Phaser.Scene {
       hp: this.maxHp,
       penetrate: this.currentPierceLevel,
       blast: this.currentBlastLevel,
+      orbitingOrb: this.currentOrbitingOrbLevel,
       ricochet: this.currentRicochetLevel,
       xpBonus: this.currentXpBonusLevel,
     })
@@ -1360,11 +1461,31 @@ export class GameScene extends Phaser.Scene {
       this.currentAttackRange,
       this.time.now,
     )
+    updateEarthRockAttacks(
+      this,
+      this.enemyGroup,
+      this.enemyBulletGroup,
+      this.player.x,
+      this.player.y,
+      this.time.now,
+    )
   }
 
   // 役割: 最寄り敵へ自動射撃を試み、撃てたら SE を鳴らす
   // 呼び出し元: update（isStageActive）
   // 呼び出し先: tryFireBulletAtNearestEnemy, gameAudioSystem.playPlayerFire
+  private updateOrbitingOrbs(): void {
+    this.orbitingOrbSystem.setCombatContext(this.buildPlayerBulletCombatContext())
+    this.orbitingOrbSystem.setAttackDamage(this.currentAttackDamage)
+    this.orbitingOrbSystem.update(
+      this.player.x,
+      this.player.y,
+      this.game.loop.delta / 1000,
+      this.enemyGroup,
+      this.time.now,
+    )
+  }
+
   private updatePlayerAttack(): void {
     const bulletStyle = resolvePlayerBulletStyle(
       this.currentMoveLevel,
@@ -1389,6 +1510,8 @@ export class GameScene extends Phaser.Scene {
     )
 
     if (didFire) {
+      // Power 通常弾: skill.power.cast。属性弾は playPlayerFire 内で従来キー再生。
+      // Pierce/Ricochet が powerOrb 発射を共有する間は同一 Event を維持する。
       this.gameAudioSystem.playPlayerFire(bulletStyle)
     }
   }
@@ -1411,7 +1534,7 @@ export class GameScene extends Phaser.Scene {
     const coinY = coin.y
     coin.destroy()
 
-    this.gameAudioSystem.playCoinPickup()
+    this.gameAudioSystem.playEvent(SURVIVOR_SFX_EVENT_IDS.PICKUP_XP_COLLECT)
 
     // XP は拾った瞬間に加算（連続取得でも欠落しない）
     const safeXp = typeof xpValue === 'number' ? Math.max(0, Math.floor(xpValue)) : 1
@@ -1442,7 +1565,7 @@ export class GameScene extends Phaser.Scene {
       this.pendingShopUnlockNotify = true
     }
     this.hudSystem.refreshGold()
-    this.gameAudioSystem.playCoinPickup()
+    this.gameAudioSystem.playEvent(SURVIVOR_SFX_EVENT_IDS.PICKUP_GOLD_COLLECT)
     // XP のキラキラではなく、ゴールドコインが上部バーの所持金へ飛ぶ
     playGoldCoinFlyToHud(this, this.hudSystem, coinX, coinY)
   }
@@ -1535,27 +1658,13 @@ export class GameScene extends Phaser.Scene {
     if (!this.gameAudioSystem.isAreaClearBgmActive()) {
       this.gameAudioSystem.stopBgm()
     }
-    this.gameAudioSystem.playLevelUp()
+    this.gameAudioSystem.playEvent(SURVIVOR_SFX_EVENT_IDS.PROGRESSION_LEVEL_UP_OPEN)
     let requiredChoice: LevelUpChoiceId | undefined
     if (this.areaId === 'volcano' && this.stageNumber === 1 && this.currentMoveLevel < 2) {
       requiredChoice = 'move'
     }
     if (this.areaId === 'volcano' && this.stageNumber === 2 && this.currentAttackDamage < 3) {
       requiredChoice = 'damage'
-    }
-    // Stage 3/4: Ricochet がまだ無いとき、足りない素材スキルを優先候補にする
-    if (
-      this.areaId === 'volcano' &&
-      (this.stageNumber === 3 || this.stageNumber === 4) &&
-      this.currentRicochetLevel < 1
-    ) {
-      if (this.currentMagnetLevel < 2 && isSkillUnlocked('magnet')) {
-        requiredChoice = 'magnet'
-      } else if (this.currentAttackDamage < 2) {
-        requiredChoice = 'damage'
-      } else if (this.currentFireRateLevel < 2) {
-        requiredChoice = 'fireRate'
-      }
     }
     this.levelUpChoiceSystem.show(
       (choiceId) => {
@@ -1571,7 +1680,9 @@ export class GameScene extends Phaser.Scene {
         magnetLevel: this.currentMagnetLevel,
         pierceLevel: this.currentPierceLevel,
         blastLevel: this.currentBlastLevel,
+        orbitingOrbLevel: this.currentOrbitingOrbLevel,
         ricochetLevel: this.currentRicochetLevel,
+        xpBonusLevel: this.currentXpBonusLevel,
       },
     )
   }
@@ -1759,6 +1870,7 @@ export class GameScene extends Phaser.Scene {
       maxHp: this.maxHp,
       pierceLevel: this.currentPierceLevel,
       blastLevel: this.currentBlastLevel,
+      orbitingOrbLevel: this.currentOrbitingOrbLevel,
       ricochetLevel: this.currentRicochetLevel,
       xpBonusLevel: this.currentXpBonusLevel,
     })
@@ -1793,6 +1905,7 @@ export class GameScene extends Phaser.Scene {
     this.maxHp = nextStats.maxHp
     this.currentPierceLevel = nextStats.pierceLevel
     this.currentBlastLevel = nextStats.blastLevel
+    this.currentOrbitingOrbLevel = nextStats.orbitingOrbLevel
     this.currentRicochetLevel = nextStats.ricochetLevel
     this.currentXpBonusLevel = nextStats.xpBonusLevel
 
@@ -1831,16 +1944,19 @@ export class GameScene extends Phaser.Scene {
       this.hudSystem.playStatUpgradePulse(this.mapChoiceIdToStatKey(choiceId))
     }
 
-    // Move/Speed→Pierce、Power/Range→Blast、Pickup/Power/Speed→Ricochet を同期
+    // Move/Speed→Pierce、Power/Range→Blast、Move/Pickup→Orb、XP/Pickup/Speed→Ricochet
     const pierceSyncResult = this.syncPierceLevelFromMoveAndSpeed()
     const blastSyncResult = this.syncBlastLevelFromPowerAndRange()
-    const ricochetSyncResult = this.syncRicochetLevelFromPowerSpeedAndPickup()
+    const orbitingOrbSyncResult = this.syncOrbitingOrbLevelFromMoveAndPickup()
+    const ricochetSyncResult = this.syncRicochetLevelFromXpBonusPickupAndSpeed()
+    this.orbitingOrbSystem.setAttackDamage(this.currentAttackDamage)
 
     const afterBanners = () => {
       this.continueAfterLevelUpChoiceResolved()
     }
 
     // 初回は大きな OBTAINED、レベル上昇は控えめな Lv.N
+    // 表示順: Pierce → Blast → Orbiting Orb → Ricochet
     const runRicochetBannerIfNeeded = (thenFn: () => void) => {
       if (ricochetSyncResult === 'firstUnlock') {
         playRicochetUnlockBanner(this, thenFn, this.currentRicochetLevel)
@@ -1853,20 +1969,36 @@ export class GameScene extends Phaser.Scene {
       thenFn()
     }
 
-    const runBlastBannerIfNeeded = (thenFn: () => void) => {
-      if (blastSyncResult === 'firstUnlock') {
-        playBlastUnlockBanner(this, () => {
+    const runOrbitingOrbBannerIfNeeded = (thenFn: () => void) => {
+      if (orbitingOrbSyncResult === 'firstUnlock') {
+        playOrbitingOrbUnlockBanner(this, () => {
           runRicochetBannerIfNeeded(thenFn)
-        }, this.currentBlastLevel)
+        }, this.currentOrbitingOrbLevel)
         return
       }
-      if (blastSyncResult === 'upgraded') {
-        playBlastLevelUpBanner(this, this.currentBlastLevel, () => {
+      if (orbitingOrbSyncResult === 'upgraded') {
+        playOrbitingOrbLevelUpBanner(this, this.currentOrbitingOrbLevel, () => {
           runRicochetBannerIfNeeded(thenFn)
         })
         return
       }
       runRicochetBannerIfNeeded(thenFn)
+    }
+
+    const runBlastBannerIfNeeded = (thenFn: () => void) => {
+      if (blastSyncResult === 'firstUnlock') {
+        playBlastUnlockBanner(this, () => {
+          runOrbitingOrbBannerIfNeeded(thenFn)
+        }, this.currentBlastLevel)
+        return
+      }
+      if (blastSyncResult === 'upgraded') {
+        playBlastLevelUpBanner(this, this.currentBlastLevel, () => {
+          runOrbitingOrbBannerIfNeeded(thenFn)
+        })
+        return
+      }
+      runOrbitingOrbBannerIfNeeded(thenFn)
     }
 
     if (pierceSyncResult === 'firstUnlock') {
@@ -1952,15 +2084,46 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Pickup・Power・Speed から Ricochet を同期する。
-   * 3つとも Lv2 以上のとき: Ricochet = 低い方 − 1
-   * 例: 全部2→Ricochet1 / 全部3→Ricochet2
+   * Move と Pickup から Orbiting Orb を同期する。
+   * 両方とも Lv2 以上のとき: Orbiting Orb = 低い方 − 1
    */
-  private syncRicochetLevelFromPowerSpeedAndPickup(): 'firstUnlock' | 'upgraded' | 'none' {
-    const targetRicochet = calculateRicochetLevelFromPowerSpeedAndPickup(
-      this.currentAttackDamage,
-      this.currentFireRateLevel,
+  private syncOrbitingOrbLevelFromMoveAndPickup(): 'firstUnlock' | 'upgraded' | 'none' {
+    const targetOrbitingOrb = calculateOrbitingOrbLevelFromMoveAndPickup(
+      this.currentMoveLevel,
       this.currentMagnetLevel,
+    )
+    if (targetOrbitingOrb <= ORBITING_ORB_LEVEL_START) {
+      return 'none'
+    }
+
+    if (this.currentOrbitingOrbLevel >= targetOrbitingOrb) {
+      return 'none'
+    }
+
+    const wasLocked = this.currentOrbitingOrbLevel <= ORBITING_ORB_LEVEL_START
+    this.currentOrbitingOrbLevel = targetOrbitingOrb
+    unlockAchievement(ACHIEVEMENT_ID_ORBITING_ORB_UNLOCK)
+    this.orbitingOrbSystem.syncLevel(this.currentOrbitingOrbLevel)
+    this.refreshPlayerStatsHud()
+    this.hudSystem.playStatUpgradePulse('orbitingOrb')
+    this.gameAudioSystem.playOrbitingOrbObtain()
+
+    if (wasLocked) {
+      this.gameAudioSystem.playLevelUp()
+      return 'firstUnlock'
+    }
+    return 'upgraded'
+  }
+
+  /**
+   * XP Bonus・Pickup・Speed から Ricochet を同期する。
+   * Ricochet = min(Pickup-1, Speed-1, XP Bonus)
+   */
+  private syncRicochetLevelFromXpBonusPickupAndSpeed(): 'firstUnlock' | 'upgraded' | 'none' {
+    const targetRicochet = calculateRicochetLevelFromXpBonusPickupAndSpeed(
+      this.currentXpBonusLevel,
+      this.currentMagnetLevel,
+      this.currentFireRateLevel,
     )
     if (targetRicochet <= RICOCHET_LEVEL_START) {
       return 'none'
@@ -2012,6 +2175,7 @@ export class GameScene extends Phaser.Scene {
     | 'magnet'
     | 'penetrate'
     | 'blast'
+    | 'orbitingOrb'
     | 'ricochet'
     | 'xpBonus' {
     if (choiceId === 'damage') {
@@ -2082,6 +2246,11 @@ export class GameScene extends Phaser.Scene {
     if (this.isPlayerDead) {
       return false
     }
+    // 開発専用 E2E（?e2e=1）: 60秒間の継続動作確認のため被ダメを無効化。
+    // 通常プレイでは autoplayBridge が null のためここは通らない。
+    if (this.autoplayBridge !== null) {
+      return false
+    }
     if (this.isLevelUpPaused || this.isResumeCountdownActive || this.isStartCountdownActive) {
       return false
     }
@@ -2131,7 +2300,7 @@ export class GameScene extends Phaser.Scene {
       this.damageState,
     )
     this.suspendMouseFollowAfterKnockback()
-    this.gameAudioSystem.playPlayerHurt()
+    this.gameAudioSystem.playEvent(SURVIVOR_SFX_EVENT_IDS.PLAYER_DAMAGE_CONTACT)
     playPlayerHurtFlash(this)
 
     if (this.currentHp <= 0) {
@@ -2142,7 +2311,7 @@ export class GameScene extends Phaser.Scene {
   // 役割: 敵弾ヒット時のダメージ・ノックバック・死亡判定（無敵中でも弾は消す）
   // 呼び出し元: setupPlayerEnemyBulletOverlap のコールバック
   // 呼び出し先: PlayerDamageSystem*, handlePlayerDeath
-  private handlePlayerEnemyBulletHit(bullet: Phaser.GameObjects.Triangle): void {
+  private handlePlayerEnemyBulletHit(bullet: EnemyBulletVisual): void {
     if (!this.canPlayerReceiveCombatDamage()) {
       if (bullet.active) {
         recycleEnemyBullet(bullet)
@@ -2187,7 +2356,7 @@ export class GameScene extends Phaser.Scene {
     )
     this.suspendMouseFollowAfterKnockback()
     recycleEnemyBullet(bullet)
-    this.gameAudioSystem.playPlayerHurt()
+    this.gameAudioSystem.playEvent(SURVIVOR_SFX_EVENT_IDS.PLAYER_DAMAGE_PROJECTILE)
     playPlayerHurtFlash(this)
 
     if (this.currentHp <= 0) {
@@ -2207,6 +2376,7 @@ export class GameScene extends Phaser.Scene {
     this.isStageSettled = true
     this.isStageActive = false
     this.waveSystem.stopWaves()
+    this.orbitingOrbSystem.destroy()
     destroyAllEnemyBullets(this.enemyBulletGroup)
     this.stopAllMovingBodies()
 
@@ -2250,7 +2420,7 @@ export class GameScene extends Phaser.Scene {
         this.gameAudioSystem.playBulletHit(bulletStyle)
       },
       playEnemyDefeat: () => {
-        this.gameAudioSystem.playEnemyDefeat()
+        this.gameAudioSystem.playEvent(SURVIVOR_SFX_EVENT_IDS.ENEMY_DEFEAT)
       },
     }
   }

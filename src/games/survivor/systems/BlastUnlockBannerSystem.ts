@@ -24,9 +24,6 @@ import {
   BLAST_UNLOCK_BANNER_POP_MS,
   BLAST_UNLOCK_BANNER_HOLD_MS,
   BLAST_UNLOCK_BANNER_FADE_MS,
-  BLAST_UNLOCK_ICON_SIZE,
-  UNLOCK_ICON_BLAST_COLOR,
-  UNLOCK_ICON_BLAST_LETTER,
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
   BLAST_LEVEL_UP_BANNER_TITLE_PREFIX,
@@ -37,10 +34,12 @@ import {
   SKILL_LEVEL_UP_BANNER_POP_MS,
   SKILL_LEVEL_UP_BANNER_HOLD_MS,
   SKILL_LEVEL_UP_BANNER_FADE_MS,
-  SKILL_LEVEL_UP_BANNER_ICON_SIZE,
   SKILL_LEVEL_UP_BANNER_STROKE_THICKNESS,
+  UNLOCK_BANNER_SKILL_ICON_SCALE,
+  LEVEL_UP_BANNER_SKILL_ICON_SCALE,
 } from '../GameConstants'
 import { shrinkTextToFitWidth } from '../utils/fitTextToWidth'
+import { createSkillIcon } from '../ui/SkillIcon'
 
 /**
  * Blast 取得の大きな通知。フェード完了後に onComplete を呼ぶ。
@@ -58,29 +57,13 @@ export function playBlastUnlockBanner(
   container.setAlpha(0)
   container.setScale(0.4)
 
-  const iconBorder = scene.add.rectangle(
-    0,
-    -56,
-    BLAST_UNLOCK_ICON_SIZE + 10,
-    BLAST_UNLOCK_ICON_SIZE + 10,
-    UNLOCK_ICON_BLAST_COLOR,
+  const icon = createSkillIcon(
+    scene,
+    'blast',
+    UNLOCK_BANNER_SKILL_ICON_SCALE,
   )
-  iconBorder.setStrokeStyle(4, 0xffffff, 1)
-
-  const iconFill = scene.add.rectangle(
-    0,
-    -56,
-    BLAST_UNLOCK_ICON_SIZE,
-    BLAST_UNLOCK_ICON_SIZE,
-    0x0f172a,
-  )
-
-  const iconLetter = scene.add.text(0, -56, UNLOCK_ICON_BLAST_LETTER, {
-    fontFamily: FONT_FAMILY_HEADING,
-    fontSize: '40px',
-    color: '#fbbf24',
-  })
-  iconLetter.setOrigin(0.5)
+  icon.container.setPosition(0, -56)
+  icon.border.setStrokeStyle(4, 0xffffff, 1)
 
   const titleText = scene.add.text(0, 12, BLAST_UNLOCK_BANNER_TITLE, {
     fontFamily: FONT_FAMILY_HEADING,
@@ -90,12 +73,12 @@ export function playBlastUnlockBanner(
     strokeThickness: BLAST_UNLOCK_BANNER_STROKE_THICKNESS,
   })
   titleText.setOrigin(0.5)
-  shrinkTextToFitWidth(titleText, GAME_WIDTH - 48)
+  shrinkTextToFitWidth(titleText, GAME_WIDTH - 80)
 
-  let subtitle = BLAST_UNLOCK_BANNER_SUBTITLE
-  if (blastLevel > 0) {
-    subtitle = `Level ${Math.floor(blastLevel)}  ·  ${BLAST_UNLOCK_BANNER_SUBTITLE}`
-  }
+  const subtitle =
+    blastLevel > 0
+      ? `Level ${Math.floor(blastLevel)}  ·  ${BLAST_UNLOCK_BANNER_SUBTITLE}`
+      : BLAST_UNLOCK_BANNER_SUBTITLE
   const subtitleText = scene.add.text(0, 58, subtitle, {
     fontFamily: FONT_FAMILY_UI,
     fontSize: BLAST_UNLOCK_BANNER_SUBTITLE_FONT_SIZE,
@@ -106,7 +89,7 @@ export function playBlastUnlockBanner(
   subtitleText.setOrigin(0.5)
   shrinkTextToFitWidth(subtitleText, GAME_WIDTH - 48)
 
-  container.add([iconBorder, iconFill, iconLetter, titleText, subtitleText])
+  container.add([icon.container, titleText, subtitleText])
 
   scene.tweens.chain({
     tweens: [
@@ -151,24 +134,13 @@ export function playBlastLevelUpBanner(
   container.setAlpha(0)
   container.setScale(0.85)
 
-  const iconSize = SKILL_LEVEL_UP_BANNER_ICON_SIZE
-  const iconBorder = scene.add.rectangle(
-    0,
-    -36,
-    iconSize + 6,
-    iconSize + 6,
-    UNLOCK_ICON_BLAST_COLOR,
+  const icon = createSkillIcon(
+    scene,
+    'blast',
+    LEVEL_UP_BANNER_SKILL_ICON_SCALE,
   )
-  iconBorder.setStrokeStyle(2, 0xffffff, 0.7)
-
-  const iconFill = scene.add.rectangle(0, -36, iconSize, iconSize, 0x0f172a)
-
-  const iconLetter = scene.add.text(0, -36, UNLOCK_ICON_BLAST_LETTER, {
-    fontFamily: FONT_FAMILY_HEADING,
-    fontSize: '22px',
-    color: '#fbbf24',
-  })
-  iconLetter.setOrigin(0.5)
+  icon.container.setPosition(0, -36)
+  icon.border.setStrokeStyle(2, 0xffffff, 0.7)
 
   const titleText = scene.add.text(
     0,
@@ -195,7 +167,7 @@ export function playBlastLevelUpBanner(
   subtitleText.setOrigin(0.5)
   shrinkTextToFitWidth(subtitleText, GAME_WIDTH - 48)
 
-  container.add([iconBorder, iconFill, iconLetter, titleText, subtitleText])
+  container.add([icon.border, icon.fill, icon.symbol, titleText, subtitleText])
 
   scene.tweens.chain({
     tweens: [

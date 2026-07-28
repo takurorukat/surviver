@@ -26,12 +26,14 @@ import {
   ACHIEVEMENT_ID_PIERCE_UNLOCK,
   ACHIEVEMENT_ID_BLAST_UNLOCK,
   ACHIEVEMENT_ID_RICOCHET_UNLOCK,
+  ACHIEVEMENT_ID_ORBITING_ORB_UNLOCK,
   ACHIEVEMENT_TITLE_UNTOUCHED,
   ACHIEVEMENT_TITLE_PURE_POWER,
   ACHIEVEMENT_TITLE_FOREST_CLEAR,
   ACHIEVEMENT_TITLE_MOVE,
   ACHIEVEMENT_TITLE_MAGNET,
   ACHIEVEMENT_TITLE_RICOCHET,
+  ACHIEVEMENT_TITLE_ORBITING_ORB,
   ACHIEVEMENT_TITLE_XP_BONUS,
   ACHIEVEMENT_CONDITION_PLAINS_CLEAR,
   ACHIEVEMENT_CONDITION_FOREST_CLEAR,
@@ -39,12 +41,14 @@ import {
   ACHIEVEMENT_CONDITION_PIERCE,
   ACHIEVEMENT_CONDITION_BLAST,
   ACHIEVEMENT_CONDITION_RICOCHET,
+  ACHIEVEMENT_CONDITION_ORBITING_ORB,
   UNLOCK_SKILL_LABEL_POWER,
   UNLOCK_SKILL_LABEL_SPEED,
   UNLOCK_SKILL_LABEL_RANGE,
   UNLOCK_SKILL_LABEL_PIERCE,
   UNLOCK_SKILL_LABEL_BLAST,
   UNLOCK_SKILL_LABEL_RICOCHET,
+  UNLOCK_SKILL_LABEL_ORBITING_ORB,
   UNLOCK_SKILL_LABEL_MOVE,
   UNLOCK_SKILL_LABEL_MAGNET,
   UNLOCK_SKILL_LABEL_XP_BONUS,
@@ -57,6 +61,7 @@ import {
   UNLOCK_SKILL_DESC_PIERCE,
   UNLOCK_SKILL_DESC_BLAST,
   UNLOCK_SKILL_DESC_RICOCHET,
+  UNLOCK_SKILL_DESC_ORBITING_ORB,
   AREA_UNLOCK_NOTIFICATION_REASON,
   AREA_CLEAR_MAX_HP_BONUS_LABEL,
   AREA_CLEAR_MAX_HP_BONUS_REASON,
@@ -98,6 +103,13 @@ export const ALL_ACHIEVEMENTS: AchievementDef[] = [
     condition: ACHIEVEMENT_CONDITION_FOREST_CLEAR,
     rewardLabel: UNLOCK_SKILL_LABEL_MAGNET,
     skillId: 'magnet',
+  },
+  {
+    id: ACHIEVEMENT_ID_ORBITING_ORB_UNLOCK,
+    title: ACHIEVEMENT_TITLE_ORBITING_ORB,
+    condition: ACHIEVEMENT_CONDITION_ORBITING_ORB,
+    rewardLabel: UNLOCK_SKILL_LABEL_ORBITING_ORB,
+    skillId: 'orbitingOrb',
   },
   {
     id: ACHIEVEMENT_ID_PIERCE_UNLOCK,
@@ -148,6 +160,7 @@ export type UnlockableSkillId =
   | 'magnet'
   | 'pierce'
   | 'blast'
+  | 'orbitingOrb'
   | 'ricochet'
   | 'xpBonus'
 
@@ -203,6 +216,9 @@ export function isSkillUnlocked(skillId: SkillHudId): boolean {
   }
   if (skillId === 'ricochet') {
     return hasUnlockedAchievement(ACHIEVEMENT_ID_RICOCHET_UNLOCK)
+  }
+  if (skillId === 'orbitingOrb') {
+    return hasUnlockedAchievement(ACHIEVEMENT_ID_ORBITING_ORB_UNLOCK)
   }
   if (skillId === 'pierce') {
     return hasUnlockedAchievement(ACHIEVEMENT_ID_PIERCE_UNLOCK)
@@ -277,6 +293,13 @@ export function getUnlockStatusRows(): UnlockStatusRow[] {
       skillDescription: UNLOCK_SKILL_DESC_BLAST,
       isUnlocked: isSkillUnlocked('blast'),
       unlockCondition: ACHIEVEMENT_CONDITION_BLAST,
+    },
+    {
+      skillId: 'orbitingOrb',
+      skillLabel: UNLOCK_SKILL_LABEL_ORBITING_ORB,
+      skillDescription: UNLOCK_SKILL_DESC_ORBITING_ORB,
+      isUnlocked: isSkillUnlocked('orbitingOrb'),
+      unlockCondition: ACHIEVEMENT_CONDITION_ORBITING_ORB,
     },
     {
       skillId: 'ricochet',

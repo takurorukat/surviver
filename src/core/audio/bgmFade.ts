@@ -25,12 +25,9 @@ export function resolveBgmLoopRange(
     return fullRange
   }
 
-  const start = bounds.loopStart
-  const end = bounds.loopEnd
+  const start = bounds.loopStart ?? 0
+  const end = bounds.loopEnd ?? durationSec
 
-  if (typeof start !== 'number' || typeof end !== 'number') {
-    return fullRange
-  }
   if (!Number.isFinite(start) || !Number.isFinite(end)) {
     return fullRange
   }

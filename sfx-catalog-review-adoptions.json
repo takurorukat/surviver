@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "exportedAt": "2026-07-28T00:37:14.024Z",
+  "purpose": "sfx-catalog-adoption-for-runtime-apply",
+  "note": "Review Adopt only. Does not modify Runtime files. Hand to Cursor with docs/audio/combat-core-runtime-adoption.md.",
+  "catalogEntryCount": 11,
+  "decidedEntryCount": 3,
+  "entries": {
+    "skill.power.cast": {
+      "eventId": "skill.power.cast",
+      "runtimeKey": "sfx-player-fire-power",
+      "runtimePath": "assets/audio/player_fire_power.ogg",
+      "adoptedVariantId": "skill.power.cast-external-03",
+      "variantLabel": "Cast 03 — Rpg Spell Compact",
+      "sourcePath": "assets/audio/candidates/external/skill-power-cast/opengameart_rpg-spell-compact-03.ogg",
+      "sourceName": "OpenGameArt — 80 CC0 RPG SFX",
+      "licenseName": "CC0 1.0 Universal",
+      "checksumSha256": "bf9c48b76921e56aa266172d969a2c08215d6ce0ffae7c3584f23fa05d3f8bd4",
+      "recommendationRank": 3
+    },
+    "skill.power.impact": {
+      "eventId": "skill.power.impact",
+      "runtimeKey": "sfx-player-hit-power",
+      "runtimePath": "assets/audio/player_hit_power.ogg",
+      "adoptedVariantId": "skill.power.impact-external-01",
+      "variantLabel": "Impact 01 — Generic Light",
+      "sourcePath": "assets/audio/candidates/external/skill-power-impact/kenney_generic-light-01.ogg",
+      "sourceName": "Kenney — Impact Sounds",
+      "licenseName": "CC0 1.0 Universal",
+      "checksumSha256": "c3cd1c073d186ae8fa35788ba94de581f1826e7427a7bb26490b2695fac18efa",
+      "recommendationRank": 1
+    },
+    "enemy.defeat": {
+      "eventId": "enemy.defeat",
+      "runtimeKey": "sfx-enemy-defeat",
+      "runtimePath": "assets/audio/library/kenney/enemy_defeat_candidate.ogg",
+      "adoptedVariantId": "enemy.defeat-external-02",
+      "variantLabel": "Defeat 02 — Rpg Defeat Pop",
+      "sourcePath": "assets/audio/candidates/external/enemy-defeat/opengameart_rpg-defeat-pop-02.ogg",
+      "sourceName": "OpenGameArt — 80 CC0 RPG SFX",
+      "licenseName": "CC0 1.0 Universal",
+      "checksumSha256": "28d047e95058cecc3513eb831d14072318526fcb9207d8a50aad0f666e17893a",
+      "recommendationRank": 2
+    },
+    "skill.blast": {
+      "eventId": null,
+      "runtimeKey": null,
+      "runtimePath": null,
+      "adoptedVariantId": null,
+      "variantLabel": null,
+      "sourcePath": null,
+      "sourceName": null,
+      "licenseName": null,
+      "checksumSha256": null,
+      "recommendationRank": null
+    },
+    "skill.pierce": {
+      "eventId": null,
+      "runtimeKey": null,
+      "runtimePath": null,
+      "adoptedVariantId": null,
+      "variantLabel": null,
+      "sourcePath": null,
+      "sourceName": null,
+      "licenseName": null,
+      "checksumSha256": null,
+      "recommendationRank": null
+    },
+    "skill.ricochet": {
+      "eventId": null,
+      "runtimeKey": null,
+      "runtimePath": null,
+      "adoptedVariantId": null,
+      "variantLabel": null,
+      "sourcePath": null,
+      "sourceName": null,
+      "licenseName": null,
+      "checksumSha256": null,
+      "recommendationRank": null
+    },
+    "enemy.projectile.fire": {
+      "eventId": null,
+      "runtimeKey": null,
+      "runtimePath": null,
+      "adoptedVariantId": null,
+      "variantLabel": null,
+      "sourcePath": null,
+      "sourceName": null,
+      "licenseName": null,
+      "checksumSha256": null,
+      "recommendationRank": null
+    },
+    "enemy.projectile.hit": {
+      "eventId": null,
+      "runtimeKey": null,
+      "runtimePath": null,
+      "adoptedVariantId": null,
+      "variantLabel": null,
+      "sourcePath": null,
+      "sourceName": null,
+      "licenseName": null,
+      "checksumSha256": null,
+      "recommendationRank": null
+    },
+    "boss.attack": {
+      "eventId": null,
+      "runtimeKey": null,
+      "runtimePath": null,
+      "adoptedVariantId": null,
+      "variantLabel": null,
+      "sourcePath": null,
+      "sourceName": null,
+      "licenseName": null,
+      "checksumSha256": null,
+      "recommendationRank": null
+    },
+    "enemy.summon": {
+      "eventId": null,
+      "runtimeKey": null,
+      "runtimePath": null,
+      "adoptedVariantId": null,
+      "variantLabel": null,
+      "sourcePath": null,
+      "sourceName": null,
+      "licenseName": null,
+      "checksumSha256": null,
+      "recommendationRank": null
+    },
+    "player.heal": {
+      "eventId": null,
+      "runtimeKey": null,
+      "runtimePath": null,
+      "adoptedVariantId": null,
+      "variantLabel": null,
+      "sourcePath": null,
+      "sourceName": null,
+      "licenseName": null,
+      "checksumSha256": null,
+      "recommendationRank": null
+    }
+  }
+}

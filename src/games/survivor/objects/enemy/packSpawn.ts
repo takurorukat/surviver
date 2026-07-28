@@ -27,6 +27,15 @@ import {
   ENEMY_MUSHROOM_BREATH_DISPLAY_HEIGHT,
   ENEMY_MUSHROOM_BREATH_SPRITE_KEY,
   ENEMY_MUSHROOM_COLOR,
+  ENEMY_EARTH_SLIME_BREATH_DISPLAY_HEIGHT,
+  ENEMY_EARTH_SLIME_BREATH_SPRITE_KEY,
+  ENEMY_EARTH_SLIME_COLOR,
+  ENEMY_EARTH_ROCK_BREATH_DISPLAY_HEIGHT,
+  ENEMY_EARTH_ROCK_BREATH_SPRITE_KEY,
+  ENEMY_EARTH_ROCK_COLOR,
+  ENEMY_EARTH_SKELETON_BREATH_DISPLAY_HEIGHT,
+  ENEMY_EARTH_SKELETON_BREATH_SPRITE_KEY,
+  ENEMY_EARTH_SKELETON_COLOR,
   ENEMY_PACK_SPACING,
   ENEMY_RANGED_COLOR,
   ENEMY_RUNNER_COLOR,
@@ -45,6 +54,7 @@ import {
   ENEMY_SNAKE_WALK_FRAME_SIZE,
   ENEMY_SNAKE_WALK_SPRITE_KEY,
   ENEMY_SPAWN_AREA_MARGIN,
+  ENEMY_SPAWN_MIN_DISTANCE_BETWEEN,
   ENEMY_SPAWN_MIN_DISTANCE_FROM_PLAYER,
   ENEMY_SPAWN_WARNING_BLINK_INTERVAL_MS,
   ENEMY_SPAWN_WARNING_COLOR,
@@ -73,10 +83,12 @@ import {
   calculateRangedEnemySpeedForStage,
   calculateStumpSpeed,
   calculateStoneGuardSpeed,
+  calculateEarthRockSpeed,
   calculateToughMeleeHp,
   calculateToughMeleeSpeed,
   isForestFinalStage,
   isVolcanoFinalStage,
+  shouldScatterRuinsStage3EnemySpawns,
   shouldScatterVolcanoEnemySpawns,
   shouldSpawnRangedEnemy,
   type StageAreaId,
@@ -92,6 +104,8 @@ import {
   spawnMeleeEnemy,
   spawnToughMeleeEnemy,
   spawnMushroomEnemy,
+  spawnEarthSlimeEnemy,
+  spawnEarthRockEnemy,
   spawnSpiritFireEnemy,
   spawnSpiritThunderEnemy,
   spawnBurningTreeEnemy,
@@ -99,6 +113,7 @@ import {
   spawnChaosElementalEnemy,
   spawnStumpEnemy,
   spawnBeetleEnemy,
+  spawnEarthSkeletonEnemy,
   spawnBranchEnemy,
   spawnStoneGuardEnemy,
   spawnRangedEnemy,
@@ -171,6 +186,67 @@ export function getRandomInsideSpawnPosition(
     if (distance >= ENEMY_SPAWN_MIN_DISTANCE_FROM_PLAYER) {
       return candidate
     }
+    candidate = {
+      x: Phaser.Math.Between(left, right),
+      y: Phaser.Math.Between(top, bottom),
+    }
+  }
+
+  return candidate
+}
+
+/**
+ * 散らしスポーン用: プレイヤーと既存スポーン地点から一定距離以上離れた位置を返す。
+ * 何度か振り直しても条件を満たせないときは、最後の候補をそのまま返す。
+ */
+function getRandomScatteredSpawnPosition(
+  avoidPlayer?: SpawnPosition,
+  existingPositions: SpawnPosition[] = [],
+): SpawnPosition {
+  const left = PLAY_AREA_ORIGIN_X + ENEMY_SPAWN_AREA_MARGIN
+  const right = PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH - ENEMY_SPAWN_AREA_MARGIN
+  const top = PLAY_AREA_ORIGIN_Y + ENEMY_SPAWN_AREA_MARGIN
+  const bottom = PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT - ENEMY_SPAWN_AREA_MARGIN
+
+  const maxAttempts = 24
+  let candidate: SpawnPosition = {
+    x: Phaser.Math.Between(left, right),
+    y: Phaser.Math.Between(top, bottom),
+  }
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    let farEnoughFromPlayer = true
+    if (avoidPlayer !== undefined) {
+      const distanceFromPlayer = Phaser.Math.Distance.Between(
+        candidate.x,
+        candidate.y,
+        avoidPlayer.x,
+        avoidPlayer.y,
+      )
+      if (distanceFromPlayer < ENEMY_SPAWN_MIN_DISTANCE_FROM_PLAYER) {
+        farEnoughFromPlayer = false
+      }
+    }
+
+    let farEnoughFromOthers = true
+    for (let index = 0; index < existingPositions.length; index++) {
+      const existing = existingPositions[index]
+      const distanceFromExisting = Phaser.Math.Distance.Between(
+        candidate.x,
+        candidate.y,
+        existing.x,
+        existing.y,
+      )
+      if (distanceFromExisting < ENEMY_SPAWN_MIN_DISTANCE_BETWEEN) {
+        farEnoughFromOthers = false
+        break
+      }
+    }
+
+    if (farEnoughFromPlayer && farEnoughFromOthers) {
+      return candidate
+    }
+
     candidate = {
       x: Phaser.Math.Between(left, right),
       y: Phaser.Math.Between(top, bottom),
@@ -279,6 +355,31 @@ function spawnOneEnemyAtPosition(
     return
   }
 
+  // 土スライムは緑スライムと同じ HP・速度
+  if (enemyKind === 'earthSlime') {
+    spawnEarthSlimeEnemy(
+      scene,
+      enemyGroup,
+      spawnX,
+      spawnY,
+      enemyHp,
+      calculateEnemySpeedForStage(stageNumber, totalStages),
+    )
+    return
+  }
+
+  // 岩敵は固定 HP5・やや遅い追跡速度
+  if (enemyKind === 'earthRock') {
+    spawnEarthRockEnemy(
+      scene,
+      enemyGroup,
+      spawnX,
+      spawnY,
+      calculateEarthRockSpeed(stageNumber, totalStages),
+    )
+    return
+  }
+
   // 火の精霊は緑スライムと同じ HP・速度
   if (enemyKind === 'spiritFire') {
     spawnSpiritFireEnemy(
@@ -349,6 +450,18 @@ function spawnOneEnemyAtPosition(
   // カブトムシは HP 固定・速度は緑スライムと同じ
   if (enemyKind === 'beetle') {
     spawnBeetleEnemy(
+      scene,
+      enemyGroup,
+      spawnX,
+      spawnY,
+      calculateEnemySpeedForStage(stageNumber, totalStages),
+    )
+    return
+  }
+
+  // Earth Dungeon Stage3 スケルトンは HP 固定10・突進はカブトムシと同じ
+  if (enemyKind === 'earthSkeleton') {
+    spawnEarthSkeletonEnemy(
       scene,
       enemyGroup,
       spawnX,
@@ -449,6 +562,13 @@ export function startEnemyPackSpawnWithWarning(
       positions.push(getRandomInsideSpawnPosition(playerPosition))
     }
   }
+  // Ruins Stage3 は固まりを避け、スポーン同士も一定距離以上離す
+  if (shouldScatterRuinsStage3EnemySpawns(areaId, stageNumber)) {
+    positions = []
+    for (let index = 0; index < packSize; index++) {
+      positions.push(getRandomScatteredSpawnPosition(playerPosition, positions))
+    }
+  }
   // パック全体で近接か射撃かを一度だけ決める（先に決まっていればそれを使う）
   let spawnAsRanged = shouldSpawnRangedEnemy(stageNumber, totalStages)
   if (forcedSpawnAsRanged !== undefined) {
@@ -473,6 +593,15 @@ export function startEnemyPackSpawnWithWarning(
     }
     if (enemyKind === 'mushroom') {
       return ENEMY_MUSHROOM_COLOR
+    }
+    if (enemyKind === 'earthSlime') {
+      return ENEMY_EARTH_SLIME_COLOR
+    }
+    if (enemyKind === 'earthRock') {
+      return ENEMY_EARTH_ROCK_COLOR
+    }
+    if (enemyKind === 'earthSkeleton') {
+      return ENEMY_EARTH_SKELETON_COLOR
     }
     if (enemyKind === 'spiritFire') {
       return ENEMY_SPIRIT_FIRE_COLOR
@@ -522,6 +651,9 @@ export function startEnemyPackSpawnWithWarning(
         enemyKind === 'melee' ||
         enemyKind === 'toughMelee' ||
         enemyKind === 'mushroom' ||
+        enemyKind === 'earthSlime' ||
+        enemyKind === 'earthRock' ||
+        enemyKind === 'earthSkeleton' ||
         enemyKind === 'spiritFire' ||
         enemyKind === 'spiritThunder' ||
         enemyKind === 'burningTree' ||
@@ -538,6 +670,9 @@ export function startEnemyPackSpawnWithWarning(
         enemyKind === 'melee' ||
         enemyKind === 'toughMelee' ||
         enemyKind === 'mushroom' ||
+        enemyKind === 'earthSlime' ||
+        enemyKind === 'earthRock' ||
+        enemyKind === 'earthSkeleton' ||
         enemyKind === 'spiritFire' ||
         enemyKind === 'spiritThunder' ||
         enemyKind === 'burningTree' ||
@@ -581,6 +716,18 @@ export function startEnemyPackSpawnWithWarning(
       } else if (enemyKind === 'mushroom' && ENEMY_BREATHING_SPRITES_ENABLED) {
         spriteKey = ENEMY_MUSHROOM_BREATH_SPRITE_KEY
         displayHeight = ENEMY_MUSHROOM_BREATH_DISPLAY_HEIGHT
+        useBreathImage = true
+      } else if (enemyKind === 'earthSlime' && ENEMY_BREATHING_SPRITES_ENABLED) {
+        spriteKey = ENEMY_EARTH_SLIME_BREATH_SPRITE_KEY
+        displayHeight = ENEMY_EARTH_SLIME_BREATH_DISPLAY_HEIGHT
+        useBreathImage = true
+      } else if (enemyKind === 'earthRock' && ENEMY_BREATHING_SPRITES_ENABLED) {
+        spriteKey = ENEMY_EARTH_ROCK_BREATH_SPRITE_KEY
+        displayHeight = ENEMY_EARTH_ROCK_BREATH_DISPLAY_HEIGHT
+        useBreathImage = true
+      } else if (enemyKind === 'earthSkeleton' && ENEMY_BREATHING_SPRITES_ENABLED) {
+        spriteKey = ENEMY_EARTH_SKELETON_BREATH_SPRITE_KEY
+        displayHeight = ENEMY_EARTH_SKELETON_BREATH_DISPLAY_HEIGHT
         useBreathImage = true
       } else if (enemyKind === 'spiritFire' && ENEMY_BREATHING_SPRITES_ENABLED) {
         spriteKey = ENEMY_SPIRIT_FIRE_BREATH_SPRITE_KEY

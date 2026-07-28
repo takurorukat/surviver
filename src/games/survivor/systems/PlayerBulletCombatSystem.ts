@@ -220,6 +220,8 @@ export function handleBulletEnemyHit(
   playDamageNumber(ctx.scene, enemyX, enemyY - 8, effectiveDamage)
 
   // 弾の種類でヒット演出と音を分ける
+  // Power 命中音は GameAudioSystem.playBulletHit → skill.power.impact
+  // （Pierce/Ricochet 後続も当面同じ。将来 Event 分離可能）
   const bulletStyle = bullet.getData('bulletStyle') as string
   if (bulletStyle === 'powerOrb') {
     playEnergyOrbHit(ctx.scene, enemyX, enemyY, originalDamage)
@@ -365,7 +367,7 @@ function applyHitBlastIfUnlocked(
 /**
  * XP Bonusのレベルに応じた枚数の「1 XPコイン」を敵の周囲へ落とす。
  */
-function spawnExperienceCoinsAt(
+export function spawnExperienceCoinsAt(
   ctx: PlayerBulletCombatContext,
   enemyX: number,
   enemyY: number,

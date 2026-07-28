@@ -5,6 +5,11 @@ import Phaser from 'phaser'
 import {
   ENEMY_ARMORED_MIN_DAMAGE,
   ENEMY_ASH_KNIGHT_BLOCK_HIT_COUNT,
+  ENEMY_EARTH_ROCK_BLOCK_HIT_COUNT,
+  ENEMY_EARTH_ROCK_HEIGHT,
+  ENEMY_EARTH_ROCK_PEBBLE_INTERVAL_MS,
+  ENEMY_EARTH_ROCK_RADIUS,
+  ENEMY_EARTH_ROCK_WIDTH,
   ENEMY_ASH_KNIGHT_HEIGHT,
   ENEMY_ASH_KNIGHT_RADIUS,
   ENEMY_ASH_KNIGHT_WIDTH,
@@ -13,6 +18,10 @@ import {
   ENEMY_BEETLE_RADIUS,
   ENEMY_BEETLE_WIDTH,
   ENEMY_BEETLE_XP_DROP_MULTIPLIER,
+  ENEMY_EARTH_SKELETON_HEIGHT,
+  ENEMY_EARTH_SKELETON_RADIUS,
+  ENEMY_EARTH_SKELETON_WIDTH,
+  ENEMY_EARTH_SKELETON_XP_DROP_MULTIPLIER,
   ENEMY_BRANCH_BEETLE_SPAWN_INTERVAL_MS,
   ENEMY_BRANCH_BLAST_DAMAGE_MULTIPLIER,
   ENEMY_BRANCH_HEIGHT,
@@ -37,6 +46,9 @@ import {
   ENEMY_MUSHROOM_HEIGHT,
   ENEMY_MUSHROOM_RADIUS,
   ENEMY_MUSHROOM_WIDTH,
+  ENEMY_EARTH_SLIME_HEIGHT,
+  ENEMY_EARTH_SLIME_RADIUS,
+  ENEMY_EARTH_SLIME_WIDTH,
   ENEMY_RADIUS,
   ENEMY_RANGED_ATTACK_INTERVAL_MS,
   ENEMY_SPECIAL_STROKE_COLOR,
@@ -65,6 +77,8 @@ import {
   attachBeeBreathingSprite,
   attachMudSlimeBreathingSprite,
   attachMushroomBreathingSprite,
+  attachEarthSlimeBreathingSprite,
+  attachEarthRockBreathingSprite,
   attachSpiritFireBreathingSprite,
   attachSpiritThunderBreathingSprite,
   attachBurningTreeBreathingSprite,
@@ -72,6 +86,7 @@ import {
   attachChaosElementalBreathingSprite,
   attachStumpBreathingSprite,
   attachBeetleBreathingSprite,
+  attachEarthSkeletonBreathingSprite,
   attachBranchBreathingSprite,
   attachGravestoneBreathingSprite,
   attachSlimeWalkSprite,
@@ -113,6 +128,10 @@ export function spawnEnemyCommon(
     hitboxWidth = ENEMY_MUSHROOM_WIDTH
     hitboxHeight = ENEMY_MUSHROOM_HEIGHT
     hitboxRadius = ENEMY_MUSHROOM_RADIUS
+  } else if (enemyKind === 'earthSlime') {
+    hitboxWidth = ENEMY_EARTH_SLIME_WIDTH
+    hitboxHeight = ENEMY_EARTH_SLIME_HEIGHT
+    hitboxRadius = ENEMY_EARTH_SLIME_RADIUS
   } else if (enemyKind === 'spiritFire') {
     hitboxWidth = ENEMY_SPIRIT_FIRE_WIDTH
     hitboxHeight = ENEMY_SPIRIT_FIRE_HEIGHT
@@ -133,6 +152,10 @@ export function spawnEnemyCommon(
     hitboxWidth = ENEMY_ASH_KNIGHT_WIDTH
     hitboxHeight = ENEMY_ASH_KNIGHT_HEIGHT
     hitboxRadius = ENEMY_ASH_KNIGHT_RADIUS
+  } else if (enemyKind === 'earthRock') {
+    hitboxWidth = ENEMY_EARTH_ROCK_WIDTH
+    hitboxHeight = ENEMY_EARTH_ROCK_HEIGHT
+    hitboxRadius = ENEMY_EARTH_ROCK_RADIUS
   } else if (enemyKind === 'chaosElemental') {
     hitboxWidth = ENEMY_CHAOS_ELEMENTAL_WIDTH
     hitboxHeight = ENEMY_CHAOS_ELEMENTAL_HEIGHT
@@ -145,6 +168,10 @@ export function spawnEnemyCommon(
     hitboxWidth = ENEMY_BEETLE_WIDTH
     hitboxHeight = ENEMY_BEETLE_HEIGHT
     hitboxRadius = ENEMY_BEETLE_RADIUS
+  } else if (enemyKind === 'earthSkeleton') {
+    hitboxWidth = ENEMY_EARTH_SKELETON_WIDTH
+    hitboxHeight = ENEMY_EARTH_SKELETON_HEIGHT
+    hitboxRadius = ENEMY_EARTH_SKELETON_RADIUS
   }
 
   const enemy = scene.add.rectangle(spawnX, spawnY, hitboxWidth, hitboxHeight, color)
@@ -152,6 +179,8 @@ export function spawnEnemyCommon(
     enemyKind !== 'melee' &&
     enemyKind !== 'toughMelee' &&
     enemyKind !== 'mushroom' &&
+    enemyKind !== 'earthSlime' &&
+    enemyKind !== 'earthRock' &&
     enemyKind !== 'spiritFire' &&
     enemyKind !== 'spiritThunder' &&
     enemyKind !== 'burningTree' &&
@@ -159,6 +188,7 @@ export function spawnEnemyCommon(
     enemyKind !== 'chaosElemental' &&
     enemyKind !== 'stump' &&
     enemyKind !== 'beetle' &&
+    enemyKind !== 'earthSkeleton' &&
     enemyKind !== 'branch' &&
     enemyKind !== 'gravestone' &&
     enemyKind !== 'ranged'
@@ -194,6 +224,8 @@ export function spawnEnemyCommon(
   enemy.setData('enemyKind', enemyKind)
   if (enemyKind === 'beetle') {
     enemy.setData('xpDropMultiplier', ENEMY_BEETLE_XP_DROP_MULTIPLIER)
+  } else if (enemyKind === 'earthSkeleton') {
+    enemy.setData('xpDropMultiplier', ENEMY_EARTH_SKELETON_XP_DROP_MULTIPLIER)
   } else if (enemyKind === 'branch') {
     enemy.setData('xpDropMultiplier', ENEMY_BRANCH_XP_DROP_MULTIPLIER)
   } else if (enemyKind === 'gravestone') {
@@ -220,8 +252,8 @@ export function spawnEnemyCommon(
     enemy.setData('chargeDirectionX', 0)
     enemy.setData('chargeDirectionY', 0)
   }
-  if (enemyKind === 'beetle' || enemyKind === 'spiritThunder') {
-    // カブトムシと同じ: 溜め → 一直線突進（雷の精霊も同じ動き）
+  if (enemyKind === 'beetle' || enemyKind === 'spiritThunder' || enemyKind === 'earthSkeleton') {
+    // カブトムシと同じ: 溜め → 一直線突進（雷の精霊・スケルトンも同じ動き）
     enemy.setData('beetleWindupEndsAtMs', 0)
     enemy.setData('beetleChargeEndsAtMs', 0)
     enemy.setData('beetleNextChargeAtMs', 0)
@@ -251,6 +283,14 @@ export function spawnEnemyCommon(
   if (enemyKind === 'ashKnight') {
     // 最初の2発はシールドで無効
     enemy.setData('remainingBlockHits', ENEMY_ASH_KNIGHT_BLOCK_HIT_COUNT)
+  }
+  if (enemyKind === 'earthRock') {
+    // 最初の1発はシールドで無効
+    enemy.setData('remainingBlockHits', ENEMY_EARTH_ROCK_BLOCK_HIT_COUNT)
+    enemy.setData(
+      'nextPebbleShotAtMs',
+      scene.time.now + ENEMY_EARTH_ROCK_PEBBLE_INTERVAL_MS,
+    )
   }
   if (enemyKind === 'chaosElemental') {
     enemy.setData('isStationary', true)
@@ -287,6 +327,10 @@ export function spawnEnemyCommon(
     attachMudSlimeBreathingSprite(scene, enemy)
   } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'mushroom') {
     attachMushroomBreathingSprite(scene, enemy)
+  } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'earthSlime') {
+    attachEarthSlimeBreathingSprite(scene, enemy)
+  } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'earthRock') {
+    attachEarthRockBreathingSprite(scene, enemy)
   } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'spiritFire') {
     attachSpiritFireBreathingSprite(scene, enemy)
   } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'spiritThunder') {
@@ -301,6 +345,8 @@ export function spawnEnemyCommon(
     attachStumpBreathingSprite(scene, enemy)
   } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'beetle') {
     attachBeetleBreathingSprite(scene, enemy)
+  } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'earthSkeleton') {
+    attachEarthSkeletonBreathingSprite(scene, enemy)
   } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'branch') {
     attachBranchBreathingSprite(scene, enemy)
   } else if (ENEMY_BREATHING_SPRITES_ENABLED && enemyKind === 'gravestone') {
@@ -312,6 +358,8 @@ export function spawnEnemyCommon(
       enemyKind === 'melee' ||
       enemyKind === 'toughMelee' ||
       enemyKind === 'mushroom' ||
+      enemyKind === 'earthSlime' ||
+      enemyKind === 'earthRock' ||
       enemyKind === 'spiritFire' ||
       enemyKind === 'spiritThunder' ||
       enemyKind === 'burningTree' ||
@@ -319,6 +367,7 @@ export function spawnEnemyCommon(
       enemyKind === 'chaosElemental' ||
       enemyKind === 'stump' ||
       enemyKind === 'beetle' ||
+      enemyKind === 'earthSkeleton' ||
       enemyKind === 'branch'
     ) {
       attachSlimeWalkSprite(scene, enemy)

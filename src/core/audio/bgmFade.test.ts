@@ -22,6 +22,16 @@ describe('resolveBgmLoopRange', () => {
     expect(result).toEqual({ loopStart: 2.5, loopEnd: 58 })
   })
 
+  it('loopEnd だけなら先頭から指定位置までをループする', () => {
+    const result = resolveBgmLoopRange(60, { loopEnd: 57.5 })
+    expect(result).toEqual({ loopStart: 0, loopEnd: 57.5 })
+  })
+
+  it('loopStart だけなら指定位置から末尾までをループする', () => {
+    const result = resolveBgmLoopRange(60, { loopStart: 2.5 })
+    expect(result).toEqual({ loopStart: 2.5, loopEnd: 60 })
+  })
+
   it('不正な bounds は無視して全体ループに戻す', () => {
     expect(resolveBgmLoopRange(60, { loopStart: -1, loopEnd: 10 })).toEqual({
       loopStart: 0,

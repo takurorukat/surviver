@@ -12,13 +12,15 @@
     "test:watch": "vitest",
     "generate:sfx": "npm --prefix tools/sfx_designer run generate --",
     "inspect:bgm": "tools/sfx_designer/node_modules/.bin/tsx tools/bgm_inspector/src/inspect.ts",
-    "sync:audio-library": "node tools/audio_library/sync.mjs"
+    "sync:audio-library": "node tools/audio_library/sync.mjs",
+    "test:e2e:autoplay": "playwright test tests/e2e/survivor-autoplay.spec.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.48.2",
+    "happy-dom": "15.11.7",
     "typescript": "^5.5.3",
     "vite": "^5.4.0",
-    "vitest": "2.1.9",
-    "happy-dom": "15.11.7"
+    "vitest": "2.1.9"
   },
   "dependencies": {
     "phaser": "^3.80.1"

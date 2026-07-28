@@ -1,7 +1,7 @@
 // ============================================================
 // RicochetUnlockBannerSystem.ts
 // ------------------------------------------------------------
-// Pickup+1 かつ Power+1 かつ Speed+1 で Ricochet を自動取得したとき、
+// XP Bonus + Pickup + Speed で Ricochet を自動取得したとき、
 // 大きなアイコン＋「RICOCHET OBTAINED」を出してからプレイ再開する。
 // ============================================================
 
@@ -21,9 +21,6 @@ import {
   RICOCHET_UNLOCK_BANNER_POP_MS,
   RICOCHET_UNLOCK_BANNER_HOLD_MS,
   RICOCHET_UNLOCK_BANNER_FADE_MS,
-  RICOCHET_UNLOCK_ICON_SIZE,
-  UNLOCK_ICON_RICOCHET_COLOR,
-  UNLOCK_ICON_RICOCHET_LETTER,
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
   RICOCHET_LEVEL_UP_BANNER_TITLE_PREFIX,
@@ -34,10 +31,12 @@ import {
   SKILL_LEVEL_UP_BANNER_POP_MS,
   SKILL_LEVEL_UP_BANNER_HOLD_MS,
   SKILL_LEVEL_UP_BANNER_FADE_MS,
-  SKILL_LEVEL_UP_BANNER_ICON_SIZE,
   SKILL_LEVEL_UP_BANNER_STROKE_THICKNESS,
+  UNLOCK_BANNER_SKILL_ICON_SCALE,
+  LEVEL_UP_BANNER_SKILL_ICON_SCALE,
 } from '../GameConstants'
 import { shrinkTextToFitWidth } from '../utils/fitTextToWidth'
+import { createSkillIcon } from '../ui/SkillIcon'
 
 /**
  * Ricochet 取得の大きな通知。フェード完了後に onComplete を呼ぶ。
@@ -55,29 +54,13 @@ export function playRicochetUnlockBanner(
   container.setAlpha(0)
   container.setScale(0.4)
 
-  const iconBorder = scene.add.rectangle(
-    0,
-    -56,
-    RICOCHET_UNLOCK_ICON_SIZE + 10,
-    RICOCHET_UNLOCK_ICON_SIZE + 10,
-    UNLOCK_ICON_RICOCHET_COLOR,
+  const icon = createSkillIcon(
+    scene,
+    'ricochet',
+    UNLOCK_BANNER_SKILL_ICON_SCALE,
   )
-  iconBorder.setStrokeStyle(4, 0xffffff, 1)
-
-  const iconFill = scene.add.rectangle(
-    0,
-    -56,
-    RICOCHET_UNLOCK_ICON_SIZE,
-    RICOCHET_UNLOCK_ICON_SIZE,
-    0x0f172a,
-  )
-
-  const iconLetter = scene.add.text(0, -56, UNLOCK_ICON_RICOCHET_LETTER, {
-    fontFamily: FONT_FAMILY_HEADING,
-    fontSize: '40px',
-    color: '#e9d5ff',
-  })
-  iconLetter.setOrigin(0.5)
+  icon.container.setPosition(0, -56)
+  icon.border.setStrokeStyle(4, 0xffffff, 1)
 
   const titleText = scene.add.text(0, 12, RICOCHET_UNLOCK_BANNER_TITLE, {
     fontFamily: FONT_FAMILY_HEADING,
@@ -103,7 +86,7 @@ export function playRicochetUnlockBanner(
   subtitleText.setOrigin(0.5)
   shrinkTextToFitWidth(subtitleText, GAME_WIDTH - 48)
 
-  container.add([iconBorder, iconFill, iconLetter, titleText, subtitleText])
+  container.add([icon.container, titleText, subtitleText])
 
   scene.tweens.chain({
     tweens: [
@@ -147,24 +130,13 @@ export function playRicochetLevelUpBanner(
   container.setAlpha(0)
   container.setScale(0.85)
 
-  const iconSize = SKILL_LEVEL_UP_BANNER_ICON_SIZE
-  const iconBorder = scene.add.rectangle(
-    0,
-    -36,
-    iconSize + 6,
-    iconSize + 6,
-    UNLOCK_ICON_RICOCHET_COLOR,
+  const icon = createSkillIcon(
+    scene,
+    'ricochet',
+    LEVEL_UP_BANNER_SKILL_ICON_SCALE,
   )
-  iconBorder.setStrokeStyle(2, 0xffffff, 0.7)
-
-  const iconFill = scene.add.rectangle(0, -36, iconSize, iconSize, 0x0f172a)
-
-  const iconLetter = scene.add.text(0, -36, UNLOCK_ICON_RICOCHET_LETTER, {
-    fontFamily: FONT_FAMILY_HEADING,
-    fontSize: '22px',
-    color: '#e9d5ff',
-  })
-  iconLetter.setOrigin(0.5)
+  icon.container.setPosition(0, -36)
+  icon.border.setStrokeStyle(2, 0xffffff, 0.7)
 
   const titleText = scene.add.text(
     0,
@@ -191,7 +163,7 @@ export function playRicochetLevelUpBanner(
   subtitleText.setOrigin(0.5)
   shrinkTextToFitWidth(subtitleText, GAME_WIDTH - 48)
 
-  container.add([iconBorder, iconFill, iconLetter, titleText, subtitleText])
+  container.add([icon.border, icon.fill, icon.symbol, titleText, subtitleText])
 
   scene.tweens.chain({
     tweens: [

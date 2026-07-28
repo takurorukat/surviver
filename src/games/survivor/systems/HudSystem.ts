@@ -46,11 +46,13 @@ import {
   UNLOCK_STATUS_HEADER_COLOR,
   UNLOCK_STATUS_LOCKED_COLOR,
   UNLOCK_STATUS_LOCKED_ALPHA,
-  UNLOCK_ICON_SIZE,
-  UNLOCK_ICON_GAP,
-  UNLOCK_ICON_BORDER_SIZE,
+  SKILL_TREE_ICON_SCALE,
+  SKILL_TREE_ICON_SIZE,
+  SKILL_TREE_ICON_OUTER_SIZE,
   SKILL_TREE_ROW_GAP,
   SKILL_TREE_COMBO_COL,
+  SKILL_TREE_COLUMN_STEP,
+  SKILL_TREE_WIDTH,
   SKILL_TREE_LINE_COLOR,
   SKILL_TREE_LINE_ALPHA,
   SKILL_TREE_LINE_THICKNESS,
@@ -58,29 +60,12 @@ import {
   SKILL_TREE_LINE_ACTIVE_ALPHA,
   SKILL_TREE_LINE_ACTIVE_THICKNESS,
   SKILL_TREE_LINE_DEPTH_OFFSET,
-  UNLOCK_ICON_POWER_COLOR,
-  UNLOCK_ICON_SPEED_COLOR,
-  UNLOCK_ICON_RANGE_COLOR,
-  UNLOCK_ICON_PIERCE_COLOR,
-  UNLOCK_ICON_BLAST_COLOR,
-  UNLOCK_ICON_RICOCHET_COLOR,
-  UNLOCK_ICON_MOVE_COLOR,
-  UNLOCK_ICON_MAGNET_COLOR,
-  UNLOCK_ICON_HP_COLOR,
-  UNLOCK_ICON_XP_BONUS_COLOR,
   UNLOCK_ICON_LOCKED_FILL_COLOR,
   UNLOCK_ICON_LOCKED_BORDER_COLOR,
   UNLOCK_ICON_LETTER_COLOR,
   UNLOCK_ICON_LOCKED_LETTER_COLOR,
-  UNLOCK_ICON_POWER_LETTER,
-  UNLOCK_ICON_SPEED_LETTER,
-  UNLOCK_ICON_RANGE_LETTER,
-  UNLOCK_ICON_PIERCE_LETTER,
-  UNLOCK_ICON_BLAST_LETTER,
-  UNLOCK_ICON_RICOCHET_LETTER,
-  UNLOCK_ICON_MOVE_LETTER,
-  UNLOCK_ICON_MAGNET_LETTER,
-  UNLOCK_ICON_XP_BONUS_LETTER,
+  getSkillIconDefinition,
+  isSkillIconId,
   UNLOCK_ICON_SEAL_FROST_COLOR,
   UNLOCK_ICON_SEAL_FROST_ALPHA,
   UNLOCK_ICON_SEAL_FROST_BORDER_ALPHA,
@@ -110,6 +95,7 @@ import {
 import { formatRemainingSeconds } from '../utils/formatElapsedTime'
 import { shrinkTextToFitWidth } from '../utils/fitTextToWidth'
 import { getUnlockStatusRows, isSkillUnlocked } from './AchievementSystem'
+import { createSkillIcon } from '../ui/SkillIcon'
 import { getSealedSkillIds } from './UnlockSaveSystem'
 import { createTopBar, type TopBarView } from './TopBarSystem'
 
@@ -164,13 +150,6 @@ const UNLOCK_STATUS_HEADER_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
   fontStyle: 'bold',
 }
 
-const UNLOCK_ICON_LETTER_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
-  fontFamily: FONT_FAMILY_UI,
-  fontSize: '9px',
-  color: UNLOCK_ICON_LETTER_COLOR,
-  fontStyle: 'bold',
-}
-
 const UNLOCK_TOOLTIP_TITLE_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
   fontFamily: FONT_FAMILY_UI,
   fontSize: '13px',
@@ -203,6 +182,7 @@ export type PlayerStatKey =
   | 'hp'
   | 'penetrate'
   | 'blast'
+  | 'orbitingOrb'
   | 'ricochet'
   | 'xpBonus'
 
@@ -216,6 +196,7 @@ export type PlayerStatsDisplay = {
   hp: number
   penetrate: number
   blast: number
+  orbitingOrb: number
   ricochet: number
   xpBonus: number
 }
@@ -235,9 +216,10 @@ type UnlockStatusIcon = {
   isUnlocked: boolean
   // シール中（レベルアップ候補から隠している）かどうか
   isSealed: boolean
+  container: Phaser.GameObjects.Container
   border: Phaser.GameObjects.Rectangle
   fill: Phaser.GameObjects.Rectangle
-  letterText: Phaser.GameObjects.Text
+  symbol: Phaser.GameObjects.Text | Phaser.GameObjects.Graphics
   // シール中: 青白い凍り幕
   frostVeil: Phaser.GameObjects.Rectangle
   // シール中: 時々きらめく小さな氷のかけら（2つ）
@@ -273,7 +255,8 @@ const SKILL_TREE_SLOTS: SkillTreeSlot[] = [
   // 右列: 合成（素材のあいだに配置）
   { slotId: 'blast', skillId: 'blast', row: 0.5, col: SKILL_TREE_COMBO_COL },
   { slotId: 'pierce', skillId: 'pierce', row: 2.5, col: SKILL_TREE_COMBO_COL },
-  { slotId: 'ricochet', skillId: 'ricochet', row: 3.5, col: SKILL_TREE_COMBO_COL },
+  { slotId: 'orbitingOrb', skillId: 'orbitingOrb', row: 3.5, col: SKILL_TREE_COMBO_COL },
+  { slotId: 'ricochet', skillId: 'ricochet', row: 4.5, col: SKILL_TREE_COMBO_COL },
 ]
 
 // 基本 → 合成（左から右へ線）
@@ -282,9 +265,11 @@ const SKILL_TREE_LINKS: { fromSlotId: string; toSlotId: string }[] = [
   { fromSlotId: 'range', toSlotId: 'blast' },
   { fromSlotId: 'fireRate', toSlotId: 'pierce' },
   { fromSlotId: 'move', toSlotId: 'pierce' },
+  { fromSlotId: 'move', toSlotId: 'orbitingOrb' },
+  { fromSlotId: 'magnet', toSlotId: 'orbitingOrb' },
   { fromSlotId: 'magnet', toSlotId: 'ricochet' },
-  { fromSlotId: 'damage', toSlotId: 'ricochet' },
   { fromSlotId: 'fireRate', toSlotId: 'ricochet' },
+  { fromSlotId: 'xpBonus', toSlotId: 'ricochet' },
 ]
 
 // 画面上部の HP・タイマー・XP バーを表示する
@@ -321,6 +306,7 @@ export class HudSystem {
     hp: 3,
     penetrate: 0,
     blast: 0,
+    orbitingOrb: 0,
     ricochet: 0,
     xpBonus: 0,
   }
@@ -414,6 +400,7 @@ export class HudSystem {
       hp: stats.hp,
       penetrate: stats.penetrate,
       blast: stats.blast,
+      orbitingOrb: stats.orbitingOrb,
       ricochet: stats.ricochet,
       xpBonus: stats.xpBonus,
     }
@@ -463,6 +450,11 @@ export class HudSystem {
         continue
       }
       if (line.key === 'blast' && value <= 0) {
+        line.text.setColor(UNLOCK_STATUS_LOCKED_COLOR)
+        line.text.setAlpha(UNLOCK_STATUS_LOCKED_ALPHA)
+        continue
+      }
+      if (line.key === 'orbitingOrb' && value <= 0) {
         line.text.setColor(UNLOCK_STATUS_LOCKED_COLOR)
         line.text.setAlpha(UNLOCK_STATUS_LOCKED_ALPHA)
         continue
@@ -532,6 +524,9 @@ export class HudSystem {
     if (skillId === 'pierce') {
       return this.currentStatValues.penetrate > 0
     }
+    if (skillId === 'orbitingOrb') {
+      return this.currentStatValues.orbitingOrb > 0
+    }
     if (skillId === 'ricochet') {
       return this.currentStatValues.ricochet > 0
     }
@@ -554,6 +549,7 @@ export class HudSystem {
       if (
         icon.skillId !== 'blast' &&
         icon.skillId !== 'pierce' &&
+        icon.skillId !== 'orbitingOrb' &&
         icon.skillId !== 'ricochet' &&
         icon.skillId !== 'move'
       ) {
@@ -576,40 +572,12 @@ export class HudSystem {
     let letterColor = UNLOCK_ICON_LOCKED_LETTER_COLOR
     let alpha = UNLOCK_STATUS_LOCKED_ALPHA
 
-    if (icon.isUnlocked) {
+    if (icon.isUnlocked && isSkillIconId(icon.skillId)) {
       alpha = 1
       letterColor = UNLOCK_ICON_LETTER_COLOR
-      if (icon.skillId === 'damage') {
-        fillColor = UNLOCK_ICON_POWER_COLOR
-        borderColor = UNLOCK_ICON_POWER_COLOR
-      } else if (icon.skillId === 'fireRate') {
-        fillColor = UNLOCK_ICON_SPEED_COLOR
-        borderColor = UNLOCK_ICON_SPEED_COLOR
-      } else if (icon.skillId === 'range') {
-        fillColor = UNLOCK_ICON_RANGE_COLOR
-        borderColor = UNLOCK_ICON_RANGE_COLOR
-      } else if (icon.skillId === 'pierce') {
-        fillColor = UNLOCK_ICON_PIERCE_COLOR
-        borderColor = UNLOCK_ICON_PIERCE_COLOR
-      } else if (icon.skillId === 'blast') {
-        fillColor = UNLOCK_ICON_BLAST_COLOR
-        borderColor = UNLOCK_ICON_BLAST_COLOR
-      } else if (icon.skillId === 'ricochet') {
-        fillColor = UNLOCK_ICON_RICOCHET_COLOR
-        borderColor = UNLOCK_ICON_RICOCHET_COLOR
-      } else if (icon.skillId === 'move') {
-        fillColor = UNLOCK_ICON_MOVE_COLOR
-        borderColor = UNLOCK_ICON_MOVE_COLOR
-      } else if (icon.skillId === 'magnet') {
-        fillColor = UNLOCK_ICON_MAGNET_COLOR
-        borderColor = UNLOCK_ICON_MAGNET_COLOR
-      } else if (icon.skillId === 'hp') {
-        fillColor = UNLOCK_ICON_HP_COLOR
-        borderColor = UNLOCK_ICON_HP_COLOR
-      } else {
-        fillColor = UNLOCK_ICON_XP_BONUS_COLOR
-        borderColor = UNLOCK_ICON_XP_BONUS_COLOR
-      }
+      const skillColor = getSkillIconDefinition(icon.skillId).color
+      fillColor = skillColor
+      borderColor = skillColor
     }
 
     // シール中はスキル固有色を氷白へ少し寄せて「色の上に薄い氷」に見せる
@@ -622,8 +590,10 @@ export class HudSystem {
     icon.fill.setFillStyle(fillColor)
     icon.border.setAlpha(alpha)
     icon.fill.setAlpha(alpha)
-    icon.letterText.setColor(letterColor)
-    icon.letterText.setAlpha(alpha)
+    icon.symbol.setAlpha(alpha)
+    if (icon.symbol instanceof Phaser.GameObjects.Text) {
+      icon.symbol.setColor(letterColor)
+    }
 
     // さらに薄い白の氷幕を重ねる（色は透けてスキルごとに違って見える）
     this.setUnlockIconFrostVisible(icon, icon.isUnlocked && icon.isSealed)
@@ -669,7 +639,7 @@ export class HudSystem {
     const useGlintA = Math.random() < 0.5
     const glint = useGlintA ? icon.frostGlintA : icon.frostGlintB
     // アイコン内のランダムな位置へずらす（端に寄りすぎないよう少し内側）
-    const half = UNLOCK_ICON_SIZE / 2 - 3
+    const half = SKILL_TREE_ICON_SIZE / 2 - 3
     const offsetX = Phaser.Math.Between(-half, half)
     const offsetY = Phaser.Math.Between(-half, half)
     glint.setPosition(icon.frostVeil.x + offsetX, icon.frostVeil.y + offsetY)
@@ -704,8 +674,8 @@ export class HudSystem {
     nextY = nextY + this.unlockStatusHeaderText.height + 6
 
     // 列のあいだを少し広めにして線が見やすいようにする
-    const stepX = UNLOCK_ICON_SIZE + UNLOCK_ICON_GAP + 6
-    const stepY = UNLOCK_ICON_SIZE + SKILL_TREE_ROW_GAP
+    const stepX = SKILL_TREE_COLUMN_STEP
+    const stepY = SKILL_TREE_ICON_OUTER_SIZE + SKILL_TREE_ROW_GAP
 
     const iconBySlotId = new Map<string, UnlockStatusIcon>()
     for (let index = 0; index < this.unlockStatusIcons.length; index++) {
@@ -719,14 +689,28 @@ export class HudSystem {
         continue
       }
 
-      const iconX = this.unlockPanelX + UNLOCK_ICON_SIZE / 2 + slot.col * stepX
-      const iconY = nextY + UNLOCK_ICON_SIZE / 2 + slot.row * stepY
-      icon.border.setPosition(iconX, iconY)
-      icon.fill.setPosition(iconX, iconY)
-      icon.letterText.setPosition(iconX, iconY)
+      const iconX =
+        this.unlockPanelX + SKILL_TREE_ICON_OUTER_SIZE / 2 + slot.col * stepX
+      const iconY =
+        nextY + SKILL_TREE_ICON_OUTER_SIZE / 2 + slot.row * stepY
+      icon.container.setPosition(iconX, iconY)
       icon.frostVeil.setPosition(iconX, iconY)
       icon.frostGlintA.setPosition(iconX - 3, iconY - 2)
       icon.frostGlintB.setPosition(iconX + 2, iconY + 3)
+    }
+
+    // ツリー右端は画面右マージンの内側へ収める。定数変更時も右端基準を維持する。
+    const treeRight = this.unlockPanelX + SKILL_TREE_WIDTH
+    const maxTreeRight = GAME_WIDTH - UNLOCK_STATUS_RIGHT_MARGIN
+    if (treeRight > maxTreeRight) {
+      const offsetX = maxTreeRight - treeRight
+      for (let index = 0; index < this.unlockStatusIcons.length; index++) {
+        const icon = this.unlockStatusIcons[index]
+        icon.container.x = icon.container.x + offsetX
+        icon.frostVeil.x = icon.frostVeil.x + offsetX
+        icon.frostGlintA.x = icon.frostGlintA.x + offsetX
+        icon.frostGlintB.x = icon.frostGlintB.x + offsetX
+      }
     }
 
     this.redrawSkillTreeLines(iconBySlotId)
@@ -746,7 +730,7 @@ export class HudSystem {
     const graphics = this.skillTreeLinesGraphics
     graphics.clear()
 
-    const half = UNLOCK_ICON_SIZE / 2
+    const half = SKILL_TREE_ICON_SIZE / 2
     for (let index = 0; index < SKILL_TREE_LINKS.length; index++) {
       const link = SKILL_TREE_LINKS[index]
       const fromIcon = iconBySlotId.get(link.fromSlotId)
@@ -773,10 +757,10 @@ export class HudSystem {
       }
 
       // 左の素材 → 右の結果
-      const startX = fromIcon.border.x + half
-      const startY = fromIcon.border.y
-      const endX = toIcon.border.x - half
-      const endY = toIcon.border.y
+      const startX = fromIcon.container.x + half
+      const startY = fromIcon.container.y
+      const endX = toIcon.container.x - half
+      const endY = toIcon.container.y
       graphics.beginPath()
       graphics.moveTo(startX, startY)
       graphics.lineTo(endX, endY)
@@ -794,6 +778,9 @@ export class HudSystem {
     }
     if (skillId === 'pierce') {
       return this.currentStatValues.penetrate > 0
+    }
+    if (skillId === 'orbitingOrb') {
+      return this.currentStatValues.orbitingOrb > 0
     }
     if (skillId === 'ricochet') {
       return this.currentStatValues.ricochet > 0
@@ -1019,6 +1006,7 @@ export class HudSystem {
       { key: 'hp', label: 'HP MAX' },
       { key: 'penetrate', label: 'PIERCE' },
       { key: 'blast', label: 'BLAST' },
+      { key: 'orbitingOrb', label: 'ORB' },
       { key: 'ricochet', label: 'RICOCHET' },
       { key: 'xpBonus', label: 'XP 2X' },
     ]
@@ -1080,54 +1068,23 @@ export class HudSystem {
         continue
       }
 
-      let letter = UNLOCK_ICON_BLAST_LETTER
-      if (row.skillId === 'damage') {
-        letter = UNLOCK_ICON_POWER_LETTER
-      } else if (row.skillId === 'fireRate') {
-        letter = UNLOCK_ICON_SPEED_LETTER
-      } else if (row.skillId === 'range') {
-        letter = UNLOCK_ICON_RANGE_LETTER
-      } else if (row.skillId === 'pierce') {
-        letter = UNLOCK_ICON_PIERCE_LETTER
-      } else if (row.skillId === 'ricochet') {
-        letter = UNLOCK_ICON_RICOCHET_LETTER
-      } else if (row.skillId === 'move') {
-        letter = UNLOCK_ICON_MOVE_LETTER
-      } else if (row.skillId === 'magnet') {
-        letter = UNLOCK_ICON_MAGNET_LETTER
-      } else if (row.skillId === 'xpBonus') {
-        letter = UNLOCK_ICON_XP_BONUS_LETTER
+      if (!isSkillIconId(row.skillId)) {
+        continue
       }
 
-      const hitSize = UNLOCK_ICON_SIZE + UNLOCK_ICON_BORDER_SIZE * 2
-      const border = this.scene.add.rectangle(
-        0,
-        0,
-        hitSize,
-        hitSize,
-        UNLOCK_ICON_LOCKED_BORDER_COLOR,
+      const skillIcon = createSkillIcon(
+        this.scene,
+        row.skillId,
+        SKILL_TREE_ICON_SCALE,
       )
-      border.setScrollFactor(0)
-      border.setInteractive({ useHandCursor: true })
-
-      const fill = this.scene.add.rectangle(
-        0,
-        0,
-        UNLOCK_ICON_SIZE,
-        UNLOCK_ICON_SIZE,
-        UNLOCK_ICON_LOCKED_FILL_COLOR,
-      )
-      fill.setScrollFactor(0)
-
-      const letterText = this.scene.add.text(0, 0, letter, UNLOCK_ICON_LETTER_STYLE)
-      letterText.setOrigin(0.5)
-      letterText.setScrollFactor(0)
+      skillIcon.container.setScrollFactor(0)
+      skillIcon.border.setInteractive({ useHandCursor: true })
 
       const frostVeil = this.scene.add.rectangle(
         0,
         0,
-        UNLOCK_ICON_SIZE,
-        UNLOCK_ICON_SIZE,
+        SKILL_TREE_ICON_SIZE,
+        SKILL_TREE_ICON_SIZE,
         UNLOCK_ICON_SEAL_FROST_COLOR,
         UNLOCK_ICON_SEAL_FROST_ALPHA,
       )
@@ -1165,19 +1122,20 @@ export class HudSystem {
         unlockCondition: row.unlockCondition,
         isUnlocked: row.isUnlocked,
         isSealed: false,
-        border,
-        fill,
-        letterText,
+        container: skillIcon.container,
+        border: skillIcon.border,
+        fill: skillIcon.fill,
+        symbol: skillIcon.symbol,
         frostVeil,
         frostGlintA,
         frostGlintB,
         frostGlintTimer: null,
       }
 
-      border.on('pointerover', () => {
+      skillIcon.border.on('pointerover', () => {
         this.showUnlockSkillTooltip(unlockIcon)
       })
-      border.on('pointerout', () => {
+      skillIcon.border.on('pointerout', () => {
         this.hideUnlockSkillTooltip()
       })
 
@@ -1270,15 +1228,22 @@ export class HudSystem {
       pad * 2
 
     // 右カラムの左隣に出す（画面外に出ないよう左右をクランプ）
-    let boxX = icon.border.x - UNLOCK_ICON_SIZE / 2 - UNLOCK_STATUS_TOOLTIP_OFFSET_X - boxWidth
+    let boxX =
+      icon.container.x -
+      SKILL_TREE_ICON_SIZE / 2 -
+      UNLOCK_STATUS_TOOLTIP_OFFSET_X -
+      boxWidth
     if (boxX < HUD_SIDE_MARGIN) {
-      boxX = icon.border.x + UNLOCK_ICON_SIZE / 2 + UNLOCK_STATUS_TOOLTIP_OFFSET_X
+      boxX =
+        icon.container.x +
+        SKILL_TREE_ICON_SIZE / 2 +
+        UNLOCK_STATUS_TOOLTIP_OFFSET_X
     }
     if (boxX + boxWidth > GAME_WIDTH - HUD_SIDE_MARGIN) {
       boxX = GAME_WIDTH - HUD_SIDE_MARGIN - boxWidth
     }
 
-    let boxY = icon.border.y - boxHeight / 2
+    let boxY = icon.container.y - boxHeight / 2
     if (boxY < TOP_BAR_HEIGHT + 4) {
       boxY = TOP_BAR_HEIGHT + 4
     }
@@ -1339,9 +1304,7 @@ export class HudSystem {
     }
     for (let index = 0; index < this.unlockStatusIcons.length; index++) {
       const icon = this.unlockStatusIcons[index]
-      icon.border.setDepth(hudDepth)
-      icon.fill.setDepth(hudDepth + 1)
-      icon.letterText.setDepth(hudDepth + 2)
+      icon.container.setDepth(hudDepth)
       icon.frostVeil.setDepth(hudDepth + 3)
       icon.frostGlintA.setDepth(hudDepth + 4)
       icon.frostGlintB.setDepth(hudDepth + 4)
