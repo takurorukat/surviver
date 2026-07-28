@@ -156,10 +156,23 @@ export function getStageDurationSeconds(_stageNumber: number): number {
 }
 
 /**
- * そのステージで最後にスポーンしてよい経過秒。
- * クリア直前に敵を出さないための上限。
+ * 通常バースト予定の最終時刻（秒）。
+ * Earth Dungeon Stage3 はファイナルウェーブ（残り10秒＝経過20秒）より前で打ち切り、
+ * その後はファイナルウェーブだけが敵を出す。
  */
-export function getLastSpawnAtSeconds(_stageNumber: number): number {
+export function getLastSpawnAtSeconds(
+  stageNumber: number,
+  areaId: StageAreaId | string = 'plains',
+): number {
+  if (isRuinsStage3(areaId, stageNumber)) {
+    // 30 - 10 - 5 = 15 → バースト 0/5/10/15、ファイナルウェーブは経過20秒
+    return Math.max(
+      0,
+      STAGE_DURATION_SECONDS -
+        FINAL_WAVE_REMAINING_SECONDS -
+        STAGE_SPAWN_BURST_INTERVAL_SECONDS,
+    )
+  }
   return STAGE_LAST_SPAWN_SECONDS
 }
 
@@ -193,13 +206,31 @@ export function shouldScatterVolcanoEnemySpawns(
 }
 
 /**
+ * Earth Dungeon（ruins）Stage3 か。
+ */
+export function isRuinsStage3(areaId: StageAreaId | string, stageNumber: number): boolean {
+  return areaId === 'ruins' && stageNumber === 3
+}
+
+/**
  * Ruins Stage3 は固まらず各地に散らして出す。
  */
 export function shouldScatterRuinsStage3EnemySpawns(
   areaId: StageAreaId,
   stageNumber: number,
 ): boolean {
-  return areaId === 'ruins' && stageNumber === 3
+  return isRuinsStage3(areaId, stageNumber)
+}
+
+/**
+ * ファイナルウェーブ開始後に、新規スポーン（リトライ含む）を止めるステージか。
+ * Earth Dungeon Stage3: ファイナルウェーブが最後の湧き。
+ */
+export function shouldCloseSpawnsAfterFinalWave(
+  areaId: StageAreaId | string,
+  stageNumber: number,
+): boolean {
+  return isRuinsStage3(areaId, stageNumber)
 }
 
 /**
@@ -307,7 +338,7 @@ export function applyRuinsStage3SpawnCountFactor(
   stageNumber: number,
   enemyCount: number,
 ): number {
-  if (areaId === 'ruins' && stageNumber === 3) {
+  if (isRuinsStage3(areaId, stageNumber)) {
     return Math.max(1, Math.round(enemyCount * RUINS_STAGE3_SPAWN_COUNT_FACTOR))
   }
   return enemyCount
@@ -329,6 +360,7 @@ export function getSpawnScheduleForStage(
   initialCount = applyRuinsStage3SpawnCountFactor(areaId, stageNumber, initialCount)
   recurringCount = applyRuinsStage3SpawnCountFactor(areaId, stageNumber, recurringCount)
   const burstIntervalSeconds = getSpawnBurstIntervalSeconds(areaId, stageNumber, totalStages)
+  const lastSpawnAtSeconds = getLastSpawnAtSeconds(stageNumber, areaId)
 
   const schedule: SpawnBurst[] = [
     { delaySeconds: 0, enemyCount: initialCount },
@@ -336,7 +368,7 @@ export function getSpawnScheduleForStage(
 
   for (
     let delaySeconds = burstIntervalSeconds;
-    delaySeconds <= STAGE_LAST_SPAWN_SECONDS;
+    delaySeconds <= lastSpawnAtSeconds;
     delaySeconds = delaySeconds + burstIntervalSeconds
   ) {
     schedule.push({

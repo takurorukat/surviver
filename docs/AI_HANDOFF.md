@@ -29,6 +29,16 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-28 — Cursor
 
+- 実施内容: Earth Dungeon Stage3 ファイナルウェーブ終了修正。原因は pack size=1＋1.4倍＋FINAL WAVE 1.6秒刻みで `areAllSpawnsFinished` が残り時間内に成立しないこと。前回修正はクローズ後にリトライも拒否してパックを捨てていた。通常バーストを15秒まで、FINAL WAVE は間隔0で有限予約、クローズ後はリトライのみ許可。敵ステ／他エリア／Stage4・5未変更。
+- 変更ファイル: `difficulty.ts`（Stage3のみ）/ `WaveSystem.ts` / `earthDungeonStage3WavePolicy.ts` / `ruinsStage3FinalWave.test.ts` / docs
+- 検証: typecheck OK（作業ツリー全体）、tests 193 OK、build OK
+- 未解決: ブラウザ実プレイ未確認（手動手順を報告）
+- 次の開発タスク: Earth Dungeon Stage 4 Enemy または Run Result Data（未着手）
+
+## 直近の作業記録
+
+### 2026-07-28 — Cursor
+
 - 実施内容: Four-Area Ending Sequence。Victory → Final Ascent → Title。`isFourAreaCompletion` / `endingSeen` / `EndingScene` / Area Clear Continue 後に遷移 / タイトル左下 VIEW ENDING。画像は加工なし配置。Audio・Boss・Gold／Shop・Result Data 未変更。
 - 変更ファイル: ending 定数・画像2枚 / EndingScene / fourAreaCompletion / endingSequence / UnlockSaveSystem(endingSeen v8) / StageClearFlow / StageResult / TitleScene / bootstrap / assetManifest / tests / docs
 - 検証: typecheck OK、tests 184 OK、build OK、git diff --check OK

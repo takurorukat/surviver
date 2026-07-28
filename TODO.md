@@ -25,6 +25,7 @@
 - [x] Four Area Final Boss: 4エリア最終に `defeat-boss`＋`finalBossConfig` SSoT。Forest gravestone／Volcano chaosElemental を正式最終ボス化（isBoss）。2026-07-28 実装・検証済み。
 - [x] Earth Dungeon Stage 4 `earthMagmaRock`（6方向小石・混成抽選20〜25%・同時上限4）。2026-07-28 実装・検証済み。
 - [x] Four-Area Ending Sequence（Victory → Final Ascent → Title、endingSeen、VIEW ENDING）。2026-07-28 実装・検証済み。
+- [x] Earth Dungeon Stage 3 Final Wave Termination（有限ウェーブ終了・早期クリア）。2026-07-28 修正・検証済み。
 - [ ] Run Result Data（Version 1 向けリザルトデータ）。
 - [ ] Area Clear Result UI（Version 1）。
 - [x] Final Stage Completion Rules（4エリア最終の `defeat-boss` を `finalBossConfig` で統合済み）。

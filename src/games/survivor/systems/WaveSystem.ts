@@ -35,18 +35,22 @@ import {
   ENEMY_STONE_GUARD_PACK_SIZE,
   PLAINS_STAGE3_BEE_GROUPS_PER_SPAWN,
   PLAINS_STAGE3_BEE_GROUPS_ON_FINAL_WAVE,
-  FINAL_WAVE_EXTRA_PACK_GAP_SECONDS,
-  FINAL_WAVE_EXTRA_PACK_GAP_SECONDS_FINAL_STAGE,
   ENEMY_SPAWN_RETRY_DELAY_MS,
   isFinalStage,
   isPlainsFinalStage,
+  shouldCloseSpawnsAfterFinalWave,
   shouldSpawnRangedEnemy,
+  applyRuinsStage3SpawnCountFactor,
   type StageAreaId,
 } from '../GameConstants'
 import {
   startEnemyPackSpawnWithWarning,
   countActiveEnemies,
 } from '../objects/Enemy'
+import {
+  getFinalWaveExtraPackGapSecondsForStage,
+  shouldAcceptScheduledSpawnAttempt,
+} from './earthDungeonStage3WavePolicy'
 
 // ウェーブに沿って敵を時間差で出す
 // Python: WaveScheduler クラスに相当
@@ -67,6 +71,10 @@ export class WaveSystem {
   private pendingWarningSpawns = 0
   // FINAL WAVE 追加スポーンを二重に始めないためのフラグ
   private hasStartedFinalWave = false
+  // 予定タイマーの世代。ファイナルウェーブ後に無効化して湧き直しを止める
+  private scheduleEpoch = 0
+  // true のとき新規 schedulePackSpawnAttempt を拒否（リトライ含む）
+  private closedForNewSpawns = false
 
   /**
    * ウェーブシステムを作る。
@@ -96,6 +104,8 @@ export class WaveSystem {
     this.remainingScheduledSpawns = 0
     this.pendingWarningSpawns = 0
     this.hasStartedFinalWave = false
+    this.scheduleEpoch = 0
+    this.closedForNewSpawns = false
 
     const burstSchedule = getSpawnScheduleForStage(
       this.stageNumber,
@@ -131,12 +141,23 @@ export class WaveSystem {
   /**
    * ラスト数秒: 通常の終盤バースト相当をもう1回分、パックで追加する（≈2倍）。
    * FinalWaveBannerSystem のバナーとセットで GameScene から呼ばれる。
+   * Earth Dungeon Stage3 は、これ以降の新規スポーン（リトライ含む）を止める。
    */
   startFinalWaveExtraSpawns(): void {
     if (this.hasStartedFinalWave) {
       return
     }
     this.hasStartedFinalWave = true
+
+    const closeAfterFinalWave = shouldCloseSpawnsAfterFinalWave(
+      this.areaId,
+      this.stageNumber,
+    )
+    if (closeAfterFinalWave) {
+      // まだ発火していない通常予定を無効化し、ファイナルウェーブだけを出す
+      this.scheduleEpoch = this.scheduleEpoch + 1
+      this.remainingScheduledSpawns = 0
+    }
 
     let extraEnemyCount = getRecurringEnemyCountForStage(
       this.stageNumber,
@@ -147,16 +168,28 @@ export class WaveSystem {
       this.stageNumber,
       extraEnemyCount,
     )
+    extraEnemyCount = applyRuinsStage3SpawnCountFactor(
+      this.areaId,
+      this.stageNumber,
+      extraEnemyCount,
+    )
     // ignoreLastSpawnLimit=true: 終盤制限を超えても追加してよい
-    let packGapSeconds = FINAL_WAVE_EXTRA_PACK_GAP_SECONDS
-    if (isFinalStage(this.stageNumber, this.totalStages)) {
-      packGapSeconds = FINAL_WAVE_EXTRA_PACK_GAP_SECONDS_FINAL_STAGE
-    }
+    // Earth Stage3 は間隔0で有限数をすぐ予約し、満杯分はリトライで出し切る
+    const packGapSeconds = getFinalWaveExtraPackGapSecondsForStage(
+      this.areaId,
+      this.stageNumber,
+      isFinalStage(this.stageNumber, this.totalStages),
+    )
     this.scheduleEnemyCountAsPacks(extraEnemyCount, 0, packGapSeconds, true)
 
     // Plains Stage3: FINAL WAVE でも蜂は1グループだけ追加する
     if (this.isPlainsBeeFixedStage()) {
       this.schedulePlainsBeeGroups(0, PLAINS_STAGE3_BEE_GROUPS_ON_FINAL_WAVE)
+    }
+
+    if (closeAfterFinalWave) {
+      // ファイナルウェーブ分の予約が終わったあと、新規予約だけ禁止（リトライは許可）
+      this.closedForNewSpawns = true
     }
   }
 
@@ -264,7 +297,7 @@ export class WaveSystem {
     packGapSeconds: number | null,
     ignoreLastSpawnLimit: boolean,
   ): void {
-    const lastSpawnAtSeconds = getLastSpawnAtSeconds(this.stageNumber)
+    const lastSpawnAtSeconds = getLastSpawnAtSeconds(this.stageNumber, this.areaId)
     let remainingCount = enemyCount
     let packIndex = 0
     let effectivePackGapSeconds = packGapSeconds
@@ -308,7 +341,7 @@ export class WaveSystem {
    */
   private startLegacyWaveSchedule(): void {
     const waveConfig = getWaveConfigForStage(this.stageNumber)
-    const waveActiveEndMs = getLastSpawnAtSeconds(this.stageNumber) * 1000
+    const waveActiveEndMs = getLastSpawnAtSeconds(this.stageNumber, this.areaId) * 1000
     const spawnIntervalMs = WAVE_SPAWN_INTERVAL_SECONDS * 1000
 
     for (let waveIndex = 0; waveIndex < waveConfig.waveCount; waveIndex++) {
@@ -334,15 +367,26 @@ export class WaveSystem {
    * delay 後にパック出現を試みるタイマーを 1 本登録する。
    * 発火前は remainingScheduledSpawns、発火後は警告中カウントへ移る。
    * spawnAsRanged を渡すと、スケジュール時に決めた種類をそのまま使う。
+   * isRetry=true はクローズ後も許可（有限ウェーブを出し切るため）。
    */
   private schedulePackSpawnAttempt(
     spawnDelayMs: number,
     packSize: number,
     spawnAsRanged?: boolean,
+    isRetry: boolean = false,
   ): void {
+    if (!shouldAcceptScheduledSpawnAttempt(this.closedForNewSpawns, isRetry)) {
+      return
+    }
+
+    const epoch = this.scheduleEpoch
     this.remainingScheduledSpawns = this.remainingScheduledSpawns + packSize
 
     const timer = this.scene.time.delayedCall(spawnDelayMs, () => {
+      if (epoch !== this.scheduleEpoch) {
+        // ファイナルウェーブで無効化された古い予定。残数は開始時にリセット済み
+        return
+      }
       this.remainingScheduledSpawns = Math.max(0, this.remainingScheduledSpawns - packSize)
       this.tryStartEnemyPackSpawnWithWarning(packSize, spawnAsRanged)
     })
@@ -363,10 +407,12 @@ export class WaveSystem {
     const freeSlots = maxEnemies - activeEnemyCount - this.pendingWarningSpawns
     if (freeSlots <= 0) {
       // 満杯なので、空きができるまで同じパックを遅延再試行
+      // クローズ後もリトライは許可（有限数を出し切る。捨てるとクリア不能／欠員になる）
       this.schedulePackSpawnAttempt(
         ENEMY_SPAWN_RETRY_DELAY_MS,
         requestedPackSize,
         spawnAsRanged,
+        true,
       )
       return
     }
@@ -407,6 +453,7 @@ export class WaveSystem {
         ENEMY_SPAWN_RETRY_DELAY_MS,
         deferredCount,
         spawnAsRanged,
+        true,
       )
     }
   }
