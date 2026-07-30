@@ -164,9 +164,8 @@ export const TITLE_SHOW_SHOP_AND_SEAL = false
 // セーブ上の gold／shopUpgrades の読み取りと既存強化の適用は維持する。
 // XP（Coin.ts）はこのフラグの対象外。
 export const RUNTIME_ENABLE_GOLD_AND_SHOP = false
-// 開発ビルド（vite dev / import.meta.env.DEV）だけ進行デバッグボタンを出す
-// 本番ビルド（npm run build）では必ず false
-export const TITLE_SHOW_DEBUG_PROGRESS = import.meta.env.DEV
+// Cloudflare公開前の確認中は、開発ビルドを含めて進行デバッグボタンを隠す。
+export const TITLE_SHOW_DEBUG_PROGRESS = false
 // グリッド上端（1行目パネル中心）。SELECT AREA の下に隙間を残す
 export const TITLE_AREA_GRID_START_Y = TOP_BAR_HEIGHT + 136
 // タイトル下部のショップ案内枠（中身の購入UIは後続）

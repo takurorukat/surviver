@@ -8,6 +8,7 @@
     "dev:sfx-preview": "vite --config tools/sfx_preview/vite.config.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc && vite build",
+    "build:cloudflare": "VITE_SURVIVOR_SUPPORT_LINK_ENABLED=true npm run build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

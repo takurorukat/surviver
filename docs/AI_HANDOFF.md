@@ -20,12 +20,28 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ## 現在の状態
 
-- 作業状態: 作業中
-- 担当AI: Cursor
-- 対象TODO: Platform-Safe Support Developer Button
-- 開始日時: 2026-07-30
+- 作業状態: 待機中
+- 担当AI: —
+- 対象TODO: —
+- 開始日時: —
 
 ## 直近の作業記録
+
+### 2026-07-30 — Cursor
+
+- 実施内容: 進行Debugボタンを開発時も含めて非表示へ固定。通常buildのSupport Flag既定OFFは維持し、Cloudflare専用の`npm run build:cloudflare`だけ`VITE_SURVIVOR_SUPPORT_LINK_ENABLED=true`でbuildする構成を追加。
+- 変更ファイル: `package.json` / `constants/ui.ts` / `constants/uiFeatureFlags.test.ts` / `docs/AI_HANDOFF.md`
+- 検証: typecheck OK、tests 314 OK、通常build OK（Supportラベル・URLなし）、Cloudflare build OK（Supportラベル・URL各1件、Debugキャプションなし）、git diff --check OK、編集ファイルのlintエラーなし。
+- 未解決: Cloudflare PagesのGit連携を使う場合は、管理画面のBuild commandを`npm run build:cloudflare`、Build output directoryを`dist`へ設定する必要がある。commit/push/deployは未実施。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
+### 2026-07-30 — Cursor
+
+- 実施内容: Settings の Credits 直前へ `SUPPORT DEVELOPER` を追加。`VITE_SURVIVOR_SUPPORT_LINK_ENABLED === 'true'` のビルドだけで生成し、固定 Ko-fi URL を `_blank` + `noopener,noreferrer` で開く。popup拒否時は同一タブへ遷移せず継続。
+- 変更ファイル: `constants/support.ts` / `SettingsMenuSystem.ts` / `settingsMenuItems.ts` / `supportDeveloperLink.ts` / `supportDeveloperLink.test.ts` / `GameConstants.ts` / `vite-env.d.ts` / `docs/AI_HANDOFF.md`
+- 検証: Flag OFF/ON ブラウザ表示・Credits/Back・固定URL 1回・popup拒否後の描画継続 OK。通常/false build はラベル・URLとも dist 0件、true build は各1件。typecheck OK、tests 313 OK、build OK、git diff --check OK。
+- 未解決: Console の runtime/page error はなし。既存の `/favicon.ico` 404だけを確認（今回変更外）。配信先ごとの外部支援リンク許可は公開時点の公式規約を人間が確認する。Cursorからのcommit/pushなし。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
 
 ### 2026-07-30 — Cursor
 

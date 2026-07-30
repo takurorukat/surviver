@@ -19,14 +19,26 @@ async function clickGamePoint(page, gameX, gameY) {
 }
 
 async function check(baseUrl, supportEnabled) {
-  const browser = await chromium.launch({ headless: true })
+  const browser = await chromium.launch({
+    executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    headless: true,
+  })
   const page = await browser.newPage()
   const pageErrors = []
   const consoleErrors = []
+  const failedResponses = []
   page.on('pageerror', (error) => pageErrors.push(error.stack ?? String(error)))
   page.on('console', (message) => {
     if (message.type() === 'error') {
-      consoleErrors.push(message.text())
+      consoleErrors.push({
+        text: message.text(),
+        location: message.location(),
+      })
+    }
+  })
+  page.on('response', (response) => {
+    if (response.status() >= 400) {
+      failedResponses.push(`${response.status()} ${response.url()}`)
     }
   })
 
@@ -61,6 +73,11 @@ async function check(baseUrl, supportEnabled) {
   const afterRaf = await page.evaluate(() => window.__supportRafCount)
   const calls = await page.evaluate(() => window.__supportOpenCalls)
 
+  if (!supportEnabled) {
+    // 空き領域クリックでSettingsが閉じるため、Credits確認用に開き直す
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(500)
+  }
   await clickGamePoint(page, 820, 432)
   await page.waitForTimeout(300)
   await page.screenshot({
@@ -80,6 +97,7 @@ async function check(baseUrl, supportEnabled) {
     rafAdvancedAfterBlockedPopup: afterRaf > beforeRaf,
     pageErrors,
     consoleErrors,
+    failedResponses,
   }
 }
 
