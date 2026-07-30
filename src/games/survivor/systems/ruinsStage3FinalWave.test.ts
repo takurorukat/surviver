@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
   FINAL_WAVE_EXTRA_PACK_GAP_SECONDS,
+  FINAL_WAVE_EXTRA_PACK_GAP_SECONDS_FINAL_STAGE,
   FINAL_WAVE_REMAINING_SECONDS,
   STAGE_DURATION_SECONDS,
   STAGE_LAST_SPAWN_SECONDS,
+  applyRuinsStage3SpawnCountFactor,
   getLastSpawnAtSeconds,
+  getRecurringEnemyCountForStage,
   getSpawnScheduleForStage,
   shouldCloseSpawnsAfterFinalWave,
+  shouldScatterRuinsStage3EnemySpawns,
 } from '../GameConstants'
 import {
   getFinalWaveExtraPackGapSecondsForStage,
@@ -24,6 +28,10 @@ describe('Earth Dungeon Stage3 final wave definition', () => {
     expect(shouldCloseSpawnsAfterFinalWave('plains', 3)).toBe(false)
     expect(shouldCloseSpawnsAfterFinalWave('forest', 3)).toBe(false)
     expect(shouldCloseSpawnsAfterFinalWave('volcano', 3)).toBe(false)
+  })
+
+  it('FINAL WAVE は残り10秒で開始する', () => {
+    expect(FINAL_WAVE_REMAINING_SECONDS).toBe(10)
   })
 
   it('通常バーストはファイナルウェーブより前で終わり、他Stageは従来どおり', () => {
@@ -51,11 +59,41 @@ describe('Earth Dungeon Stage3 final wave definition', () => {
     )
   })
 
-  it('Earth Stage3 のファイナルウェーブは間隔0で出し切る（1.6秒刻みにしない）', () => {
-    expect(getFinalWaveExtraPackGapSecondsForStage('ruins', 3, false)).toBe(0)
+  it('Earth Stage3 の FINAL WAVE 追加パック間隔は他の非最終ステージと同じ共通値', () => {
+    expect(FINAL_WAVE_EXTRA_PACK_GAP_SECONDS).toBe(1.6)
+    expect(getFinalWaveExtraPackGapSecondsForStage('ruins', 3, false)).toBe(
+      FINAL_WAVE_EXTRA_PACK_GAP_SECONDS,
+    )
     expect(getFinalWaveExtraPackGapSecondsForStage('forest', 3, false)).toBe(
       FINAL_WAVE_EXTRA_PACK_GAP_SECONDS,
     )
+    expect(getFinalWaveExtraPackGapSecondsForStage('plains', 2, false)).toBe(
+      FINAL_WAVE_EXTRA_PACK_GAP_SECONDS,
+    )
+    expect(getFinalWaveExtraPackGapSecondsForStage('volcano', 4, false)).toBe(
+      FINAL_WAVE_EXTRA_PACK_GAP_SECONDS,
+    )
+  })
+
+  it('エリア最終ステージの FINAL WAVE 間隔は短縮値のまま', () => {
+    expect(
+      getFinalWaveExtraPackGapSecondsForStage('plains', 3, true),
+    ).toBe(FINAL_WAVE_EXTRA_PACK_GAP_SECONDS_FINAL_STAGE)
+    expect(
+      getFinalWaveExtraPackGapSecondsForStage('forest', 5, true),
+    ).toBe(FINAL_WAVE_EXTRA_PACK_GAP_SECONDS_FINAL_STAGE)
+  })
+
+  it('FINAL WAVE の追加総数は recurring×1.4（従来どおり）', () => {
+    const base = getRecurringEnemyCountForStage(3, 5)
+    const total = applyRuinsStage3SpawnCountFactor('ruins', 3, base)
+    expect(total).toBe(Math.max(1, Math.round(base * 1.4)))
+  })
+
+  it('散開スポーンは ruins Stage3 のみ有効', () => {
+    expect(shouldScatterRuinsStage3EnemySpawns('ruins', 3)).toBe(true)
+    expect(shouldScatterRuinsStage3EnemySpawns('ruins', 2)).toBe(false)
+    expect(shouldScatterRuinsStage3EnemySpawns('forest', 3)).toBe(false)
   })
 })
 

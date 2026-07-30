@@ -13,10 +13,18 @@ import { SURVIVOR_ASSET_MANIFEST } from '../constants/assetManifest'
 import {
   getAreaFinalBossConfig,
   getFinalBossEnemyIdForStage,
+  getFinalBossSpawnPosition,
   getFinalStageNumberForArea,
   shouldSpawnAreaFinalBoss,
   VERSION1_AREA_FINAL_BOSSES,
 } from '../constants/finalBossConfig'
+import {
+  FINAL_BOSS_SPAWN_Y_RATIO,
+  PLAY_AREA_HEIGHT,
+  PLAY_AREA_ORIGIN_X,
+  PLAY_AREA_ORIGIN_Y,
+  PLAY_AREA_WIDTH,
+} from '../constants/layout'
 import { pickEnemyKindForArea } from '../objects/enemy/pickEnemyKind'
 import {
   getStageCompletionRule,
@@ -71,6 +79,19 @@ describe('Four Area Final Boss SSoT', () => {
     expect(getStageCompletionRule('castle', 5, 5)).toBe('survive-or-clear-all')
   })
 
+  it('最終ボス出現座標は4ボス共通のプレイエリア上部中央', () => {
+    expect(FINAL_BOSS_SPAWN_Y_RATIO).toBe(0.2)
+    const expectedX = Math.round(PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH * 0.5)
+    const expectedY = Math.round(
+      PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT * FINAL_BOSS_SPAWN_Y_RATIO,
+    )
+    const position = getFinalBossSpawnPosition()
+    expect(position).toEqual({ x: expectedX, y: expectedY })
+    // 同じ関数を全ボスが使うため、呼び直しても同一
+    expect(getFinalBossSpawnPosition()).toEqual(position)
+    expect(position.x).toBe(PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH / 2)
+  })
+
   it('ボス生存中はクリアせず、撃破後はクリアできる', () => {
     expect(
       shouldBeginStageClear({
@@ -105,10 +126,10 @@ describe('Four Area Final Boss SSoT', () => {
     expect(samples.includes('earthDungeonBoss')).toBe(false)
   })
 
-  it('Forest / Volcano ボスの既存 HP・XP を維持する', () => {
-    expect(ENEMY_GRAVESTONE_HP).toBe(180)
+  it('Forest / Volcano ボスの強化後 HP・XP を確認する', () => {
+    expect(ENEMY_GRAVESTONE_HP).toBe(270)
     expect(ENEMY_GRAVESTONE_XP_DROP_MULTIPLIER).toBe(10)
-    expect(ENEMY_CHAOS_ELEMENTAL_HP).toBe(150)
+    expect(ENEMY_CHAOS_ELEMENTAL_HP).toBe(225)
     expect(ENEMY_CHAOS_ELEMENTAL_XP_DROP_MULTIPLIER).toBe(2)
   })
 

@@ -4,13 +4,15 @@
  * 最終ボスの Stage／ID は finalBossConfig SSoT を参照する。
  */
 import Phaser from 'phaser'
-import { getFinalBossEnemyIdForStage } from '../../constants/finalBossConfig'
+import {
+  getFinalBossEnemyIdForStage,
+  getFinalBossSpawnPosition,
+} from '../../constants/finalBossConfig'
 import {
   spawnGravestoneEnemy,
   spawnChaosElementalEnemy,
   spawnWindHiveBossEnemy,
   spawnEarthDungeonBossEnemy,
-  getRandomInsideSpawnPosition,
 } from '../../objects/Enemy'
 import {
   updateStumpMushroomSpawns,
@@ -29,7 +31,7 @@ export type SpecialEnemySpawnContext = {
   areaStageCount: number
   enemyGroup: Phaser.Physics.Arcade.Group
   nowMs: number
-  // ボス配置用。無い場合は中央付近へフォールバック
+  // 召喚敵（蜂・ミニオン）の向き／配置用。最終ボス本体の出現位置には使わない
   getPlayerPosition?: () => { x: number; y: number }
 }
 
@@ -101,6 +103,7 @@ export function updateSpecialEnemySpawns(ctx: SpecialEnemySpawnContext): void {
 /**
  * エリア最終ボスを Stage 開始直後に1体だけ出す。条件外なら何もしない。
  * 出現判定は finalBossConfig（エリア最終ステージ＋ボス ID）に従う。
+ * 出現位置は全ボス共通のプレイエリア上部中央（getFinalBossSpawnPosition）。
  */
 export function spawnAreaBossIfNeeded(ctx: SpecialEnemySpawnContext): void {
   const bossEnemyId = getFinalBossEnemyIdForStage(
@@ -112,11 +115,7 @@ export function spawnAreaBossIfNeeded(ctx: SpecialEnemySpawnContext): void {
     return
   }
 
-  const playerPosition =
-    ctx.getPlayerPosition !== undefined
-      ? ctx.getPlayerPosition()
-      : getRandomInsideSpawnPosition()
-  const spawnPosition = getRandomInsideSpawnPosition(playerPosition)
+  const spawnPosition = getFinalBossSpawnPosition()
 
   if (bossEnemyId === 'gravestone') {
     spawnGravestoneEnemy(

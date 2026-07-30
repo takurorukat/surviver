@@ -44,6 +44,7 @@ export class BreathingSprite {
   private breathScaleYMax: number
   private breathDurationMs: number
   private isAttackSwelling = false
+  private attackTelegraphActive = false
 
   constructor(scene: Phaser.Scene, x: number, y: number, config: BreathingSpriteConfig) {
     this.scene = scene
@@ -86,11 +87,102 @@ export class BreathingSprite {
     this.isAttackSwelling = active
     if (active) {
       this.stopBreathing()
+      this.stopAttackTelegraphTweens()
       this.body.setScale(this.baseScale * swellScale, this.baseScale * swellScale)
       this.syncOutlineToBody()
       return
     }
     this.startBreathing(this.breathScaleYMin, this.breathScaleYMax, this.breathDurationMs)
+  }
+
+  /**
+   * earthRock 用: 縮んでから膨らむ予備動作（見た目のみ。物理判定は変えない）。
+   * 既に予兆中なら何もしない。
+   */
+  playAttackShrinkSwell(options: {
+    shrinkScale: number
+    swellScale: number
+    shrinkMs: number
+    swellMs: number
+  }): void {
+    if (this.attackTelegraphActive) {
+      return
+    }
+    this.attackTelegraphActive = true
+    this.isAttackSwelling = true
+    this.stopBreathing()
+    this.stopAttackTelegraphTweens()
+
+    const shrinkTarget = this.baseScale * options.shrinkScale
+    const swellTarget = this.baseScale * options.swellScale
+
+    this.scene.tweens.add({
+      targets: this.body,
+      scaleX: shrinkTarget,
+      scaleY: shrinkTarget,
+      duration: options.shrinkMs,
+      ease: 'Sine.Out',
+      onUpdate: () => {
+        this.syncOutlineToBody()
+      },
+      onComplete: () => {
+        if (!this.body.active) {
+          return
+        }
+        this.scene.tweens.add({
+          targets: this.body,
+          scaleX: swellTarget,
+          scaleY: swellTarget,
+          duration: options.swellMs,
+          ease: 'Sine.In',
+          onUpdate: () => {
+            this.syncOutlineToBody()
+          },
+        })
+      },
+    })
+  }
+
+  /**
+   * 予備動作後に基準 scale へ戻し、通常呼吸を再開する。
+   */
+  recoverFromAttackTelegraph(recoverMs: number): void {
+    this.stopAttackTelegraphTweens()
+    if (!this.body.active) {
+      this.attackTelegraphActive = false
+      this.isAttackSwelling = false
+      return
+    }
+
+    this.scene.tweens.add({
+      targets: this.body,
+      scaleX: this.baseScale,
+      scaleY: this.baseScale,
+      duration: recoverMs,
+      ease: 'Sine.Out',
+      onUpdate: () => {
+        this.syncOutlineToBody()
+      },
+      onComplete: () => {
+        this.attackTelegraphActive = false
+        this.isAttackSwelling = false
+        if (!this.body.active) {
+          return
+        }
+        this.startBreathing(
+          this.breathScaleYMin,
+          this.breathScaleYMax,
+          this.breathDurationMs,
+        )
+      },
+    })
+  }
+
+  /** 撃破・中断時に予備動作 Tween を止める。 */
+  cancelAttackTelegraph(): void {
+    this.stopAttackTelegraphTweens()
+    this.attackTelegraphActive = false
+    this.isAttackSwelling = false
   }
 
   /** 敵の中心座標へ追従（足元は中心の少し下）。 */
@@ -152,12 +244,17 @@ export class BreathingSprite {
 
   destroy(): void {
     this.stopBreathing()
+    this.cancelAttackTelegraph()
     if (this.outline.active) {
       this.outline.destroy()
     }
     if (this.body.active) {
       this.body.destroy()
     }
+  }
+
+  private stopAttackTelegraphTweens(): void {
+    this.scene.tweens.killTweensOf(this.body)
   }
 
   /**

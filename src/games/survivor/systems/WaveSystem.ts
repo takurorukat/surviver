@@ -174,7 +174,7 @@ export class WaveSystem {
       extraEnemyCount,
     )
     // ignoreLastSpawnLimit=true: 終盤制限を超えても追加してよい
-    // Earth Stage3 は間隔0で有限数をすぐ予約し、満杯分はリトライで出し切る
+    // 追加パック間隔は getFinalWaveExtraPackGapSecondsForStage（非最終は共通 1.6 秒）
     const packGapSeconds = getFinalWaveExtraPackGapSecondsForStage(
       this.areaId,
       this.stageNumber,

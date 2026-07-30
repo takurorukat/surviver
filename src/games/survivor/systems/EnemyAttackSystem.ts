@@ -13,20 +13,25 @@ import {
   ENEMY_EARTH_DUNGEON_BOSS_ROCK_ATTACK_INTERVAL_MS,
   ENEMY_EARTH_DUNGEON_BOSS_ROCK_BURST_COUNT,
   ENEMY_EARTH_DUNGEON_BOSS_ROCK_BURST_SPACING_MS,
+  ENEMY_EARTH_DUNGEON_BOSS_ROCK_PROJECTILE_SPEED,
   ENEMY_EARTH_MAGMA_ROCK_ATTACK_INTERVAL_MS,
   ENEMY_EARTH_MAGMA_ROCK_ATTACK_SWELL_SCALE,
   ENEMY_EARTH_MAGMA_ROCK_PEBBLE_SPEED_FACTOR,
   ENEMY_EARTH_MAGMA_ROCK_RADIAL_COUNT,
   ENEMY_EARTH_MAGMA_ROCK_WINDUP_MS,
+  ENEMY_EARTH_ROCK_ATTACK_RECOVER_MS,
+  ENEMY_EARTH_ROCK_ATTACK_SHRINK_MS,
+  ENEMY_EARTH_ROCK_ATTACK_SHRINK_SCALE,
+  ENEMY_EARTH_ROCK_ATTACK_SWELL_MS,
+  ENEMY_EARTH_ROCK_ATTACK_SWELL_SCALE,
+  ENEMY_EARTH_ROCK_ATTACK_WINDUP_MS,
   ENEMY_EARTH_ROCK_PEBBLE_INTERVAL_MS,
   ENEMY_RANGED_ATTACK_INTERVAL_MS,
-  ENEMY_WIND_HIVE_BOSS_WIND_ORB_INTERVAL_MS,
 } from '../GameConstants'
 import {
   fireEnemyBullet,
   firePebbleEnemyBullet,
   firePebbleEnemyBulletInDirection,
-  fireWindOrbEnemyBullet,
 } from '../objects/EnemyBullet'
 import { enemyBreathingSpriteMap } from '../objects/enemy/enemyInternal'
 import {
@@ -35,9 +40,10 @@ import {
   shouldStartEarthDungeonBossRockBurst,
 } from './earthDungeonBossLogic'
 import {
-  advanceWindHiveBossWindOrbShotAtMs,
-  shouldFireWindHiveBossWindOrb,
-} from './windHiveBossLogic'
+  advanceEarthRockNextShotAtMs,
+  shouldFireEarthRockAfterWindup,
+  shouldStartEarthRockAttackWindup,
+} from './earthRockLogic'
 
 // 射撃型敵がプレイヤーへ弾を撃つ（グループ内の全敵を走査）
 // 各敵の nextShotAtMs（次に撃ってよい時刻）を getData/setData で管理
@@ -98,7 +104,9 @@ export function updateEnemyRangedAttacks(
 }
 
 /**
- * Earth Dungeon Stage2 の岩敵: 約5秒ごとにプレイヤー現在位置へ小石弾を1発。
+ * Earth Dungeon Stage2 の岩敵: 約3.333秒ごとにプレイヤー現在位置へ小石弾を1発。
+ * 発射 450ms 前から縮み→膨らみの予備動作。弾は膨らみ切った瞬間だけ生成。
+ * Pause / Level Up 復帰では1発を超えて catch-up しない。
  */
 export function updateEarthRockAttacks(
   scene: Phaser.Scene,
@@ -128,84 +136,78 @@ export function updateEarthRockAttacks(
       enemy.setData('nextPebbleShotAtMs', nextPebbleShotAtMs)
     }
 
-    if (nowMs < nextPebbleShotAtMs) {
-      continue
-    }
+    const windupEndsAtMs = enemy.getData('earthRockWindupEndsAtMs') as number
+    const isWindingUp =
+      enemy.getData('isEarthRockAttackWindup') === true &&
+      typeof windupEndsAtMs === 'number' &&
+      windupEndsAtMs > 0
 
-    const bullet = firePebbleEnemyBullet(
-      scene,
-      enemyBulletGroup,
-      enemy.x,
-      enemy.y,
-      playerX,
-      playerY,
-    )
+    if (isWindingUp) {
+      if (
+        !shouldFireEarthRockAfterWindup({
+          nowMs,
+          windupEndsAtMs,
+          isWindingUp: true,
+        })
+      ) {
+        continue
+      }
 
-    if (bullet !== null) {
+      const bullet = firePebbleEnemyBullet(
+        scene,
+        enemyBulletGroup,
+        enemy.x,
+        enemy.y,
+        playerX,
+        playerY,
+      )
+
+      if (bullet === null) {
+        continue
+      }
+
+      enemy.setData('isEarthRockAttackWindup', false)
+      enemy.setData('earthRockWindupEndsAtMs', 0)
       enemy.setData(
         'nextPebbleShotAtMs',
-        nowMs + ENEMY_EARTH_ROCK_PEBBLE_INTERVAL_MS,
+        advanceEarthRockNextShotAtMs(nowMs, ENEMY_EARTH_ROCK_PEBBLE_INTERVAL_MS),
       )
-    }
-  }
-}
-
-/**
- * Wind Plains Stage3 ボス: 2秒ごとに Hero 現在位置へ風の玉を1発。
- * 出現直後は撃たず、初弾は出現から 2000ms 後。発射後は直進。
- * Pause / Level Up 中は GameScene 側でこの更新自体が止まると時間も進まない。
- */
-export function updateWindHiveBossWindOrbAttacks(
-  scene: Phaser.Scene,
-  enemyGroup: Phaser.Physics.Arcade.Group,
-  enemyBulletGroup: Phaser.Physics.Arcade.Group,
-  playerX: number,
-  playerY: number,
-  nowMs: number,
-): void {
-  const children = enemyGroup.getChildren()
-
-  for (let index = 0; index < children.length; index++) {
-    const boss = children[index] as Phaser.GameObjects.Rectangle
-    if (!boss.active) {
+      const breathing = enemyBreathingSpriteMap.get(enemy)
+      if (breathing !== undefined) {
+        breathing.recoverFromAttackTelegraph(ENEMY_EARTH_ROCK_ATTACK_RECOVER_MS)
+      }
       continue
-    }
-    if (boss.getData('isDefeated') === true) {
-      continue
-    }
-    if (boss.getData('enemyKind') !== 'windHiveBoss') {
-      continue
-    }
-
-    let nextWindOrbShotAtMs = boss.getData('nextWindOrbShotAtMs') as number
-    if (typeof nextWindOrbShotAtMs !== 'number') {
-      nextWindOrbShotAtMs = nowMs + ENEMY_WIND_HIVE_BOSS_WIND_ORB_INTERVAL_MS
-      boss.setData('nextWindOrbShotAtMs', nextWindOrbShotAtMs)
     }
 
     if (
-      !shouldFireWindHiveBossWindOrb({
+      !shouldStartEarthRockAttackWindup({
         nowMs,
-        nextShotAtMs: nextWindOrbShotAtMs,
+        nextShotAtMs: nextPebbleShotAtMs,
+        isWindingUp: false,
+        windupMs: ENEMY_EARTH_ROCK_ATTACK_WINDUP_MS,
       })
     ) {
       continue
     }
 
-    const bullet = fireWindOrbEnemyBullet(
-      scene,
-      enemyBulletGroup,
-      boss.x,
-      boss.y,
-      playerX,
-      playerY,
-    )
+    // 予定発射時刻まで膨らむ。Pause catch-up で過ぎている場合は今から450ms後に1発。
+    let windupEndMs = nextPebbleShotAtMs
+    if (nowMs >= nextPebbleShotAtMs) {
+      windupEndMs = nowMs + ENEMY_EARTH_ROCK_ATTACK_WINDUP_MS
+    }
+    enemy.setData('isEarthRockAttackWindup', true)
+    enemy.setData('earthRockWindupEndsAtMs', windupEndMs)
+    // 予兆中に再トリガしない
+    enemy.setData('nextPebbleShotAtMs', Number.POSITIVE_INFINITY)
 
-    if (bullet !== null) {
-      boss.setData(
-        'nextWindOrbShotAtMs',
-        advanceWindHiveBossWindOrbShotAtMs(nowMs),
-      )
+    const breathing = enemyBreathingSpriteMap.get(enemy)
+    if (breathing !== undefined) {
+      breathing.playAttackShrinkSwell({
+        shrinkScale: ENEMY_EARTH_ROCK_ATTACK_SHRINK_SCALE,
+        swellScale: ENEMY_EARTH_ROCK_ATTACK_SWELL_SCALE,
+        shrinkMs: ENEMY_EARTH_ROCK_ATTACK_SHRINK_MS,
+        swellMs: ENEMY_EARTH_ROCK_ATTACK_SWELL_MS,
+      })
     }
   }
 }
@@ -291,6 +293,7 @@ export function updateEarthDungeonBossRockBursts(
       boss.y,
       playerX,
       playerY,
+      ENEMY_EARTH_DUNGEON_BOSS_ROCK_PROJECTILE_SPEED,
     )
 
     if (bullet === null) {
@@ -308,7 +311,7 @@ export function updateEarthDungeonBossRockBursts(
 }
 
 /**
- * Earth Dungeon Stage4 マグマ岩: 5秒周期で停止→0.7秒膨らみ予兆→6方向小石放射。
+ * Earth Dungeon Stage4 マグマ岩: 2.5秒周期で停止→0.7秒膨らみ予兆→6方向小石放射。
  * 弾はプレイヤー狙いではなく固定角度（0°から60°刻み）。
  */
 export function updateEarthMagmaRockAttacks(

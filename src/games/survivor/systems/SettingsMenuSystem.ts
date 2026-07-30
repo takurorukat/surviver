@@ -33,6 +33,7 @@ import {
   CREDITS_BODY_FONT_SIZE,
   CREDITS_BODY_MIN_FONT_SIZE,
   CREDITS_BODY_LINE_SPACING,
+  CREDITS_CREATED_BY_FONT_SIZE,
   calculateCreditsPanelHeight,
   calculateCreditsBodyMaxScroll,
   CREDITS_ROSSO_ARGINE_LOGO_KEY,
@@ -40,7 +41,12 @@ import {
   FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
 } from '../GameConstants'
+import {
+  SUPPORT_DEVELOPER_LABEL,
+  SURVIVOR_SUPPORT_LINK_ENABLED,
+} from '../constants/support'
 import { GameAudioSystem } from './GameAudioSystem'
+import { openSupportDeveloperLink } from './supportDeveloperLink'
 import { shrinkTextToFitWidth } from '../utils/fitTextToWidth'
 
 export type SettingsMenuMode = 'title' | 'game'
@@ -345,10 +351,30 @@ export class SettingsMenuSystem {
       buttonViews.push(giveUpButton.border, giveUpButton.background, giveUpButton.label)
     }
 
-    // Back の上に Credits
+    // Back の上に Credits。Support は Credits の直前（Feature Flag 有効時のみ）
     const backButtonY = GAME_HEIGHT / 2 - 56
     const creditsButtonY =
       backButtonY - SETTINGS_MENU_BUTTON_HEIGHT - SETTINGS_MENU_BUTTON_GAP
+    const supportButtonY =
+      creditsButtonY - SETTINGS_MENU_BUTTON_HEIGHT - SETTINGS_MENU_BUTTON_GAP
+
+    if (SURVIVOR_SUPPORT_LINK_ENABLED) {
+      const supportButton = this.createMenuButton(
+        0,
+        supportButtonY,
+        SUPPORT_DEVELOPER_LABEL,
+        () => {
+          // クリック／タップのコールバック内で直接開く（popup blocker 対策）
+          openSupportDeveloperLink()
+        },
+      )
+      this.menuButtons.push(supportButton)
+      buttonViews.push(
+        supportButton.border,
+        supportButton.background,
+        supportButton.label,
+      )
+    }
 
     const creditsButton = this.createMenuButton(0, creditsButtonY, 'Credits', () => {
       // Settings を開くときと同じ決定音
@@ -458,7 +484,7 @@ export class SettingsMenuSystem {
       SETTINGS_CREDITS_CREATED_BY,
       {
         fontFamily: FONT_FAMILY_UI,
-        fontSize: '13px',
+        fontSize: `${CREDITS_CREATED_BY_FONT_SIZE}px`,
         color: '#cbd5e1',
       },
     )
@@ -466,7 +492,7 @@ export class SettingsMenuSystem {
     this.creditsCreatedByText.setDepth(CREDITS_DEPTH + 3)
     this.creditsCreatedByText.setScrollFactor(0)
 
-    let logoBottomY = panelTopY + 48 + this.creditsCreatedByText.height + 6
+    let logoBottomY = panelTopY + 48 + this.creditsCreatedByText.height + 4
     if (this.scene.textures.exists(CREDITS_ROSSO_ARGINE_LOGO_KEY)) {
       this.creditsLogo = this.scene.add.image(
         GAME_WIDTH / 2,
@@ -484,7 +510,7 @@ export class SettingsMenuSystem {
       this.creditsLogo.setDisplaySize(displayWidth, displayHeight)
       this.creditsLogo.setDepth(CREDITS_DEPTH + 3)
       this.creditsLogo.setScrollFactor(0)
-      logoBottomY = logoBottomY + displayHeight + 10
+      logoBottomY = logoBottomY + displayHeight + 8
     } else {
       // アセット未読込時の最低限フォールバック
       this.creditsCreatedByText.setText('created by ROSSO ARGINE')

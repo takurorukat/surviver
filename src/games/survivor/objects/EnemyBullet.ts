@@ -6,7 +6,7 @@
  * - 当たり: physics.add.overlap（敵弾 × プレイヤー）
  * - プレイヤー弾と同様、collisionAge / flightVx・flightVy で同フレーム事故と速度復元に対応
  *
- * 見た目: 蜂の針（黄色い二等辺三角＋黒枠）／小石・風の玉（コード生成テクスチャ）。
+ * 見た目: 蜂の針（黄色い二等辺三角＋黒枠）／小石（コード生成テクスチャ）。
  * ダメージ量は定数 ENEMY_BULLET_DAMAGE（弾ごとに変えない）。
  */
 import Phaser from 'phaser'
@@ -26,13 +26,6 @@ import {
   ENEMY_PEBBLE_BULLET_SHADOW_COLOR,
   ENEMY_PEBBLE_BULLET_SIZE,
   ENEMY_PEBBLE_BULLET_TEXTURE_KEY,
-  ENEMY_WIND_HIVE_BOSS_WIDTH,
-  ENEMY_WIND_ORB_BULLET_FILL_COLOR,
-  ENEMY_WIND_ORB_BULLET_HIGHLIGHT_COLOR,
-  ENEMY_WIND_ORB_BULLET_OUTLINE_COLOR,
-  ENEMY_WIND_ORB_BULLET_RADIUS,
-  ENEMY_WIND_ORB_BULLET_SIZE,
-  ENEMY_WIND_ORB_BULLET_TEXTURE_KEY,
   MAX_ENEMY_BULLETS,
   ENEMY_WIDTH,
   PLAY_AREA_ORIGIN_X,
@@ -42,6 +35,7 @@ import {
 } from '../GameConstants'
 import { setupCircleHitbox } from '../utils/setupCircleHitbox'
 import { applyDevEntityDepth } from '../utils/applyDevEntityDepth'
+import { decideEnemyBulletSlotAction } from './enemyBulletPoolLogic'
 
 /** 敵弾の見た目。物理 Body は別途付ける。 */
 export type EnemyBulletVisual =
@@ -178,11 +172,11 @@ export function isDestructibleEnemyBullet(bullet: EnemyBulletVisual): boolean {
 }
 
 /**
- * 敵弾をプールへ戻す（小石・風の玉は destroy、蜂の針は再利用）。
+ * 敵弾をプールへ戻す（小石は destroy、蜂の針は再利用）。
  */
 export function recycleEnemyBullet(bullet: EnemyBulletVisual): void {
   const bulletStyle = bullet.getData('bulletStyle')
-  if (bulletStyle === 'pebble' || bulletStyle === 'windOrb') {
+  if (bulletStyle === 'pebble') {
     bullet.destroy()
     return
   }
@@ -228,11 +222,7 @@ export function fireEnemyBullet(
   const bulletStartY = startY + directionY * spawnOffset
 
   let bullet = bulletGroup.getFirstDead(false) as EnemyBulletVisual | null
-  if (
-    bullet !== null &&
-    (bullet.getData('bulletStyle') === 'pebble' ||
-      bullet.getData('bulletStyle') === 'windOrb')
-  ) {
+  if (bullet !== null && bullet.getData('bulletStyle') === 'pebble') {
     bullet = null
   }
 
@@ -280,7 +270,8 @@ export function fireEnemyBullet(
 
 /**
  * プレイヤー現在位置へ向けて小石弾を1発撃つ（岩敵用）。
- * 速度は蜂の弾と同じ。プレイヤー弾で破壊可能。
+ * 既定速度は蜂の弾と同じ。ボスなどは bulletSpeed で上書きできる。
+ * プレイヤー弾で破壊可能。
  */
 export function firePebbleEnemyBullet(
   scene: Phaser.Scene,
@@ -289,6 +280,7 @@ export function firePebbleEnemyBullet(
   startY: number,
   targetX: number,
   targetY: number,
+  bulletSpeed: number = ENEMY_BULLET_SPEED,
 ): EnemyBulletVisual | null {
   const dx = targetX - startX
   const dy = targetY - startY
@@ -303,7 +295,7 @@ export function firePebbleEnemyBullet(
     startY,
     dx / distance,
     dy / distance,
-    ENEMY_BULLET_SPEED,
+    bulletSpeed,
   )
 }
 
@@ -321,8 +313,18 @@ export function firePebbleEnemyBulletInDirection(
   bulletSpeed: number,
 ): EnemyBulletVisual | null {
   const activeBulletCount = countActiveEnemyBullets(bulletGroup)
-  if (activeBulletCount >= MAX_ENEMY_BULLETS) {
+  const inactiveBullet = bulletGroup.getFirstDead(false) as EnemyBulletVisual | null
+  const slotDecision = decideEnemyBulletSlotAction({
+    activeBulletCount,
+    maxActiveBullets: MAX_ENEMY_BULLETS,
+    groupIsFull: bulletGroup.isFull(),
+    hasInactiveBullet: inactiveBullet !== null,
+  })
+  if (slotDecision === 'reject') {
     return null
+  }
+  if (slotDecision === 'release-inactive' && inactiveBullet !== null) {
+    inactiveBullet.destroy()
   }
 
   const length = Math.sqrt(directionX * directionX + directionY * directionY)
@@ -349,6 +351,10 @@ export function firePebbleEnemyBulletInDirection(
   bullet.setData('collisionAge', 0)
   bulletGroup.add(bullet)
 
+  if (bullet.body === null) {
+    bullet.destroy()
+    return null
+  }
   const body = bullet.body as Phaser.Physics.Arcade.Body
   const size = ENEMY_PEBBLE_BULLET_SIZE
   const flight = applyEnemyBulletBodySettings(
@@ -359,95 +365,6 @@ export function firePebbleEnemyBulletInDirection(
     size,
     size,
     bulletSpeed,
-  )
-  bullet.setData('flightVx', flight.flightVx)
-  bullet.setData('flightVy', flight.flightVy)
-  applyDevEntityDepth(bullet)
-
-  return bullet
-}
-
-/**
- * 小さめの緑の風の玉テクスチャを1回だけ生成する。
- */
-export function ensureWindOrbBulletTexture(scene: Phaser.Scene): void {
-  if (scene.textures.exists(ENEMY_WIND_ORB_BULLET_TEXTURE_KEY)) {
-    return
-  }
-
-  const size = Math.max(8, Math.round(ENEMY_WIND_ORB_BULLET_SIZE))
-  const graphics = scene.make.graphics({ x: 0, y: 0 })
-  const center = size / 2
-  const radius = size * 0.42
-
-  graphics.fillStyle(ENEMY_WIND_ORB_BULLET_FILL_COLOR, 1)
-  graphics.fillCircle(center, center, radius)
-
-  graphics.fillStyle(ENEMY_WIND_ORB_BULLET_HIGHLIGHT_COLOR, 0.9)
-  graphics.fillCircle(center - size * 0.12, center - size * 0.14, radius * 0.35)
-
-  graphics.lineStyle(2, ENEMY_WIND_ORB_BULLET_OUTLINE_COLOR, 1)
-  graphics.strokeCircle(center, center, radius)
-
-  graphics.generateTexture(ENEMY_WIND_ORB_BULLET_TEXTURE_KEY, size, size)
-  graphics.destroy()
-}
-
-/**
- * windHiveBoss 用: Hero 現在位置へ向けて風の玉を1発撃つ。
- * 速度・ダメージは標準敵弾と同じ。発射後は直進（ホーミングなし）。
- */
-export function fireWindOrbEnemyBullet(
-  scene: Phaser.Scene,
-  bulletGroup: Phaser.Physics.Arcade.Group,
-  startX: number,
-  startY: number,
-  targetX: number,
-  targetY: number,
-): EnemyBulletVisual | null {
-  const activeBulletCount = countActiveEnemyBullets(bulletGroup)
-  if (activeBulletCount >= MAX_ENEMY_BULLETS) {
-    return null
-  }
-
-  const dx = targetX - startX
-  const dy = targetY - startY
-  const distance = Math.sqrt(dx * dx + dy * dy)
-  if (distance === 0) {
-    return null
-  }
-
-  const directionX = dx / distance
-  const directionY = dy / distance
-  const spawnOffset = ENEMY_WIND_HIVE_BOSS_WIDTH / 2 + 4
-  const bulletStartX = startX + directionX * spawnOffset
-  const bulletStartY = startY + directionY * spawnOffset
-
-  ensureWindOrbBulletTexture(scene)
-  const bullet = scene.add.image(
-    bulletStartX,
-    bulletStartY,
-    ENEMY_WIND_ORB_BULLET_TEXTURE_KEY,
-  )
-  bullet.setDepth(9)
-  bullet.setData('bulletStyle', 'windOrb')
-  // 標準蜂の針と同じ: プレイヤー通常弾では壊せず、Orbiting Orb 等では消滅可
-  bullet.setData('destroyableByPlayer', false)
-  bullet.setData('destructible', true)
-  bullet.setData('damage', ENEMY_BULLET_DAMAGE)
-  bullet.setData('collisionAge', 0)
-  bulletGroup.add(bullet)
-
-  const body = bullet.body as Phaser.Physics.Arcade.Body
-  const size = ENEMY_WIND_ORB_BULLET_SIZE
-  const flight = applyEnemyBulletBodySettings(
-    body,
-    directionX,
-    directionY,
-    ENEMY_WIND_ORB_BULLET_RADIUS,
-    size,
-    size,
-    ENEMY_BULLET_SPEED,
   )
   bullet.setData('flightVx', flight.flightVx)
   bullet.setData('flightVy', flight.flightVy)

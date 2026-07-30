@@ -13,25 +13,54 @@ export type AutoplayVector = {
 }
 
 export type SurvivorE2EState = {
+  areaId: string
+  stageNumber: number
   currentScene: string | null
   sceneActive: boolean
+  sceneVisible: boolean
+  scenePaused: boolean
+  sceneSleeping: boolean
   elapsedMs: number
   playerHp: number | null
   playerLevel: number | null
   enemyCount: number
+  enemyBulletCount: number
+  playerBulletCount: number
+  pendingLevelUps: number
+  bossAlive: boolean
+  activeEnemyKinds: string[]
   isLevelUpOpen: boolean
+  isSettingsOpen: boolean
+  isAchievementsOpen: boolean
+  isConfirmDialogOpen: boolean
   isGameOver: boolean
+  isLevelUpPaused: boolean
+  isResumeCountdownActive: boolean
+  isStartCountdownActive: boolean
+  isStageSettled: boolean
+  timePaused: boolean
+  physicsPaused: boolean
+  documentVisibility: DocumentVisibilityState
+  documentHasFocus: boolean
+  bgmActive: boolean
   botEnabled: boolean
   lastUpdateAt: number
+  lastCompletedUpdateAt: number
 }
 
 export type SurvivorE2EApi = {
   getState: () => SurvivorE2EState
+  startEarthStage5: () => void
 }
 
 export type SurvivorAutoplayHost = {
+  getAreaId: () => string
+  getStageNumber: () => number
   getSceneKey: () => string
   isSceneActive: () => boolean
+  isSceneVisible: () => boolean
+  isScenePaused: () => boolean
+  isSceneSleeping: () => boolean
   getElapsedMs: () => number
   getPlayerHp: () => number
   getPlayerLevel: () => number
@@ -42,9 +71,24 @@ export type SurvivorAutoplayHost = {
   getPlayAreaWidth: () => number
   getPlayAreaHeight: () => number
   getEnemyChildren: () => readonly Phaser.GameObjects.GameObject[]
+  getEnemyBulletCount: () => number
+  getPlayerBulletCount: () => number
+  getPendingLevelUps: () => number
+  isBossAlive: () => boolean
   isLevelUpOpen: () => boolean
+  isSettingsOpen: () => boolean
+  isAchievementsOpen: () => boolean
+  isConfirmDialogOpen: () => boolean
   isGameOver: () => boolean
+  isLevelUpPaused: () => boolean
+  isResumeCountdownActive: () => boolean
+  isStartCountdownActive: () => boolean
+  isStageSettled: () => boolean
+  isTimePaused: () => boolean
+  isPhysicsPaused: () => boolean
+  isBgmActive: () => boolean
   confirmLevelUpFirstChoice: () => boolean
+  startEarthStage5: () => void
 }
 
 declare global {
@@ -72,6 +116,7 @@ export function isSurvivorE2EEnabled(): boolean {
 export class SurvivorAutoplayBridge {
   private host: SurvivorAutoplayHost
   private lastUpdateAt = 0
+  private lastCompletedUpdateAt = 0
   private levelUpLatchOpen = false
   private circleSign = 1
   private nextDirectionFlipAt = 0
@@ -98,6 +143,10 @@ export class SurvivorAutoplayBridge {
   onFrame(): void {
     this.lastUpdateAt = Date.now()
     this.tryConfirmLevelUp()
+  }
+
+  onFrameCompleted(): void {
+    this.lastCompletedUpdateAt = Date.now()
   }
 
   /**
@@ -253,6 +302,7 @@ export class SurvivorAutoplayBridge {
   private registerWindowApi(): void {
     window.__MAGE_SURVIVOR_TEST__ = {
       getState: () => this.buildState(),
+      startEarthStage5: () => this.host.startEarthStage5(),
     }
   }
 
@@ -268,18 +318,52 @@ export class SurvivorAutoplayBridge {
 
     const playerHp = this.host.getPlayerHp()
     const playerLevel = this.host.getPlayerLevel()
+    const activeEnemyKinds: string[] = []
+    for (let index = 0; index < children.length; index++) {
+      const child = children[index]
+      if (child === undefined || child.active !== true) {
+        continue
+      }
+      const enemyKind = child.getData('enemyKind')
+      if (typeof enemyKind === 'string' && !activeEnemyKinds.includes(enemyKind)) {
+        activeEnemyKinds.push(enemyKind)
+      }
+    }
 
     return {
+      areaId: this.host.getAreaId(),
+      stageNumber: this.host.getStageNumber(),
       currentScene: this.host.getSceneKey(),
       sceneActive: this.host.isSceneActive(),
+      sceneVisible: this.host.isSceneVisible(),
+      scenePaused: this.host.isScenePaused(),
+      sceneSleeping: this.host.isSceneSleeping(),
       elapsedMs: this.host.getElapsedMs(),
       playerHp: Number.isFinite(playerHp) ? playerHp : null,
       playerLevel: Number.isFinite(playerLevel) ? playerLevel : null,
       enemyCount,
+      enemyBulletCount: this.host.getEnemyBulletCount(),
+      playerBulletCount: this.host.getPlayerBulletCount(),
+      pendingLevelUps: this.host.getPendingLevelUps(),
+      bossAlive: this.host.isBossAlive(),
+      activeEnemyKinds,
       isLevelUpOpen: this.host.isLevelUpOpen(),
+      isSettingsOpen: this.host.isSettingsOpen(),
+      isAchievementsOpen: this.host.isAchievementsOpen(),
+      isConfirmDialogOpen: this.host.isConfirmDialogOpen(),
       isGameOver: this.host.isGameOver(),
+      isLevelUpPaused: this.host.isLevelUpPaused(),
+      isResumeCountdownActive: this.host.isResumeCountdownActive(),
+      isStartCountdownActive: this.host.isStartCountdownActive(),
+      isStageSettled: this.host.isStageSettled(),
+      timePaused: this.host.isTimePaused(),
+      physicsPaused: this.host.isPhysicsPaused(),
+      documentVisibility: document.visibilityState,
+      documentHasFocus: document.hasFocus(),
+      bgmActive: this.host.isBgmActive(),
       botEnabled: true,
       lastUpdateAt: this.lastUpdateAt,
+      lastCompletedUpdateAt: this.lastCompletedUpdateAt,
     }
   }
 }

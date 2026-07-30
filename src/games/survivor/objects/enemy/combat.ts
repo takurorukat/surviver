@@ -120,6 +120,7 @@ export function playEnemyDefeatFadeOut(
   // 呼吸スプライト: 伸び縮みを止めてから、本体と枠を同時に透明へ
   if (breathingSprite !== undefined) {
     breathingSprite.stopBreathing()
+    breathingSprite.cancelAttackTelegraph()
     const tweenTargets = breathingSprite.getTweenTargets()
     // 白い塗りつぶしは使わず、絵のまま消す
     breathingSprite.body.clearTint()

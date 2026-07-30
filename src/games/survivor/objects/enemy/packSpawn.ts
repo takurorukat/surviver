@@ -429,7 +429,7 @@ function spawnOneEnemyAtPosition(
     return
   }
 
-  // マグマ岩は固定 HP18・スライム×0.55・6方向放射
+  // マグマ岩は固定 HP72・スライム×0.55・6方向放射
   if (enemyKind === 'earthMagmaRock') {
     spawnEarthMagmaRockEnemy(
       scene,

@@ -5,21 +5,20 @@
 import {
   FINAL_WAVE_EXTRA_PACK_GAP_SECONDS,
   FINAL_WAVE_EXTRA_PACK_GAP_SECONDS_FINAL_STAGE,
-  shouldCloseSpawnsAfterFinalWave,
 } from '../GameConstants'
 
 /**
  * ファイナルウェーブ追加パックの間隔。
- * Earth Stage3 は有限ウェーブをすぐ出し切るため 0（満杯時はリトライで順に出す）。
+ * 非最終ステージは共通値、エリア最終ステージは短縮値。
+ * Earth Stage3 も他の非最終ステージと同じ共通間隔を使う。
  */
 export function getFinalWaveExtraPackGapSecondsForStage(
   areaId: string,
   stageNumber: number,
   isAreaFinalStage: boolean,
 ): number {
-  if (shouldCloseSpawnsAfterFinalWave(areaId, stageNumber)) {
-    return 0
-  }
+  void areaId
+  void stageNumber
   if (isAreaFinalStage) {
     return FINAL_WAVE_EXTRA_PACK_GAP_SECONDS_FINAL_STAGE
   }

@@ -1,6 +1,6 @@
 Unified core skill icons
 
-Original icons: Whirlwind, Drop, Small fire, Rock, Sprint, Fist, On target
+Original icons: Whirlwind, Drop, Small fire, Rock, Fairy wand, Fist, On target
 Author: Lorc
 Source: https://game-icons.net/
 License: Creative Commons Attribution 3.0 Unported (CC BY 3.0)
@@ -8,6 +8,9 @@ License URL: https://creativecommons.org/licenses/by/3.0/
 
 Required attribution:
 Icons by Lorc. Available on https://game-icons.net
+
+Attack Speed (Speed / fireRate) original:
+Fairy wand — https://game-icons.net/1x1/lorc/fairy-wand.html
 
 Runtime changes:
 - normalized from a 512x512 viewBox to a 64x64 viewBox

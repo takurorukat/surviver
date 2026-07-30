@@ -6,6 +6,7 @@ import type { StageAreaId } from '../../GameConstants'
 import {
   ENEMY_EARTH_MAGMA_ROCK_STAGE4_WEIGHT,
   ENEMY_EARTH_STAGE4_OTHER_WEIGHT,
+  RUINS_STAGE2_VOLCANO_ENEMY_CHANCE,
 } from '../../GameConstants'
 import type { EnemyKind } from './types'
 
@@ -135,6 +136,24 @@ export function pickForestStage5EnemyKind(): EnemyKind {
   return pickRandomKind(FOREST_STAGE5_ENEMY_KINDS)
 }
 
+/** Volcano Stage2 の重み付き抽選（Ruins Stage2 混入でも再利用）。 */
+export function pickVolcanoStage2EnemyKind(): EnemyKind {
+  return pickWeightedEnemyKind(VOLCANO_STAGE2_WEIGHTS)
+}
+
+/**
+ * Ruins Stage2: 基本は earthRock。一定確率で Volcano Stage2 抽選を使う。
+ * volcanoChanceRoll を渡すと乱数を固定できる（テスト用）。
+ */
+export function pickRuinsStage2EnemyKind(
+  volcanoChanceRoll: number = Math.random(),
+): EnemyKind {
+  if (volcanoChanceRoll < RUINS_STAGE2_VOLCANO_ENEMY_CHANCE) {
+    return pickVolcanoStage2EnemyKind()
+  }
+  return 'earthRock'
+}
+
 /** Volcano Stage5 のウェーブ／混沌エレメンタル召喚で使う抽選。 */
 export function pickVolcanoStage5EnemyKind(): EnemyKind {
   return pickWeightedEnemyKind(VOLCANO_STAGE5_WEIGHTS)
@@ -207,9 +226,9 @@ export function pickEnemyKindForArea(
     return 'earthSlime'
   }
 
-  // Ruins Stage 2 は岩敵だけ（HP5・やや遅い・1発ブロック・小石弾）
+  // Ruins Stage 2: 岩敵中心＋ Volcano Stage2 敵を時々混ぜる
   if (areaId === 'ruins' && stageNumber === 2) {
-    return 'earthRock'
+    return pickRuinsStage2EnemyKind()
   }
 
   // Ruins Stage 3 はスケルトンだけ（HP10・カブトムシと同じ突進）
@@ -239,7 +258,7 @@ export function pickEnemyKindForArea(
 
   // Volcano Stage 2: 雷精霊中心＋火精霊（armored は見た目未実装のため除外）
   if (stageNumber === 2) {
-    return pickWeightedEnemyKind(VOLCANO_STAGE2_WEIGHTS)
+    return pickVolcanoStage2EnemyKind()
   }
 
   // Volcano Stage 3: 燃え木中心＋雷精霊・射撃の混成

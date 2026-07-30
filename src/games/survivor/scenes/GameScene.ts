@@ -76,7 +76,7 @@ import { stepArcadePhysicsOnce } from '../utils/arcadePhysicsHelpers'
 import { HudSystem } from '../systems/HudSystem'
 import { WaveSystem } from '../systems/WaveSystem'
 import { updateEnemyChaseMovement } from '../systems/EnemyMovementSystem'
-import { updateEnemyRangedAttacks, updateEarthRockAttacks, updateWindHiveBossWindOrbAttacks, updateEarthDungeonBossRockBursts, updateEarthMagmaRockAttacks } from '../systems/EnemyAttackSystem'
+import { updateEnemyRangedAttacks, updateEarthRockAttacks, updateEarthDungeonBossRockBursts, updateEarthMagmaRockAttacks } from '../systems/EnemyAttackSystem'
 import {
   createPlayerDamageState,
   canPlayerTakeDamageNow,
@@ -615,8 +615,13 @@ export class GameScene extends Phaser.Scene {
 
     // 開発専用: ?e2e=1 のときだけ自動プレイ Bridge を接続する
     this.autoplayBridge = SurvivorAutoplayBridge.createIfEnabled({
+      getAreaId: () => this.areaId,
+      getStageNumber: () => this.stageNumber,
       getSceneKey: () => this.scene.key,
       isSceneActive: () => this.isStageActive,
+      isSceneVisible: () => this.scene.isVisible(),
+      isScenePaused: () => this.scene.isPaused(),
+      isSceneSleeping: () => this.scene.isSleeping(),
       getElapsedMs: () => this.stageElapsedMs,
       getPlayerHp: () => this.currentHp,
       getPlayerLevel: () => this.currentLevel,
@@ -627,14 +632,44 @@ export class GameScene extends Phaser.Scene {
       getPlayAreaWidth: () => this.playAreaBounds.width,
       getPlayAreaHeight: () => this.playAreaBounds.height,
       getEnemyChildren: () => this.enemyGroup.getChildren(),
+      getEnemyBulletCount: () => this.enemyBulletGroup.countActive(true),
+      getPlayerBulletCount: () => this.playerBulletGroup.countActive(true),
+      getPendingLevelUps: () => this.pendingLevelUps,
+      isBossAlive: () => {
+        const enemies = this.enemyGroup.getChildren()
+        for (let index = 0; index < enemies.length; index++) {
+          const enemy = enemies[index]
+          if (enemy.active === true && enemy.getData('isBoss') === true) {
+            return true
+          }
+        }
+        return false
+      },
       isLevelUpOpen: () =>
         this.levelUpChoiceSystem !== undefined && this.levelUpChoiceSystem.isOpen(),
+      isSettingsOpen: () => this.settingsMenuSystem.isMenuOpen(),
+      isAchievementsOpen: () => this.isAchievementsPaused,
+      isConfirmDialogOpen: () => this.confirmDialogSystem.isOpen(),
       isGameOver: () => this.isPlayerDead,
+      isLevelUpPaused: () => this.isLevelUpPaused,
+      isResumeCountdownActive: () => this.isResumeCountdownActive,
+      isStartCountdownActive: () => this.isStartCountdownActive,
+      isStageSettled: () => this.isStageSettled,
+      isTimePaused: () => this.time.paused,
+      isPhysicsPaused: () => this.arcadeWorld.isPaused,
+      isBgmActive: () => this.gameAudioSystem.isAnyBgmActive(),
       confirmLevelUpFirstChoice: () => {
         if (this.levelUpChoiceSystem === undefined) {
           return false
         }
         return this.levelUpChoiceSystem.confirmFirstChoice()
+      },
+      startEarthStage5: () => {
+        this.scene.restart({
+          stageNumber: 5,
+          areaId: 'ruins',
+          isKeyboardMode: true,
+        })
       },
     })
 
@@ -765,24 +800,28 @@ export class GameScene extends Phaser.Scene {
     if (this.isAchievementsPaused) {
       this.updateHudDisplay()
       this.stopAllMovingBodies()
+      this.autoplayBridge?.onFrameCompleted()
       return
     }
 
     if (this.confirmDialogSystem !== undefined && this.confirmDialogSystem.isOpen()) {
       this.updateHudDisplay()
       this.stopAllMovingBodies()
+      this.autoplayBridge?.onFrameCompleted()
       return
     }
 
     if (this.settingsMenuSystem !== undefined && this.settingsMenuSystem.isMenuOpen()) {
       this.updateHudDisplay()
       this.stopAllMovingBodies()
+      this.autoplayBridge?.onFrameCompleted()
       return
     }
 
     if (this.isPlayerDead) {
       this.updateHudDisplay()
       this.stopAllMovingBodies()
+      this.autoplayBridge?.onFrameCompleted()
       return
     }
 
@@ -790,6 +829,7 @@ export class GameScene extends Phaser.Scene {
       this.updateHudDisplay()
       // クリア結果表示中もマウス追従モードは消さない（次ステージへ引き継ぐ）
       this.stopAllMovingBodies({ keepRelativeFollow: true })
+      this.autoplayBridge?.onFrameCompleted()
       return
     }
 
@@ -797,11 +837,13 @@ export class GameScene extends Phaser.Scene {
     if (this.isStageClearBannerPlaying) {
       this.updateHudDisplay()
       this.stopAllMovingBodies({ keepRelativeFollow: true })
+      this.autoplayBridge?.onFrameCompleted()
       return
     }
 
     if (this.isClearCoinVacuum) {
       updateClearCoinVacuum(this.buildStageClearFlowContext())
+      this.autoplayBridge?.onFrameCompleted()
       return
     }
 
@@ -812,6 +854,7 @@ export class GameScene extends Phaser.Scene {
       this.updateHitboxDisplay()
       // マウス追従は維持（キーボードを押すまで続く）。速度だけ止める
       this.stopAllMovingBodies({ keepRelativeFollow: true })
+      this.autoplayBridge?.onFrameCompleted()
       return
     }
     if (this.isResumeCountdownActive || this.isStartCountdownActive) {
@@ -826,6 +869,7 @@ export class GameScene extends Phaser.Scene {
         this.playAreaBounds,
         this.pointerFollowMarker,
       )
+      this.autoplayBridge?.onFrameCompleted()
       return
     }
 
@@ -906,6 +950,7 @@ export class GameScene extends Phaser.Scene {
     // 物理移動後の位置に HP バーを合わせる
     updateAllEnemyHpBars(this.enemyGroup)
     updateAllEnemyWalkSprites(this.enemyGroup, this.player.x)
+    this.autoplayBridge?.onFrameCompleted()
   }
 
   // 役割: シーン終了時の片付け（物理の自動更新を戻し、ウェーブタイマーを止める）
@@ -1521,14 +1566,6 @@ export class GameScene extends Phaser.Scene {
       this.time.now,
     )
     updateEarthRockAttacks(
-      this,
-      this.enemyGroup,
-      this.enemyBulletGroup,
-      this.player.x,
-      this.player.y,
-      this.time.now,
-    )
-    updateWindHiveBossWindOrbAttacks(
       this,
       this.enemyGroup,
       this.enemyBulletGroup,

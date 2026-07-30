@@ -20,12 +20,52 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ## 現在の状態
 
-- 作業状態: 待機中
-- 担当AI: —
-- 対象TODO: —
-- 開始日時: —
+- 作業状態: 作業中
+- 担当AI: Cursor
+- 対象TODO: Platform-Safe Support Developer Button
+- 開始日時: 2026-07-30
 
 ## 直近の作業記録
+
+### 2026-07-30 — Cursor
+
+- 実施内容: Earth Dungeon Stage 5 のゲーム停止を再現・特定。原因は敵弾Groupの `maxSize` が inactive 針弾で埋まった状態で小石弾を追加し、`body === null` のまま `setAllowGravity` して `GameScene.update` が例外停止すること。active 上限未満なら inactive 枠を解放してから小石を生成する最小修正。`?e2e=1` 診断状態を拡張。
+- 変更ファイル: `EnemyBullet.ts` / `enemyBulletPoolLogic.ts` / `enemyBulletPoolLogic.test.ts` / `SurvivorAutoplayBridge.ts` / `GameScene.ts` / `docs/AI_HANDOFF.md`
+- 検証: Stage5ブラウザ60秒（ボス召喚・earthRock/earthMagmaRock・敵弾上限付近）で pageerror なし。typecheck OK、tests 305 OK、build OK、git diff --check OK。
+- 未解決: 既存の未コミット差分は保護。commit/push なし。一時dev server 5201 を起動済み（既存5191/5199は停止していない）。ディスク空きが極めて少ない環境あり。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
+### 2026-07-29 — Cursor
+
+- 実施内容: Ending Victory画面だけに`Thank you for playing!`を追加。画像下端+22pxに配置し、Continue hintより上。fade-in/out対象に含める。Final Ascentでは非表示。文言は`ending.ts`定数。
+- 変更ファイル: `ending.ts` / `EndingScene.ts` / `endingPresentation.ts` / `endingPresentation.test.ts` / `docs/AI_HANDOFF.md`
+- 検証: typecheck OK、tests 302 OK、build OK、git diff --check OK。VIEW ENDING経路でVictory/Final Ascentスクリーンショット取得。Console errorなし。
+- 未解決: 既存の未コミット差分は保護。commit/push なし。確認用一時dev server（5199）が残っている可能性あり。既存5191は停止していない。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
+### 2026-07-29 — Cursor
+
+- 実施内容: XP Bonus後の`fireOrb`発射音だけをKenney Sci-Fi Soundsの`thrusterFire_000.ogg`加工版へ変更。先頭140ms、+4dB、末尾25ms fade-out。旧`player_fire_fire.ogg`はハッシュ不変で保持。
+- 変更ファイル: `audio.ts` / `fireCastSfx.test.ts` / `docs/AUDIO_ASSET_LIBRARY.md` / `public/assets/audio/library/kenney/player_fire_fire_kenney.ogg` / `public/assets/audio/licenses/kenney-sci-fi-sounds-CC0.txt` / `tools/audio_library/candidates/kenney-sci-fi-sounds/` / `docs/AI_HANDOFF.md`
+- 検証: typecheck OK、tests 297 OK、build OK、git diff --check OK。Runtime音源は0.140秒・44100Hz・mono。Production配置・候補非混入・既存dev server HTTP 200を確認。
+- 未解決: ブラウザでの聴感比較と実ゲーム30秒連射は人間確認推奨。既存の未コミット差分は保護。commit/push なし。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
+### 2026-07-29 — Cursor
+
+- 実施内容: Earth Dungeon Stage2／4／5 バランス更新。Stage2にVolcano Stage2敵を20%混入（既存ウェイト再利用）。earthRock射撃3333ms＋縮み→膨らみ予備動作。earthMagmaRock HP36→72。earthDungeonBoss HP150→450。
+- 変更ファイル: `enemies.ts` / `pickEnemyKind.ts` / `EnemyAttackSystem.ts` / `earthRockLogic.ts` / `BreathingSprite.ts` / `spawnEnemyCommon.ts` / `combat.ts` / `packSpawn.ts` / `spawnFactories.ts`（コメント） / 関連テスト / `docs/AI_HANDOFF.md`
+- 検証: typecheck OK、tests 293 OK、build OK、git diff --check OK。
+- 未解決: ブラウザ実機確認は人間確認推奨。既存の未コミット差分は保護。commit/push なし。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
+### 2026-07-29 — Cursor
+
+- 実施内容: Plains Stage 3 `windHiveBoss` の風の玉攻撃を完全削除。毎フレーム更新、Hero照準、専用タイマー、弾生成Factory、専用定数を除去。追跡・蜂召喚・強化済みHP/速度・クリア条件は維持。
+- 変更ファイル: `GameScene.ts` / `EnemyAttackSystem.ts` / `EnemyBullet.ts` / `spawnEnemyCommon.ts` / `enemies.ts` / `windHiveBossLogic.ts` / `windHiveBoss.test.ts` / `finalBossBalance.test.ts` / `docs/AI_HANDOFF.md`
+- 検証: typecheck OK、tests 282 OK、build OK、git diff --check OK。風の玉Runtime参照なし。Earth Dungeonボス小石・通常敵弾のテスト成功。
+- 未解決: ブラウザ実機での30秒戦闘確認は未実施。既存の未コミット差分は保護。commit/push なし。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
 
 ### 2026-07-29 — Cursor
 

@@ -33,6 +33,44 @@ KenneyのRPG Audio、Impact Sounds、Interface SoundsはCC0です。商用利用
 - Impact Sounds: <https://kenney.nl/assets/impact-sounds>
 - Interface Sounds: <https://kenney.nl/assets/interface-sounds>
 
+## XP Bonus Fire Cast（2026-07-29）
+
+- 用途: XP Bonus取得後の `fireOrb` 発射音
+- 配布元: Kenney
+- パック: Sci-Fi Sounds 1.0
+- 公式ページ: <https://kenney.nl/assets/sci-fi-sounds>
+- 実際の取得元: Kenney本人のOpenGameArt公開版
+  <https://opengameart.org/content/sci-fi-sounds>
+- ダウンロードURL:
+  <https://opengameart.org/sites/default/files/sci-fi_sounds.zip>
+- ライセンス: Creative Commons Zero（CC0）
+- 取得日: 2026-07-29
+- 原音: `Audio/thrusterFire_000.ogg`（5.000秒、mono、44100Hz）
+- 原音SHA-256:
+  `0fdc474d93f209debf1fc4ea77765a669dcb7676db31b4d8a0a509685bccf374`
+- 加工: 先頭140msを使用、音量+4dB、末尾25ms fade-out、mono OGG Vorbis 44100Hz
+- Runtime音源: `assets/audio/library/kenney/player_fire_fire_kenney.ogg`
+- Runtime SHA-256:
+  `158284640c88eb09bd4640ef0b45098bf7c9c219f92af8d3c4d7f205eac3e939`
+- ライセンス原文:
+  `public/assets/audio/licenses/kenney-sci-fi-sounds-CC0.txt`
+- 未採用候補:
+  `tools/audio_library/candidates/kenney-sci-fi-sounds/`
+  （Production対象外）
+  - `thrusterFire_001.ogg`: 5.000秒 /
+    `924636edc923fe4aab5829b69dc5dc1c5d659dec5739865434dabee752a3bb79`
+  - `laserSmall_000.ogg`: 0.239206秒 /
+    `72b589eadd41781257ac859e4f4d030222e623390e4a1a83f6d05329a6e026f1`
+
+### Rollback
+
+- New: `assets/audio/library/kenney/player_fire_fire_kenney.ogg`
+- Previous: `assets/audio/player_fire_fire.ogg`
+- Previous SHA-256:
+  `0bf51620e3ec94f762861cb681f8a91337b783318a3bc36fbabe324544b03d33`
+- 戻し方: `SFX_PATH_PLAYER_FIRE_FIRE`をPreviousのパスへ戻す
+- 旧音源は削除・上書きせず保持する
+
 ## BGM方針
 
 BGMは生成器の微調整ではなく、ループ済みでライセンスが明確な完成楽曲を試聴・選定して差し替える。候補にはCC0のOpenGameArt音楽などを使用し、採用前にループ品質と世界観を確認する。BGMの正式差し替えは候補の試聴・採用判断後に行う。

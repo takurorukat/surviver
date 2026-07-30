@@ -66,6 +66,10 @@ describe('skill icon definitions', () => {
     expect(SKILL_ICON_DEFINITIONS.fire.color).toBe(CORE_SKILL_ICONS.fire.color)
     expect(SKILL_ICON_DEFINITIONS.damage).toBe(CORE_SKILL_ICONS.power)
     expect(SKILL_ICON_DEFINITIONS.fireRate).toBe(CORE_SKILL_ICONS.speed)
+    expect(SKILL_ICON_DEFINITIONS.fireRate.assetKey).toBe('skill-icon-speed')
+    expect(SKILL_ICON_DEFINITIONS.fireRate.assetPath).toBe(
+      'assets/icons/skills/unified/speed.svg',
+    )
     expect(SKILL_ICON_DEFINITIONS.range).toBe(CORE_SKILL_ICONS.range)
 
     const assetKeys = CORE_SKILL_ICON_ASSETS.map((asset) => asset.key)

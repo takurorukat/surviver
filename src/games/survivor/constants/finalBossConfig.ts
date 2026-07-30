@@ -8,6 +8,13 @@ import {
   isFinalStage,
   type StageAreaId,
 } from './areas'
+import {
+  FINAL_BOSS_SPAWN_Y_RATIO,
+  PLAY_AREA_HEIGHT,
+  PLAY_AREA_ORIGIN_X,
+  PLAY_AREA_ORIGIN_Y,
+  PLAY_AREA_WIDTH,
+} from './layout'
 
 /** 最終ステージ用の明示クリアルール（仕様の推奨型）。 */
 export type FinalStageCompletionRule = 'defeat-boss' | 'survive' | 'clear-wave'
@@ -96,4 +103,17 @@ export function getFinalBossEnemyIdForStage(
     return null
   }
   return config.finalBossEnemyId
+}
+
+/**
+ * 4エリア最終ボス共通の出現座標（プレイエリア上部中央）。
+ * HUD を除いた PLAY_AREA_* 基準。整数は四捨五入。
+ * Python: (ox + w*0.5, oy + h*ratio) に相当
+ */
+export function getFinalBossSpawnPosition(): { x: number; y: number } {
+  const x = Math.round(PLAY_AREA_ORIGIN_X + PLAY_AREA_WIDTH * 0.5)
+  const y = Math.round(
+    PLAY_AREA_ORIGIN_Y + PLAY_AREA_HEIGHT * FINAL_BOSS_SPAWN_Y_RATIO,
+  )
+  return { x, y }
 }

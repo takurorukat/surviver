@@ -176,7 +176,7 @@ export function spawnEarthRockEnemy(
 
 /**
  * Earth Dungeon Stage4 のマグマ岩を1体スポーンする。
- * HP 18。速度は呼び出し側でスライム×0.55。6方向小石放射。
+ * HP 72。速度は呼び出し側でスライム×0.55。6方向小石放射。
  */
 export function spawnEarthMagmaRockEnemy(
   scene: Phaser.Scene,
@@ -319,8 +319,8 @@ export function spawnAshKnightEnemy(
 
 /**
  * Volcano Stage5 の混沌エレメンタルを1体スポーンする。
- * HP は ENEMY_CHAOS_ELEMENTAL_HP（現行 150）。速度0で動かない。
- * 2秒ごとに下位ステージの敵を出す。
+ * HP は ENEMY_CHAOS_ELEMENTAL_HP。速度0で動かない（固定砲台）。
+ * 一定間隔で下位ステージの敵を出す。
  */
 export function spawnChaosElementalEnemy(
   scene: Phaser.Scene,
@@ -488,7 +488,7 @@ export function spawnForestStage5Gravestone(
 
 /**
  * Wind Plains Stage3 ボスを1体スポーンする。
- * HP は ENEMY_WIND_HIVE_BOSS_HP。速度は通常スライムの 0.5 倍。プレイヤーを追う。
+ * HP は ENEMY_WIND_HIVE_BOSS_HP。速度は通常スライムの 0.75 倍。プレイヤーを追う。
  */
 export function spawnWindHiveBossEnemy(
   scene: Phaser.Scene,
@@ -511,7 +511,7 @@ export function spawnWindHiveBossEnemy(
 
 /**
  * Earth Dungeon Stage5 ボスを1体スポーンする。
- * HP 100。速度は通常スライムの 0.5 倍。プレイヤーを追う。
+ * HP は ENEMY_EARTH_DUNGEON_BOSS_HP。速度は通常スライムの 0.75 倍。プレイヤーを追う。
  */
 export function spawnEarthDungeonBossEnemy(
   scene: Phaser.Scene,

@@ -3,6 +3,8 @@ import {
   ENEMY_BASE_SPEED,
   ENEMY_BULLET_DAMAGE,
   ENEMY_BULLET_SPEED,
+  ENEMY_EARTH_DUNGEON_BOSS_HP,
+  ENEMY_EARTH_DUNGEON_BOSS_ROCK_ATTACK_INTERVAL_MS,
   ENEMY_EARTH_MAGMA_ROCK_ATTACK_INTERVAL_MS,
   ENEMY_EARTH_MAGMA_ROCK_BREATH_DISPLAY_HEIGHT,
   ENEMY_EARTH_MAGMA_ROCK_BREATH_SPRITE_KEY,
@@ -19,6 +21,8 @@ import {
   ENEMY_EARTH_MAGMA_ROCK_WIDTH,
   ENEMY_EARTH_MAGMA_ROCK_WINDUP_MS,
   ENEMY_EARTH_MAGMA_ROCK_XP_DROP_MULTIPLIER,
+  ENEMY_EARTH_ROCK_HP,
+  ENEMY_EARTH_ROCK_PEBBLE_INTERVAL_MS,
   ENEMY_EARTH_STAGE4_OTHER_WEIGHT,
   ENEMY_HEIGHT,
   ENEMY_RADIUS,
@@ -33,7 +37,7 @@ import {
 
 describe('Earth Dungeon Stage4 earthMagmaRock', () => {
   it('HP / XP / 速度が仕様どおり（判定サイズは維持）', () => {
-    expect(ENEMY_EARTH_MAGMA_ROCK_HP).toBe(18)
+    expect(ENEMY_EARTH_MAGMA_ROCK_HP).toBe(72)
     expect(ENEMY_EARTH_MAGMA_ROCK_XP_DROP_MULTIPLIER).toBe(4)
     expect(ENEMY_EARTH_MAGMA_ROCK_SPEED_FACTOR).toBe(0.55)
     expect(ENEMY_EARTH_MAGMA_ROCK_SIZE_SCALE).toBe(1.5)
@@ -53,13 +57,19 @@ describe('Earth Dungeon Stage4 earthMagmaRock', () => {
     )
   })
 
-  it('攻撃定数: 5秒周期・0.7秒予兆・6方向・小石速度80%', () => {
-    expect(ENEMY_EARTH_MAGMA_ROCK_ATTACK_INTERVAL_MS).toBe(5000)
+  it('攻撃定数: 2.5秒周期・0.7秒予兆・6方向・小石速度80%', () => {
+    expect(ENEMY_EARTH_MAGMA_ROCK_ATTACK_INTERVAL_MS).toBe(2500)
     expect(ENEMY_EARTH_MAGMA_ROCK_WINDUP_MS).toBe(700)
     expect(ENEMY_EARTH_MAGMA_ROCK_RADIAL_COUNT).toBe(6)
     expect(ENEMY_EARTH_MAGMA_ROCK_PEBBLE_SPEED_FACTOR).toBe(0.8)
     expect(ENEMY_BULLET_SPEED * ENEMY_EARTH_MAGMA_ROCK_PEBBLE_SPEED_FACTOR).toBe(224)
     expect(ENEMY_BULLET_DAMAGE).toBe(1)
+  })
+
+  it('初回・次回攻撃タイマーは同じ攻撃間隔定数を使う', () => {
+    // spawnEnemyCommon の nextMagmaRadialAtMs と
+    // EnemyAttackSystem の次回予約が同一 SSoT を参照する
+    expect(ENEMY_EARTH_MAGMA_ROCK_ATTACK_INTERVAL_MS).toBe(2500)
   })
 
   it('同時出現上限は4', () => {
@@ -92,6 +102,13 @@ describe('Earth Dungeon Stage4 earthMagmaRock', () => {
     expect(kinds.has('earthRock')).toBe(true)
     expect(kinds.has('earthSkeleton')).toBe(true)
     expect(kinds.has('earthDungeonBoss')).toBe(false)
+  })
+
+  it('他の Earth 敵・ボスの HP／攻撃周期は変えていない', () => {
+    expect(ENEMY_EARTH_ROCK_HP).toBe(5)
+    expect(ENEMY_EARTH_ROCK_PEBBLE_INTERVAL_MS).toBe(3333)
+    expect(ENEMY_EARTH_DUNGEON_BOSS_HP).toBe(450)
+    expect(ENEMY_EARTH_DUNGEON_BOSS_ROCK_ATTACK_INTERVAL_MS).toBe(3333)
   })
 
   it('asset manifest にマグマ岩画像がある', () => {

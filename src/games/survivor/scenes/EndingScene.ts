@@ -2,12 +2,16 @@ import Phaser from 'phaser'
 import {
   GAME_WIDTH,
   GAME_HEIGHT,
+  FONT_FAMILY_HEADING,
   FONT_FAMILY_UI,
   ENDING_VICTORY_KEY,
   ENDING_FINAL_ASCENT_KEY,
   ENDING_FADE_MS,
   ENDING_INPUT_LOCK_MS,
   ENDING_CONTINUE_HINT,
+  ENDING_VICTORY_THANK_YOU_TEXT,
+  ENDING_VICTORY_THANK_YOU_FONT_SIZE_PX,
+  ENDING_VICTORY_THANK_YOU_MAX_WIDTH_PADDING,
   ENDING_VICTORY_TO_TEASER_BGM_FADE_MS,
   ENDING_TEASER_TO_TITLE_BGM_FADE_MS,
 } from '../GameConstants'
@@ -18,7 +22,13 @@ import {
   unlockEndingInput,
   type EndingSequenceState,
 } from '../systems/endingSequence'
+import {
+  calculateEndingVictoryThankYouY,
+  collectEndingVisualTargets,
+  shouldShowEndingVictoryThankYou,
+} from '../systems/endingPresentation'
 import { markEndingSeen } from '../systems/UnlockSaveSystem'
+import { shrinkTextToFitWidth } from '../utils/fitTextToWidth'
 
 export type EndingSceneData = {
   /** true のとき、2枚目終了で endingSeen を保存する（初回自動再生） */
@@ -33,6 +43,7 @@ export class EndingScene extends Phaser.Scene {
   private sequenceState: EndingSequenceState = createEndingSequenceState()
   private markSeenOnComplete = true
   private image: Phaser.GameObjects.Image | null = null
+  private thankYouText: Phaser.GameObjects.Text | null = null
   private hintText: Phaser.GameObjects.Text | null = null
   private keySpace: Phaser.Input.Keyboard.Key | null = null
   private keyEnter: Phaser.Input.Keyboard.Key | null = null
@@ -77,8 +88,7 @@ export class EndingScene extends Phaser.Scene {
     if (this.audioSystem !== null) {
       this.audioSystem.stopBgm()
     }
-    this.image = null
-    this.hintText = null
+    this.destroyCurrentScreenObjects()
     this.audioSystem = null
   }
 
@@ -142,24 +152,58 @@ export class EndingScene extends Phaser.Scene {
     image.setPosition(GAME_WIDTH / 2, GAME_HEIGHT / 2)
   }
 
-  private showCurrentScreen(fadeIn: boolean): void {
-    this.clearInputUnlockTimer()
-    this.isAdvancing = false
-
+  private destroyCurrentScreenObjects(): void {
     if (this.image !== null) {
       this.image.destroy()
       this.image = null
+    }
+    if (this.thankYouText !== null) {
+      this.thankYouText.destroy()
+      this.thankYouText = null
     }
     if (this.hintText !== null) {
       this.hintText.destroy()
       this.hintText = null
     }
+  }
+
+  private showCurrentScreen(fadeIn: boolean): void {
+    this.clearInputUnlockTimer()
+    this.isAdvancing = false
+
+    this.destroyCurrentScreenObjects()
 
     const textureKey = this.textureKeyForCurrentScreen()
     this.image = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, textureKey)
     this.image.setOrigin(0.5)
     this.fitImageContain(this.image)
     this.image.setDepth(1)
+
+    if (shouldShowEndingVictoryThankYou(this.sequenceState.screen)) {
+      const thankYouY = calculateEndingVictoryThankYouY(
+        this.image.y,
+        this.image.displayHeight,
+      )
+      this.thankYouText = this.add.text(
+        GAME_WIDTH / 2,
+        thankYouY,
+        ENDING_VICTORY_THANK_YOU_TEXT,
+        {
+          fontFamily: FONT_FAMILY_HEADING,
+          fontSize: `${ENDING_VICTORY_THANK_YOU_FONT_SIZE_PX}px`,
+          color: '#fde68a',
+          align: 'center',
+          stroke: '#000000',
+          strokeThickness: 3,
+        },
+      )
+      this.thankYouText.setOrigin(0.5)
+      this.thankYouText.setDepth(2)
+      shrinkTextToFitWidth(
+        this.thankYouText,
+        GAME_WIDTH - ENDING_VICTORY_THANK_YOU_MAX_WIDTH_PADDING,
+      )
+    }
 
     this.hintText = this.add.text(
       GAME_WIDTH / 2,
@@ -176,6 +220,9 @@ export class EndingScene extends Phaser.Scene {
     this.hintText.setOrigin(0.5)
     this.hintText.setDepth(2)
     this.hintText.setAlpha(0)
+    if (this.thankYouText !== null) {
+      this.thankYouText.setAlpha(0)
+    }
 
     // Final Ascent 画面では Ruins BGM を曲頭から開始
     if (this.sequenceState.screen === 'finalAscent' && this.audioSystem !== null) {
@@ -187,7 +234,11 @@ export class EndingScene extends Phaser.Scene {
     if (fadeIn) {
       this.image.setAlpha(0)
       this.fadeTween = this.tweens.add({
-        targets: [this.image, this.hintText],
+        targets: collectEndingVisualTargets<Phaser.GameObjects.GameObject>(
+          this.image,
+          this.hintText,
+          this.thankYouText,
+        ),
         alpha: 1,
         duration: ENDING_FADE_MS,
         onComplete: () => {
@@ -197,6 +248,9 @@ export class EndingScene extends Phaser.Scene {
     } else {
       this.image.setAlpha(1)
       this.hintText.setAlpha(1)
+      if (this.thankYouText !== null) {
+        this.thankYouText.setAlpha(1)
+      }
     }
 
     this.inputUnlockTimer = this.time.delayedCall(lockMs, () => {
@@ -224,13 +278,11 @@ export class EndingScene extends Phaser.Scene {
     }
 
     // Victory → Final Ascent: 画像と BGM をフェードしてから次画面
-    const targets: Phaser.GameObjects.GameObject[] = []
-    if (this.image !== null) {
-      targets.push(this.image)
-    }
-    if (this.hintText !== null) {
-      targets.push(this.hintText)
-    }
+    const targets = collectEndingVisualTargets<Phaser.GameObjects.GameObject>(
+      this.image,
+      this.hintText,
+      this.thankYouText,
+    )
 
     let visualDone = targets.length === 0
     let bgmDone = this.audioSystem === null

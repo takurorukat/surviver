@@ -25,7 +25,6 @@ export const SETTINGS_CREDITS_BODY = [
   'MUSIC',
   'Music by obscure music (Gichco)',
   'Source: OpenGameArt',
-  'License: CC0',
   '',
   'SKILL ICONS',
   'Icons by Lorc',
@@ -38,9 +37,12 @@ export const CREDITS_PANEL_WIDTH = 400
 export const CREDITS_PANEL_MAX_HEIGHT = 420
 export const CREDITS_PANEL_MARGIN_Y = 24
 export const CREDITS_BODY_PADDING_X = 36
-export const CREDITS_BODY_FONT_SIZE = 13
-export const CREDITS_BODY_MIN_FONT_SIZE = 12
-export const CREDITS_BODY_LINE_SPACING = 2
+/** ロゴの下の帰属本文。ロゴより小さく読みやすさ優先で控えめに */
+export const CREDITS_BODY_FONT_SIZE = 10
+export const CREDITS_BODY_MIN_FONT_SIZE = 9
+export const CREDITS_BODY_LINE_SPACING = 1
+/** 「created by」ラベル（ロゴ直前） */
+export const CREDITS_CREATED_BY_FONT_SIZE = 11
 
 /**
  * 画面高さに収まる Credits パネル高さを返す。

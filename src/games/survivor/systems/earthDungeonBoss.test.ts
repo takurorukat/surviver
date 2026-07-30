@@ -9,6 +9,7 @@ import {
   ENEMY_EARTH_DUNGEON_BOSS_ROCK_ATTACK_INTERVAL_MS,
   ENEMY_EARTH_DUNGEON_BOSS_ROCK_BURST_COUNT,
   ENEMY_EARTH_DUNGEON_BOSS_ROCK_BURST_SPACING_MS,
+  ENEMY_EARTH_DUNGEON_BOSS_ROCK_PROJECTILE_SPEED,
   ENEMY_EARTH_DUNGEON_BOSS_SPEED_FACTOR,
   ENEMY_EARTH_DUNGEON_BOSS_SUMMON_INTERVAL_MS,
   ENEMY_EARTH_DUNGEON_BOSS_XP_DROP_MULTIPLIER,
@@ -33,12 +34,12 @@ import {
 } from './earthDungeonBossLogic'
 
 describe('Earth Dungeon Stage5 earthDungeonBoss', () => {
-  it('HP / XP / 速度が仕様どおり（スライム基準 × 0.5）', () => {
-    expect(ENEMY_EARTH_DUNGEON_BOSS_HP).toBe(100)
+  it('HP / XP / 速度が仕様どおり（スライム基準 × 0.75）', () => {
+    expect(ENEMY_EARTH_DUNGEON_BOSS_HP).toBe(450)
     expect(ENEMY_EARTH_DUNGEON_BOSS_XP_DROP_MULTIPLIER).toBe(20)
-    expect(ENEMY_EARTH_DUNGEON_BOSS_SPEED_FACTOR).toBe(0.5)
-    expect(calculateEarthDungeonBossSpeed()).toBe(ENEMY_BASE_SPEED * 0.5)
-    expect(getEarthDungeonBossSpeedFromBase()).toBe(ENEMY_BASE_SPEED * 0.5)
+    expect(ENEMY_EARTH_DUNGEON_BOSS_SPEED_FACTOR).toBe(0.75)
+    expect(calculateEarthDungeonBossSpeed()).toBe(ENEMY_BASE_SPEED * 0.75)
+    expect(getEarthDungeonBossSpeedFromBase()).toBe(ENEMY_BASE_SPEED * 0.75)
   })
 
   it('asset manifest にボス画像キーがある', () => {
@@ -130,12 +131,12 @@ describe('Earth Dungeon Stage5 earthDungeonBoss', () => {
     )
   })
 
-  it('召喚・小石攻撃の定数', () => {
-    expect(ENEMY_EARTH_DUNGEON_BOSS_SUMMON_INTERVAL_MS).toBe(1000)
+  it('召喚・小石攻撃の定数（×1.5 強化後）', () => {
+    expect(ENEMY_EARTH_DUNGEON_BOSS_SUMMON_INTERVAL_MS).toBe(667)
     expect(ENEMY_EARTH_DUNGEON_BOSS_MAX_SUMMONED_ENEMIES).toBe(8)
-    expect(ENEMY_EARTH_DUNGEON_BOSS_ROCK_ATTACK_INTERVAL_MS).toBe(5000)
+    expect(ENEMY_EARTH_DUNGEON_BOSS_ROCK_ATTACK_INTERVAL_MS).toBe(3333)
     expect(ENEMY_EARTH_DUNGEON_BOSS_ROCK_BURST_COUNT).toBe(5)
-    expect(ENEMY_EARTH_DUNGEON_BOSS_ROCK_BURST_SPACING_MS).toBe(200)
+    expect(ENEMY_EARTH_DUNGEON_BOSS_ROCK_BURST_SPACING_MS).toBe(133)
   })
 
   it('5秒前は小石連射を開始せず、5秒後に開始する', () => {
@@ -165,7 +166,7 @@ describe('Earth Dungeon Stage5 earthDungeonBoss', () => {
     ).toBe(false)
   })
 
-  it('200ms 間隔で次弾を撃ち、残りを減らす', () => {
+  it('連射間隔で次弾を撃ち、残りを減らす', () => {
     expect(
       shouldFireEarthDungeonBossRockShot({
         nowMs: 5199,
@@ -187,7 +188,9 @@ describe('Earth Dungeon Stage5 earthDungeonBoss', () => {
       spacingMs: ENEMY_EARTH_DUNGEON_BOSS_ROCK_BURST_SPACING_MS,
     })
     expect(mid.shotsRemaining).toBe(3)
-    expect(mid.nextShotAtMs).toBe(5400)
+    expect(mid.nextShotAtMs).toBe(
+      5200 + ENEMY_EARTH_DUNGEON_BOSS_ROCK_BURST_SPACING_MS,
+    )
 
     const last = advanceEarthDungeonBossRockBurstAfterShot({
       nowMs: 5800,
@@ -198,9 +201,10 @@ describe('Earth Dungeon Stage5 earthDungeonBoss', () => {
     expect(last.nextShotAtMs).toBe(0)
   })
 
-  it('既存小石弾の速度・ダメージ定数を再利用する', () => {
+  it('既存小石弾の速度・ダメージ定数を再利用し、ボス弾だけ速い', () => {
     expect(ENEMY_BULLET_SPEED).toBe(280)
     expect(ENEMY_BULLET_DAMAGE).toBe(1)
+    expect(ENEMY_EARTH_DUNGEON_BOSS_ROCK_PROJECTILE_SPEED).toBe(420)
   })
 
   it('プレイヤー真上の召喚位置を検出する', () => {

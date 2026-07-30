@@ -44,10 +44,10 @@ describe('Music Credits', () => {
     expect(SETTINGS_CREDITS_BODY.includes('LevelUp2')).toBe(false)
   })
 
-  it('obscure music (Gichco) と CC0 / OpenGameArt が表示される', () => {
+  it('obscure music (Gichco) と OpenGameArt が表示される（UIに CC0 は出さない）', () => {
     expect(SETTINGS_CREDITS_BODY.includes('obscure music (Gichco)')).toBe(true)
     expect(SETTINGS_CREDITS_BODY.includes('Music by')).toBe(true)
-    expect(SETTINGS_CREDITS_BODY.includes('CC0')).toBe(true)
+    expect(SETTINGS_CREDITS_BODY.includes('CC0')).toBe(false)
     expect(SETTINGS_CREDITS_BODY.includes('OpenGameArt')).toBe(true)
     expect(SETTINGS_CREDITS_BODY.includes('https://')).toBe(false)
     expect(SETTINGS_CREDITS_BODY.includes('TMFactory')).toBe(false)

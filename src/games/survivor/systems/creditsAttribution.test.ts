@@ -3,8 +3,11 @@ import {
   SETTINGS_CREDITS_BODY,
   calculateCreditsBodyMaxScroll,
   calculateCreditsPanelHeight,
+  CREDITS_BODY_FONT_SIZE,
+  CREDITS_BODY_MIN_FONT_SIZE,
   CREDITS_PANEL_MAX_HEIGHT,
   CREDITS_PANEL_MARGIN_Y,
+  CREDITS_ROSSO_ARGINE_LOGO_DISPLAY_WIDTH,
   GAME_HEIGHT,
 } from '../GameConstants'
 
@@ -16,7 +19,7 @@ describe('Credits attribution (UI short form)', () => {
     expect(SETTINGS_CREDITS_BODY).toContain('CC BY 3.0')
     expect(SETTINGS_CREDITS_BODY).toContain('obscure music')
     expect(SETTINGS_CREDITS_BODY).toContain('OpenGameArt')
-    expect(SETTINGS_CREDITS_BODY).toContain('CC0')
+    expect(SETTINGS_CREDITS_BODY).not.toContain('CC0')
     expect(SETTINGS_CREDITS_BODY).toContain('SKILL ICONS')
   })
 
@@ -28,6 +31,12 @@ describe('Credits attribution (UI short form)', () => {
     expect(SETTINGS_CREDITS_BODY.includes('Pack of loopable game music')).toBe(
       false,
     )
+  })
+
+  it('ロゴを大きく・本文フォントを小さくする定数になっている', () => {
+    expect(CREDITS_ROSSO_ARGINE_LOGO_DISPLAY_WIDTH).toBeGreaterThanOrEqual(300)
+    expect(CREDITS_BODY_FONT_SIZE).toBeLessThanOrEqual(11)
+    expect(CREDITS_BODY_MIN_FONT_SIZE).toBeLessThanOrEqual(CREDITS_BODY_FONT_SIZE)
   })
 
   it('パネル高さは画面内に収まり、本文スクロール上限を計算できる', () => {

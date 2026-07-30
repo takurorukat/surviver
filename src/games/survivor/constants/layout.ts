@@ -78,6 +78,8 @@ const SPACE_BELOW_HUD = GAME_HEIGHT - HUD_HEIGHT - PLAY_AREA_GAP_BELOW_HUD
 export const PLAY_AREA_ORIGIN_Y = Math.floor(
   HUD_HEIGHT + PLAY_AREA_GAP_BELOW_HUD + (SPACE_BELOW_HUD - PLAY_AREA_HEIGHT) / 2,
 )
+// 最終ボス出現: プレイエリア上端からこの割合だけ下（中央 X と組み合わせる）
+export const FINAL_BOSS_SPAWN_Y_RATIO = 0.2
 
 // --- HUD の XP バー（dungeon sweeper と同じ見た目）---
 // HudSystem / XP 表示。必要 XP が増えるとバー幅も少し伸びる。

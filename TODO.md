@@ -36,8 +36,10 @@
 - [x] 複合スキル取得文言 OBTAINED→GET!、表示名 Orbiting Orb→Orbit（内部ID維持）。2026-07-28 実装・検証済み。
 - [x] 基本スキル表示名を効果名へ整理＋根拠ある属性タグのみ（Move/Pickup/XP）。2026-07-28 実装・検証済み。
 - [x] Credits はみ出し修正（帰属短文化＋レイアウト／小画面スクロール）。2026-07-28 実装・検証済み。
+- [x] Attack Speed アイコン差し替え（Sprint → Fairy wand / Lorc CC BY 3.0）。2026-07-28 実装・検証済み。
+- [x] Strengthen All Four Area Final Bosses ×1.5（HP・移動・弾速・攻撃／召喚間隔）。2026-07-29 実装・検証済み。
 - [ ] Area Clear Result UI（Version 1）。
-- [ ] Production Build Asset Audit。
+- [x] Production Build Asset Audit。2026-07-29 実施・検証済み（未採用候補音源・旧スプライト・vite.svg を public 外へ移動）。
 - [ ] Full Game Verification。
 - [x] Final Stage Completion Rules（4エリア最終の `defeat-boss` を `finalBossConfig` で統合済み）。
 - [ ] Earth Dungeon Stage 2 の Burrower を、`docs/EARTH_DUNGEON_DESIGN.md` の確定済み仕様だけに従って実装し、敵選択・出現条件のテストを追加する。

@@ -74,7 +74,6 @@ import {
   ENEMY_WIND_HIVE_BOSS_HEIGHT,
   ENEMY_WIND_HIVE_BOSS_RADIUS,
   ENEMY_WIND_HIVE_BOSS_WIDTH,
-  ENEMY_WIND_HIVE_BOSS_WIND_ORB_INTERVAL_MS,
   ENEMY_WIND_HIVE_BOSS_XP_DROP_MULTIPLIER,
   ENEMY_EARTH_DUNGEON_BOSS_HEIGHT,
   ENEMY_EARTH_DUNGEON_BOSS_RADIUS,
@@ -328,6 +327,8 @@ export function spawnEnemyCommon(
   if (enemyKind === 'earthRock') {
     // 最初の1発はシールドで無効
     enemy.setData('remainingBlockHits', ENEMY_EARTH_ROCK_BLOCK_HIT_COUNT)
+    enemy.setData('isEarthRockAttackWindup', false)
+    enemy.setData('earthRockWindupEndsAtMs', 0)
     enemy.setData(
       'nextPebbleShotAtMs',
       scene.time.now + ENEMY_EARTH_ROCK_PEBBLE_INTERVAL_MS,
@@ -372,11 +373,6 @@ export function spawnEnemyCommon(
     enemy.setData(
       'nextBeeSummonAtMs',
       scene.time.now + ENEMY_WIND_HIVE_BOSS_BEE_SPAWN_INTERVAL_MS,
-    )
-    // 出現から 2 秒後に最初の風の玉を撃つ
-    enemy.setData(
-      'nextWindOrbShotAtMs',
-      scene.time.now + ENEMY_WIND_HIVE_BOSS_WIND_ORB_INTERVAL_MS,
     )
   }
   if (enemyKind === 'earthDungeonBoss') {

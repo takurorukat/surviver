@@ -4,8 +4,13 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  RUINS_STAGE2_VOLCANO_ENEMY_CHANCE,
+} from '../../GameConstants'
+import {
   getVolcanoSpawnWeightTable,
   pickEnemyKindForArea,
+  pickRuinsStage2EnemyKind,
+  pickVolcanoStage2EnemyKind,
   pickVolcanoStage5EnemyKind,
   pickWeightedEnemyKind,
   VOLCANO_SPAWN_EXCLUDED_UNFINISHED_VISUAL_KINDS,
@@ -31,9 +36,38 @@ describe('pickEnemyKindForArea', () => {
     expect(pickEnemyKindForArea('ruins', 1, true)).toBe('earthSlime')
   })
 
-  it('Ruins Stage 2 は岩敵だけを選ぶ', () => {
+  it('Ruins Stage 2 は rock 中心で、Volcano Stage2 敵を 20% 混ぜる', () => {
+    expect(RUINS_STAGE2_VOLCANO_ENEMY_CHANCE).toBe(0.2)
+    expect(pickRuinsStage2EnemyKind(0.2)).toBe('earthRock')
+    expect(pickRuinsStage2EnemyKind(0.5)).toBe('earthRock')
+    expect(pickRuinsStage2EnemyKind(0.999)).toBe('earthRock')
+
+    vi.spyOn(Math, 'random').mockReturnValue(0.0)
+    expect(pickRuinsStage2EnemyKind(0.0)).toBe('spiritThunder')
+    expect(pickRuinsStage2EnemyKind(0.199)).toBe('spiritThunder')
+
+    // Volcano 側は既存ウェイトを再利用（60/85 境界）
+    vi.spyOn(Math, 'random').mockReturnValue(60 / 85)
+    expect(pickRuinsStage2EnemyKind(0.0)).toBe('spiritFire')
+
+    // pickEnemyKindForArea 経由でも同じ分岐
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)
     expect(pickEnemyKindForArea('ruins', 2, false)).toBe('earthRock')
     expect(pickEnemyKindForArea('ruins', 2, true)).toBe('earthRock')
+
+    const volcanoKinds = listKindsFromTable(2)
+    expect(volcanoKinds).toEqual(['spiritThunder', 'spiritFire'])
+    expect(volcanoKinds).not.toContain('armored')
+  })
+
+  it('Ruins Stage 2 以外へ Volcano 敵を混ぜない', () => {
+    expect(pickEnemyKindForArea('ruins', 1, false)).toBe('earthSlime')
+    expect(pickEnemyKindForArea('ruins', 3, false)).toBe('earthSkeleton')
+    const stage4 = pickEnemyKindForArea('ruins', 4, false)
+    expect(['earthMagmaRock', 'earthSlime', 'earthRock', 'earthSkeleton']).toContain(
+      stage4,
+    )
+    expect(stage4 === 'spiritThunder' || stage4 === 'spiritFire').toBe(false)
   })
 
   it('Ruins Stage 3 はスケルトンだけを選ぶ', () => {
@@ -83,6 +117,7 @@ describe('pickEnemyKindForArea', () => {
 
     vi.spyOn(Math, 'random').mockReturnValue(0.0)
     expect(pickEnemyKindForArea('volcano', 2, false)).toBe('spiritThunder')
+    expect(pickVolcanoStage2EnemyKind()).toBe('spiritThunder')
 
     // 合計 85。60/85 未満は spiritThunder、それ以上は spiritFire
     vi.spyOn(Math, 'random').mockReturnValue(60 / 85 - 0.001)

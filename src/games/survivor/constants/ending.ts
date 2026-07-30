@@ -23,6 +23,10 @@ export const ENDING_FADE_MS = 700
 export const ENDING_INPUT_LOCK_MS = 500
 
 export const ENDING_CONTINUE_HINT = 'CLICK / PRESS ENTER TO CONTINUE'
+export const ENDING_VICTORY_THANK_YOU_TEXT = 'Thank you for playing!'
+export const ENDING_VICTORY_THANK_YOU_OFFSET_Y = 22
+export const ENDING_VICTORY_THANK_YOU_FONT_SIZE_PX = 18
+export const ENDING_VICTORY_THANK_YOU_MAX_WIDTH_PADDING = 64
 export const TITLE_VIEW_ENDING_LABEL = 'VIEW ENDING'
 
 /** Ending Victory: Wind Plains BGM を再利用（音量は戦闘より控えめ） */

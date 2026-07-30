@@ -28,4 +28,12 @@ describe('unified seven skill icon assets', () => {
     expect(SETTINGS_CREDITS_BODY).toContain('Game-icons.net')
     expect(SETTINGS_CREDITS_BODY).toContain('CC BY 3.0')
   })
+
+  it('Attack Speed は Fairy wand で、走る人（Sprint）の痕跡がない', () => {
+    const speedAsset = CORE_SKILL_ICON_ASSETS.find((asset) => {
+      return asset.key === 'skill-icon-speed'
+    })
+    expect(speedAsset).toBeDefined()
+    expect(speedAsset?.path).toBe('assets/icons/skills/unified/speed.svg')
+  })
 })
