@@ -27,6 +27,22 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ## 直近の作業記録
 
+### 2026-07-31 — Cursor
+
+- 実施内容: Support Flag ON時だけタイトル左下へ、右下BGMと左右対称の丸いSupportボタンを追加。Phaser Graphicsのピクセルハートと`SUPPORT`ラベルを使用。既存Ko-fi URL／`openSupportDeveloperLink()`を再利用し、Settings内ボタンも維持。Pointer hover/click、Support↔BGM左右移動、上下で既存メニューへ復帰、Enter/Spaceに対応。
+- 変更ファイル: `GameConstants.ts` / `constants/support.ts` / `constants/bottomCornerButtons.ts` / `TitleScene.ts` / `BgmToggleButtonSystem.ts` / `SupportDeveloperButtonSystem.ts` / `titleBottomButtonNavigation.ts` / 関連テスト3ファイル / `supportDeveloperLink.test.ts` / `docs/AI_HANDOFF.md`
+- 検証: typecheck OK、tests 322 OK、通常build OK（Supportラベル・Ko-fi URLなし）、Cloudflare build OK（タイトル`SUPPORT`・Settings`SUPPORT DEVELOPER`・URL各1件、Debugなし）、git diff --check OK、lintエラーなし。OFF 5173は両Support非表示。ON 5206はタイトル/Settings表示、Pointer/Enter/Space各1回、popup拒否後も描画継続。PC・390x844縦・844x390横で重なりなし、page/runtime errorなし（favicon 404のみ）。
+- 未解決: commit/push/deployなし。既存dev serverは停止していない。Flag ON確認用5205/5206が残っている可能性あり。Cloudflare ProductionはFlagを明示的にONにする必要がある。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
+### 2026-07-31 — Cursor
+
+- 実施内容: `https://surviver.pages.dev/` のSupport非表示を診断。コード変更なし。公開JS bundleは通常buildと同じ資産名（`index-XnGcljec.js` / `bootstrap-i3CC8bGm.js` / `GameScene-rVQEOvSQ.js`）で、`SUPPORT DEVELOPER` と Ko-fi URL が0件。分類は `CLOUDFLARE_BUILD_COMMAND_OFF` または `CLOUDFLARE_ENV_MISSING`。ローカルでは通常/false buildで0件、`build:cloudflare`で各1件。有効buildのpreview(5204)ではSettingsにボタンあり、1回の操作で固定URLを`_blank`+`noopener,noreferrer`で開き、popup拒否後も描画継続。
+- 変更ファイル: none
+- 検証: typecheck OK、tests 314 OK、通常build OK、`VITE_...=false` build OK、`build:cloudflare` OK、git diff --check OK。公開SettingsはBGM/Clear Save/Credits/Backのみ。既存dev serverは停止していない。
+- 未解決: Cloudflare Pages Dashboardで Production を方法B（推奨）`npm run build` + `VITE_SURVIVOR_SUPPORT_LINK_ENABLED=true`、または方法A `npm run build:cloudflare` へ直し、再デプロイが必要。CursorはDashboard変更・commit/push/Production deploy未実施。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
 ### 2026-07-30 — Cursor
 
 - 実施内容: 進行Debugボタンを開発時も含めて非表示へ固定。通常buildのSupport Flag既定OFFは維持し、Cloudflare専用の`npm run build:cloudflare`だけ`VITE_SURVIVOR_SUPPORT_LINK_ENABLED=true`でbuildする構成を追加。

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   SUPPORT_DEVELOPER_LABEL,
   SURVIVOR_SUPPORT_LINK_ENABLED,
+  TITLE_SUPPORT_LABEL,
   isSupportDeveloperLinkEnabled,
 } from '../constants/support'
 import {
@@ -112,5 +113,6 @@ describe('Support Developer external link', () => {
   it('固定Ko-fi URLとラベル定義がある', () => {
     expect(SUPPORT_DEVELOPER_URL).toBe('https://ko-fi.com/rossoargine')
     expect(SUPPORT_DEVELOPER_LABEL).toBe('SUPPORT DEVELOPER')
+    expect(TITLE_SUPPORT_LABEL).toBe('SUPPORT')
   })
 })

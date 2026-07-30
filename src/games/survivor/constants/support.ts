@@ -10,6 +10,7 @@ export const SURVIVOR_SUPPORT_LINK_ENABLED =
   import.meta.env.VITE_SURVIVOR_SUPPORT_LINK_ENABLED === 'true'
 
 export const SUPPORT_DEVELOPER_LABEL = 'SUPPORT DEVELOPER'
+export const TITLE_SUPPORT_LABEL = 'SUPPORT'
 
 /** 環境変数の厳密判定を単体テストするための純粋関数。 */
 export function isSupportDeveloperLinkEnabled(rawValue: unknown): boolean {

@@ -46,6 +46,7 @@ import {
   TITLE_AREA_CONDITION_COLOR,
   TITLE_SHOW_SHOP_AND_SEAL,
   TITLE_SHOW_DEBUG_PROGRESS,
+  SURVIVOR_SUPPORT_LINK_ENABLED,
   RUNTIME_ENABLE_GOLD_AND_SHOP,
   TITLE_SHOP_PANEL_WIDTH,
   TITLE_SHOP_PANEL_HEIGHT,
@@ -93,6 +94,15 @@ import {
   createBgmToggleButton,
   type BgmToggleButtonView,
 } from '../systems/BgmToggleButtonSystem'
+import {
+  createSupportDeveloperButton,
+  type SupportDeveloperButtonView,
+} from '../systems/SupportDeveloperButtonSystem'
+import {
+  getTitleSupportSelectionIndex,
+  moveTitleBottomButtonSelection,
+  type TitleBottomButtonId,
+} from '../systems/titleBottomButtonNavigation'
 import {
   createDebugProgressButton,
   type DebugProgressButtonView,
@@ -179,6 +189,7 @@ export class TitleScene extends Phaser.Scene {
   private shopUnlockTipObjects: Phaser.GameObjects.GameObject[] = []
   private topBarView: TopBarView | null = null
   private bgmToggleButton: BgmToggleButtonView | null = null
+  private supportDeveloperButton: SupportDeveloperButtonView | null = null
   private debugProgressButton: DebugProgressButtonView | null = null
   private orientationGuide: OrientationGuideView | null = null
   private viewEndingHit: Phaser.GameObjects.Rectangle | null = null
@@ -357,6 +368,21 @@ export class TitleScene extends Phaser.Scene {
     hintText.setOrigin(0.5)
     shrinkTextToFitWidth(hintText, GAME_WIDTH - 64)
     this.createOrRefreshViewEndingButton()
+
+    if (SURVIVOR_SUPPORT_LINK_ENABLED) {
+      this.supportDeveloperButton = createSupportDeveloperButton(
+        this,
+        () => {
+          this.selectMenuItem(this.getSupportSelectionIndex())
+        },
+        () =>
+          !this.confirmDialogSystem.isOpen() &&
+          !this.shopSystem.isOpen() &&
+          !this.sealSkillSystem.isOpen() &&
+          !this.settingsMenuSystem.isMenuOpen(),
+      )
+    }
+
     this.bgmToggleButton = createBgmToggleButton(this, this.titleAudioSystem, () => {
       if (
         this.confirmDialogSystem.isOpen() ||
@@ -414,6 +440,10 @@ export class TitleScene extends Phaser.Scene {
   }
 
   shutdown(): void {
+    if (this.supportDeveloperButton !== null) {
+      this.supportDeveloperButton.destroy()
+      this.supportDeveloperButton = null
+    }
     if (this.debugProgressButton !== null) {
       this.debugProgressButton.destroy()
       this.debugProgressButton = null
@@ -430,6 +460,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   // 選択番号: エリア → (Shop → Seal Skills) → (Gold) → 実績 → Settings → BGM
+  // → (Debug) → (Support)。BGMまでの既存indexはFeature Flag OFFでも変えない。
   // Shop / Seal は TITLE_SHOW_SHOP_AND_SEAL が false のとき番号に含めない
   // Gold は RUNTIME_ENABLE_GOLD_AND_SHOP が false のとき番号に含めない
   // 縦移動では実績を飛ばし、実績は Settings から左右キーだけ
@@ -486,6 +517,13 @@ export class TitleScene extends Phaser.Scene {
     return this.getBgmSelectionIndex() + 1
   }
 
+  private getSupportSelectionIndex(): number {
+    return getTitleSupportSelectionIndex(
+      this.getBgmSelectionIndex(),
+      TITLE_SHOW_DEBUG_PROGRESS,
+    )
+  }
+
   private getGoldSelectionIndex(): number {
     // 上部バー左端寄り: Gold → Achievements → Settings
     return this.panelViews.length + this.getShopSealMenuOffset()
@@ -507,6 +545,13 @@ export class TitleScene extends Phaser.Scene {
 
   private isBgmSelected(): boolean {
     return this.selectedIndex === this.getBgmSelectionIndex()
+  }
+
+  private isSupportSelected(): boolean {
+    if (!SURVIVOR_SUPPORT_LINK_ENABLED || this.supportDeveloperButton === null) {
+      return false
+    }
+    return this.selectedIndex === this.getSupportSelectionIndex()
   }
 
   private isDebugSelected(): boolean {
@@ -1324,21 +1369,18 @@ export class TitleScene extends Phaser.Scene {
       return
     }
 
-    // 右下: Debug ←→ BGM（Debug は BGM の左）
-    if (this.isBgmSelected()) {
-      if (
-        direction < 0 &&
-        TITLE_SHOW_DEBUG_PROGRESS &&
-        this.debugProgressButton !== null
-      ) {
-        this.selectMenuItem(this.getDebugSelectionIndex())
-      }
-      return
-    }
-    if (this.isDebugSelected()) {
-      if (direction > 0) {
-        this.selectMenuItem(this.getBgmSelectionIndex())
-      }
+    // 下部: Support ←→ Debug（有効時のみ）←→ BGM
+    const selectedBottomButton = this.getSelectedBottomButtonId()
+    if (selectedBottomButton !== null) {
+      const nextBottomButton = moveTitleBottomButtonSelection(
+        selectedBottomButton,
+        direction,
+        {
+          supportEnabled: this.supportDeveloperButton !== null,
+          debugEnabled: this.debugProgressButton !== null,
+        },
+      )
+      this.selectBottomButton(nextBottomButton)
       return
     }
 
@@ -1346,6 +1388,31 @@ export class TitleScene extends Phaser.Scene {
     if (this.selectedIndex >= 0 && this.selectedIndex < this.panelViews.length) {
       this.moveAreaGridHorizontal(direction)
     }
+  }
+
+  private getSelectedBottomButtonId(): TitleBottomButtonId | null {
+    if (this.isSupportSelected()) {
+      return 'support'
+    }
+    if (this.isDebugSelected()) {
+      return 'debug'
+    }
+    if (this.isBgmSelected()) {
+      return 'bgm'
+    }
+    return null
+  }
+
+  private selectBottomButton(buttonId: TitleBottomButtonId): void {
+    if (buttonId === 'support') {
+      this.selectMenuItem(this.getSupportSelectionIndex())
+      return
+    }
+    if (buttonId === 'debug') {
+      this.selectMenuItem(this.getDebugSelectionIndex())
+      return
+    }
+    this.selectMenuItem(this.getBgmSelectionIndex())
   }
 
   // 役割: エリア 2列グリッドの左右移動（? は飛ばす）
@@ -1401,7 +1468,11 @@ export class TitleScene extends Phaser.Scene {
       return
     }
 
-    if (this.isBgmSelected() || this.isDebugSelected()) {
+    if (
+      this.isBgmSelected() ||
+      this.isDebugSelected() ||
+      this.isSupportSelected()
+    ) {
       if (direction > 0) {
         this.selectMenuItem(this.getSettingsSelectionIndex())
       } else if (TITLE_SHOW_SHOP_AND_SEAL) {
@@ -1590,6 +1661,7 @@ export class TitleScene extends Phaser.Scene {
       this.topBarView.setGoldSelected(this.isGoldSelected())
     }
     this.bgmToggleButton?.setSelected(this.isBgmSelected())
+    this.supportDeveloperButton?.setSelected(this.isSupportSelected())
     this.debugProgressButton?.setSelected(this.isDebugSelected())
 
     if (this.shopPreviewView !== null) {
@@ -1809,6 +1881,11 @@ export class TitleScene extends Phaser.Scene {
           'SPACE / ENTER to switch BGM ON / OFF  ·  ← Debug',
           TITLE_AREA_SUB_COLOR,
         )
+      } else if (SURVIVOR_SUPPORT_LINK_ENABLED) {
+        this.applyConditionText(
+          'SPACE / ENTER to switch BGM ON / OFF  ·  ← Support',
+          TITLE_AREA_SUB_COLOR,
+        )
       } else {
         this.applyConditionText(
           'SPACE / ENTER to switch BGM ON / OFF',
@@ -1818,9 +1895,19 @@ export class TitleScene extends Phaser.Scene {
       return
     }
 
+    if (this.isSupportSelected()) {
+      this.applyConditionText(
+        'SPACE / ENTER to support the developer  ·  → BGM',
+        TITLE_AREA_SUB_COLOR,
+      )
+      return
+    }
+
     if (this.isDebugSelected()) {
       this.applyConditionText(
-        'SPACE / ENTER: open  ·  → BGM  ·  menu: W/S + SPACE',
+        SURVIVOR_SUPPORT_LINK_ENABLED
+          ? 'SPACE / ENTER: open  ·  ← Support  ·  → BGM'
+          : 'SPACE / ENTER: open  ·  → BGM  ·  menu: W/S + SPACE',
         TITLE_AREA_SUB_COLOR,
       )
       return
@@ -2106,6 +2193,11 @@ export class TitleScene extends Phaser.Scene {
 
     if (this.isBgmSelected()) {
       this.bgmToggleButton?.toggle()
+      return
+    }
+
+    if (this.isSupportSelected()) {
+      this.supportDeveloperButton?.activate()
       return
     }
 
