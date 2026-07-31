@@ -29,10 +29,10 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-31 — Cursor
 
-- 実施内容: Cloudflare Pages（`CF_PAGES=1`）の通常 `npm run build` でも Support Flag を ON にする production build 入口を追加。ローカル通常 build は未設定のまま OFF。pages.dev でタイトル左下／Settings の Support を表示するため push する。
+- 実施内容: Cloudflare Pages（`CF_PAGES=1`）の通常 `npm run build` でも Support Flag を ON にする production build 入口を追加。ローカル通常 build は未設定のまま OFF。`c87cf74` を `origin/main` へ push。公開 `https://surviver.pages.dev/` の bundle に SUPPORT DEVELOPER / Ko-fi URL 各1件を確認。
 - 変更ファイル: `package.json` / `scripts/run-production-build.mjs` / `docs/AI_HANDOFF.md`
-- 検証: typecheck OK、tests 322 OK、通常build Supportなし、`CF_PAGES=1` build で SUPPORT DEVELOPER・Ko-fi URL 各1件、git diff --check OK。
-- 未解決: push後に Cloudflare 再デプロイ完了を確認する。
+- 検証: typecheck OK、tests 322 OK、通常build Supportなし、`CF_PAGES=1` build Supportあり、git push OK、公開bundle LIVE_SUPPORT_OK。
+- 未解決: なし（Hard Reload推奨）。
 - 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
 
 ### 2026-07-31 — Cursor
