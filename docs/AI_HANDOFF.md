@@ -29,6 +29,14 @@ ChatGPT／Codexが整理した実装指示を、開発主担当のCursorへ引�
 
 ### 2026-07-31 — Cursor
 
+- 実施内容: Cloudflare Pages（`CF_PAGES=1`）の通常 `npm run build` でも Support Flag を ON にする production build 入口を追加。ローカル通常 build は未設定のまま OFF。pages.dev でタイトル左下／Settings の Support を表示するため push する。
+- 変更ファイル: `package.json` / `scripts/run-production-build.mjs` / `docs/AI_HANDOFF.md`
+- 検証: typecheck OK、tests 322 OK、通常build Supportなし、`CF_PAGES=1` build で SUPPORT DEVELOPER・Ko-fi URL 各1件、git diff --check OK。
+- 未解決: push後に Cloudflare 再デプロイ完了を確認する。
+- 次の開発タスク: Area Clear Result UI / Full Game Verification（未着手）
+
+### 2026-07-31 — Cursor
+
 - 実施内容: Support Flag ON時だけタイトル左下へ、右下BGMと左右対称の丸いSupportボタンを追加。Phaser Graphicsのピクセルハートと`SUPPORT`ラベルを使用。既存Ko-fi URL／`openSupportDeveloperLink()`を再利用し、Settings内ボタンも維持。Pointer hover/click、Support↔BGM左右移動、上下で既存メニューへ復帰、Enter/Spaceに対応。
 - 変更ファイル: `GameConstants.ts` / `constants/support.ts` / `constants/bottomCornerButtons.ts` / `TitleScene.ts` / `BgmToggleButtonSystem.ts` / `SupportDeveloperButtonSystem.ts` / `titleBottomButtonNavigation.ts` / 関連テスト3ファイル / `supportDeveloperLink.test.ts` / `docs/AI_HANDOFF.md`
 - 検証: typecheck OK、tests 322 OK、通常build OK（Supportラベル・Ko-fi URLなし）、Cloudflare build OK（タイトル`SUPPORT`・Settings`SUPPORT DEVELOPER`・URL各1件、Debugなし）、git diff --check OK、lintエラーなし。OFF 5173は両Support非表示。ON 5206はタイトル/Settings表示、Pointer/Enter/Space各1回、popup拒否後も描画継続。PC・390x844縦・844x390横で重なりなし、page/runtime errorなし（favicon 404のみ）。
